@@ -1,0 +1,6 @@
+segment_id,segment_name,target_track,search_query,seed_handles,region_focus,priority
+SEG-01,SEA Embodied AI & Robotics Founders,robotics;embodied_ai,"(robotics OR ""embodied AI"" OR ROS2 OR manipulation) (founder OR building) (Singapore OR Vietnam OR Bangkok OR Jakarta)",@linhtran_robo;@keng_agribots,Southeast Asia,HIGH
+SEG-02,LLM Inference & AI Infra Builders,infrastructure;ai_models,"(vLLM OR quantization OR ""inference engine"" OR CUDA OR Triton) (Hanoi OR HCMC OR Singapore OR SEA)",@minh_quant;@arjun_infer,Southeast Asia,HIGH
+SEG-03,SEA Vertical AI & Agent Founders,ai_applications;devtools,"(""AI agent"" OR ""agentic workflow"" OR evals OR MCP) (founder OR CTO) (SEA OR Singapore OR Indonesia OR Vietnam)",@putri_agentic;@wei_devtools,Southeast Asia,MEDIUM
+SEG-04,Regional AI & Robotics Lab Researchers,ai_models;embodied_ai,"(arXiv OR CVPR OR ICRA OR CoRL OR ACL) (NTU OR NUS OR VinAI OR Chulalongkorn OR ITB)",@dr_somchai_ai;@nadhira_vla,Southeast Asia,HIGH
+

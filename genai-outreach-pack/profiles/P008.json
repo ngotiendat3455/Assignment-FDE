@@ -1,0 +1,22 @@
+{
+  "profile_id": "P008",
+  "x_user_id": "1000000008",
+  "handle": "tara_seallm",
+  "display_name": "Tara Mendoza",
+  "location": "Manila, Philippines",
+  "bio": "ML Lead @BayanSpeechAI. Building low-latency duplex speech-to-speech models for Tagalog, Cebuano, and Taglish customer operations.",
+  "url": "https://github.com/bayanspeech",
+  "followers_count": 1340,
+  "following_count": 410,
+  "can_dm": true,
+  "discovered_via": "SEG-04: Regional AI & Robotics Lab Researchers",
+  "recent_posts": [
+    {
+      "post_id": "185500801",
+      "created_at": "2026-11-05T16:20:00Z",
+      "text": "Standard byte-level BPE tokenizers inflate Tagalog-English code-switched transcripts by 1.9x tokens compared to English, killing TTFT in voice agents. Our morphology-aware subword vocabulary reduced token fertility to 1.18x and cut end-to-end voice turn latency by 280ms.",
+      "metrics": { "likes": 154, "reposts": 35, "replies": 21 }
+    }
+  ]
+}
+

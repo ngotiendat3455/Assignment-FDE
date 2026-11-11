@@ -1,0 +1,22 @@
+{
+  "profile_id": "P004",
+  "x_user_id": "1000000004",
+  "handle": "putri_agentic",
+  "display_name": "Putri Wulandari",
+  "location": "Jakarta, Indonesia",
+  "bio": "Co-founder @SuaraOps. Voice & WhatsApp ERP workflow agents for Indonesian supply chain & FMCG distributors.",
+  "url": "https://suaraops.id",
+  "followers_count": 1680,
+  "following_count": 490,
+  "can_dm": true,
+  "discovered_via": "SEG-03: SEA Vertical AI & Agent Founders",
+  "recent_posts": [
+    {
+      "post_id": "185500401",
+      "created_at": "2026-11-05T09:00:00Z",
+      "text": "Off-the-shelf ASR models choke when warehouse supervisors mix Bahasa Indonesia, Javanese slang, and SKU codes in 85dB forklift noise. Fine-tuning Whisper-large-v3-turbo on 900 hours of real depot audio bumped our end-to-end ERP tool-call accuracy from 61% to 94%.",
+      "metrics": { "likes": 138, "reposts": 27, "replies": 16 }
+    }
+  ]
+}
+

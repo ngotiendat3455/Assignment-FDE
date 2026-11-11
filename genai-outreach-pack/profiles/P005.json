@@ -1,0 +1,28 @@
+{
+  "profile_id": "P005",
+  "x_user_id": "1000000005",
+  "handle": "wei_devtools",
+  "display_name": "Wei Jie Lim",
+  "location": "Singapore",
+  "bio": "Creator of @TraceLoom (4.2k ⭐ on GitHub). Deterministic replay, fault injection & regression evals for production MCP & multi-agent systems.",
+  "url": "https://github.com/traceloom/traceloom",
+  "followers_count": 4810,
+  "following_count": 720,
+  "can_dm": true,
+  "discovered_via": "SEG-03: SEA Vertical AI & Agent Founders",
+  "recent_posts": [
+    {
+      "post_id": "185500501",
+      "created_at": "2026-11-09T03:15:00Z",
+      "text": "Shipped TraceLoom v0.9: you can now record a failed 15-step production agent trajectory, mock the exact external API state at step 9, and run 500 parallel prompt/model diffs in CI in under 40 seconds.",
+      "metrics": { "likes": 310, "reposts": 74, "replies": 41 }
+    },
+    {
+      "post_id": "185500502",
+      "created_at": "2026-11-02T14:00:00Z",
+      "text": "Most agent eval tools just run an LLM-as-a-judge on final text output. In production, 80% of failures happen in malformed tool arguments, retry storms, and stale context windows.",
+      "metrics": { "likes": 195, "reposts": 33, "replies": 24 }
+    }
+  ]
+}
+

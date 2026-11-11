@@ -1,0 +1,28 @@
+{
+  "profile_id": "P003",
+  "x_user_id": "1000000003",
+  "handle": "dr_somchai_ai",
+  "display_name": "Dr. Somchai Charoen",
+  "location": "Bangkok, Thailand",
+  "bio": "CEO @SiamAgriBot | Building autonomous ROS2 laser-weeding & precision harvesting rovers for tropical cassava & sugarcane farms. Former Chulalongkorn Robotics Lab.",
+  "url": "https://siamagribot.io",
+  "followers_count": 1950,
+  "following_count": 530,
+  "can_dm": true,
+  "discovered_via": "SEG-01: SEA Embodied AI & Robotics Founders",
+  "recent_posts": [
+    {
+      "post_id": "185500301",
+      "created_at": "2026-11-07T06:50:00Z",
+      "text": "Field trial results from Nakhon Ratchasima: 3 autonomous rovers ran 140 hours continuously in 38°C mud conditions. Our multi-spectral weed stem classifier hit 96.8% precision while reducing herbicide usage by 82% per hectare.",
+      "metrics": { "likes": 163, "reposts": 39, "replies": 18 }
+    },
+    {
+      "post_id": "185500302",
+      "created_at": "2026-11-01T11:10:00Z",
+      "text": "Looking for 2 senior ROS2 Navigation2 + RTK-GPS sensor fusion engineers in Bangkok who don't mind getting their boots muddy during field calibration.",
+      "metrics": { "likes": 74, "reposts": 25, "replies": 9 }
+    }
+  ]
+}
+

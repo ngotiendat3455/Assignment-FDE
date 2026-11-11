@@ -1,0 +1,28 @@
+{
+  "profile_id": "P002",
+  "x_user_id": "1000000002",
+  "handle": "minh_quant",
+  "display_name": "Minh Nguyen",
+  "location": "Hanoi, Vietnam",
+  "bio": "Founder @TensorEdgeVN. Ultra-fast C++/CUDA/ARM LLM inference engine for on-prem enterprise & telco deployments in SEA. Previously HPC kernel engineer.",
+  "url": "https://github.com/tensoredge-vn/edge-vllm",
+  "followers_count": 2890,
+  "following_count": 410,
+  "can_dm": true,
+  "discovered_via": "SEG-02: LLM Inference & AI Infra Builders",
+  "recent_posts": [
+    {
+      "post_id": "185500201",
+      "created_at": "2026-11-08T08:30:00Z",
+      "text": "Just open-sourced our AWQ-W4A8 speculative decoding kernel for L40S GPUs (`tensoredge-vn/edge-vllm`). Sustains 142 tok/s/user at batch size 32 on 70B models with <1.5% perplexity drift on Vietnamese & Bahasa legal benchmarks.",
+      "metrics": { "likes": 245, "reposts": 58, "replies": 29 }
+    },
+    {
+      "post_id": "185500202",
+      "created_at": "2026-11-04T15:20:00Z",
+      "text": "Deploying on-prem AI for ASEAN banks and telcos means you rarely get H100 clusters. Squeezing 3x throughput out of existing dual-A10G and L4 racks is where the real adoption unlocks.",
+      "metrics": { "likes": 112, "reposts": 19, "replies": 11 }
+    }
+  ]
+}
+

@@ -1,0 +1,22 @@
+{
+  "profile_id": "P018",
+  "x_user_id": "1000000018",
+  "handle": "ghost_builder_sea",
+  "display_name": "K.",
+  "location": "Singapore",
+  "bio": "stealth. building something new.",
+  "url": null,
+  "followers_count": 85,
+  "following_count": 120,
+  "can_dm": true,
+  "discovered_via": "SEG-01: SEA Embodied AI & Robotics Founders",
+  "recent_posts": [
+    {
+      "post_id": "185501801",
+      "created_at": "2026-10-15T08:00:00Z",
+      "text": "gm",
+      "metrics": { "likes": 2, "reposts": 0, "replies": 0 }
+    }
+  ]
+}
+

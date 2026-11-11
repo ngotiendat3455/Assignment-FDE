@@ -1,0 +1,28 @@
+{
+  "profile_id": "P001",
+  "x_user_id": "1000000001",
+  "handle": "linhtran_robo",
+  "display_name": "Linh Tran",
+  "location": "Singapore / Ho Chi Minh City",
+  "bio": "Co-founder & CTO @KineDexRobotics. Building bimanual manipulation policies for high-mix warehouse kitting. Ex-ETH Zurich ASL.",
+  "url": "https://github.com/kinedex-robotics",
+  "followers_count": 3420,
+  "following_count": 615,
+  "can_dm": true,
+  "discovered_via": "SEG-01: SEA Embodied AI & Robotics Founders",
+  "recent_posts": [
+    {
+      "post_id": "185500101",
+      "created_at": "2026-11-06T10:12:00Z",
+      "text": "Finally got our diffusion policy inference latency down from 64ms to 18ms on a single Jetson AGX Orin using TensorRT + INT8 calibration—without dropping grasp success rate on deformable polybags (still 93.4% across 1,200 picks).",
+      "metrics": { "likes": 184, "reposts": 31, "replies": 22 }
+    },
+    {
+      "post_id": "185500102",
+      "created_at": "2026-11-03T04:45:00Z",
+      "text": "Week 2 of our live 3PL warehouse pilot in Tuas, Singapore. Biggest lesson: lighting glare off shrink-wrapped pallets breaks standard RGB depth estimation way more than sim predicted. Active stereo + tactile wrist feedback saved us.",
+      "metrics": { "likes": 97, "reposts": 12, "replies": 14 }
+    }
+  ]
+}
+

@@ -1,0 +1,22 @@
+{
+  "profile_id": "P012",
+  "x_user_id": "1000000012",
+  "handle": "budi_mlops",
+  "display_name": "Budi Santoso",
+  "location": "Bandung / Jakarta, Indonesia",
+  "bio": "Principal MLOps Architect & Co-founder @KubeTensorID. Fractional GPU scheduling, cold-start snapshotting & Kubernetes inference orchestration.",
+  "url": "https://github.com/kubetensor-id",
+  "followers_count": 1760,
+  "following_count": 340,
+  "can_dm": true,
+  "discovered_via": "SEG-02: LLM Inference & AI Infra Builders",
+  "recent_posts": [
+    {
+      "post_id": "185501201",
+      "created_at": "2026-11-07T10:05:00Z",
+      "text": "By combining CRIU GPU checkpoint-restore with NVMe RDMA weight streaming, we cut 14B model autoscaling cold-start on Kubernetes from 92 seconds down to 3.8 seconds for our Jakarta fintech customers.",
+      "metrics": { "likes": 168, "reposts": 38, "replies": 21 }
+    }
+  ]
+}
+

@@ -1,0 +1,22 @@
+{
+  "profile_id": "P013",
+  "x_user_id": "1000000013",
+  "handle": "chloe_humanoid",
+  "display_name": "Chloe Ng",
+  "location": "Singapore",
+  "bio": "Hardware & Locomotion Lead @TorqueDynamicsSG. Designing high-torque-density quasi-direct-drive (QDD) actuators & whole-body MPC + RL controllers for bipedal inspection robots.",
+  "url": "https://torquedynamics.sg",
+  "followers_count": 2610,
+  "following_count": 450,
+  "can_dm": true,
+  "discovered_via": "SEG-01: SEA Embodied AI & Robotics Founders",
+  "recent_posts": [
+    {
+      "post_id": "185501301",
+      "created_at": "2026-11-08T05:30:00Z",
+      "text": "Benchmarked our rev-4 planetary QDD knee actuator on the dynamometer today: 120 Nm peak torque at 980g mass, backdrivable with <0.18 Nm friction torque, and held thermal equilibrium at 62°C during 45-min stair-climbing RL policy rollouts.",
+      "metrics": { "likes": 274, "reposts": 51, "replies": 33 }
+    }
+  ]
+}
+

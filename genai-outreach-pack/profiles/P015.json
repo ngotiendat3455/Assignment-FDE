@@ -1,0 +1,22 @@
+{
+  "profile_id": "P015",
+  "x_user_id": "1000000015",
+  "handle": "harith_medai",
+  "display_name": "Harith Zulkifli",
+  "location": "Kuala Lumpur, Malaysia",
+  "bio": "Co-founder @RadSightMY. On-premise vision-language models for chest CT & X-ray triage across Malaysian district hospitals.",
+  "url": "https://radsight.my",
+  "followers_count": 1490,
+  "following_count": 390,
+  "can_dm": true,
+  "discovered_via": "SEG-04: Regional AI & Robotics Lab Researchers",
+  "recent_posts": [
+    {
+      "post_id": "185501501",
+      "created_at": "2026-11-04T09:15:00Z",
+      "text": "District hospitals rarely have cloud connectivity for DICOM uploads or big GPU budgets. Our 4-bit quantized MedVLM runs locally in <3.8GB VRAM and flags critical pneumothorax cases in 1.4 seconds with 98.1% sensitivity across 14,000 retrospective scans.",
+      "metrics": { "likes": 192, "reposts": 44, "replies": 27 }
+    }
+  ]
+}
+

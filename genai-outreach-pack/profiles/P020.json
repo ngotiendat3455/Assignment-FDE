@@ -1,0 +1,22 @@
+{
+  "profile_id": "P020",
+  "x_user_id": "1000000002",
+  "handle": "minh_quant",
+  "display_name": "Minh Nguyen (TensorEdge)",
+  "location": "Hanoi, Vietnam",
+  "bio": "Founder @TensorEdgeVN. Ultra-fast C++/CUDA/ARM LLM inference engine for on-prem enterprise & telco deployments in SEA.",
+  "url": "https://github.com/tensoredge-vn/edge-vllm",
+  "followers_count": 2905,
+  "following_count": 412,
+  "can_dm": true,
+  "discovered_via": "SEG-04: Regional AI & Robotics Lab Researchers",
+  "recent_posts": [
+    {
+      "post_id": "185500201",
+      "created_at": "2026-11-08T08:30:00Z",
+      "text": "Just open-sourced our AWQ-W4A8 speculative decoding kernel for L40S GPUs (`tensoredge-vn/edge-vllm`). Sustains 142 tok/s/user at batch size 32 on 70B models with <1.5% perplexity drift on Vietnamese & Bahasa legal benchmarks.",
+      "metrics": { "likes": 250, "reposts": 60, "replies": 30 }
+    }
+  ]
+}
+
