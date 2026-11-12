@@ -1,7 +1,15 @@
 "use client";
 
 import React from "react";
-import { Lock, ShieldAlert, AlertTriangle, RotateCw, LogIn, ArrowLeft } from "lucide-react";
+import {
+  Lock,
+  ShieldAlert,
+  AlertTriangle,
+  FileQuestion,
+  RotateCw,
+  LogIn,
+  ArrowLeft,
+} from "lucide-react";
 import { Button } from "../atoms/Button";
 import { useI18n } from "@/context/i18n";
 
@@ -41,7 +49,7 @@ export const Error403View: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
 
   const handleBack = () => {
     if (onBack) onBack();
-    else window.location.href = "/workspace";
+    else window.location.href = "/";
   };
 
   return (
@@ -60,6 +68,35 @@ export const Error403View: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
 
       <Button variant="outline" icon={ArrowLeft} onClick={handleBack}>
         {t("errors.403_action")}
+      </Button>
+    </div>
+  );
+};
+
+export const Error404View: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
+  const { t } = useI18n();
+
+  const handleBack = () => {
+    if (onBack) onBack();
+    else window.location.href = "/";
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center animate-in fade-in">
+      <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 shadow-xs">
+        <FileQuestion className="w-8 h-8" />
+      </div>
+
+      <h2 className="text-xl font-bold text-foreground tracking-tight mb-2">
+        {t("errors.404_title")}
+      </h2>
+
+      <p className="text-sm text-muted-foreground max-w-md leading-relaxed mb-6">
+        {t("errors.404_desc")}
+      </p>
+
+      <Button variant="primary" icon={ArrowLeft} onClick={handleBack}>
+        {t("errors.404_action")}
       </Button>
     </div>
   );

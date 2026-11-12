@@ -185,7 +185,7 @@ def test_lookup_x_handle_fallback(db_session):
 
 
 def test_ingestion_api_endpoints(db_session):
-    """Verify FastAPI ingestion endpoints end-to-end using TestClient."""
+    """Verify FastAPI ingestion endpoints end-to-end using TestClient (including Auth Guard)."""
     def override_get_db():
         try:
             yield db_session
@@ -194,6 +194,16 @@ def test_ingestion_api_endpoints(db_session):
 
     app.dependency_overrides[get_db] = override_get_db
     client = TestClient(app)
+
+    # 0. Unauthenticated request must be blocked with 401 by Auth Guard Middleware
+    unauth_resp = client.post("/api/ingestion/seed", json={})
+    assert unauth_resp.status_code == 401
+
+    # Authenticate as Partner
+    login_resp = client.post("/api/auth/demo-login")
+    assert login_resp.status_code == 200
+    token = login_resp.json()["access_token"]
+    client.headers.update({"Authorization": f"Bearer {token}"})
 
     # 1. Seed Pack endpoint
     seed_resp = client.post("/api/ingestion/seed", json={})

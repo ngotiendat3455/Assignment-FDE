@@ -35,13 +35,21 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setDropdownOpen(false);
     if (onLogout) {
       onLogout();
-    } else {
-      // Default: clear session cookie and redirect to login
-      document.cookie = "session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+      return;
+    }
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Ignore network error during logout
+    }
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("genai_user");
+      document.cookie =
+        "session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
       window.location.href = "/login";
     }
   };
@@ -96,7 +104,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               <div className="px-3 py-2 border-b border-border flex items-center justify-between text-xs">
                 <span className="flex items-center gap-1.5 text-muted-foreground">
                   <Globe className="w-3.5 h-3.5" />
-                  <span>{t("common.language")}</span>
+                  <span>{t("nav.language")}</span>
                 </span>
 
                 <div className="flex items-center gap-1 bg-muted rounded p-0.5 font-medium">

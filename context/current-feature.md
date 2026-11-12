@@ -1,21 +1,22 @@
-# Current Active Feature: Feature 02 – Database Schema, ORM Models & 9-State Lifecycle Machine
+# Current Active Feature: Feature 03 – Authentication, Security Hygiene & Demo Login
 *(Sprint Status & Active Tracking)*
 
 ---
 
 ## 1. Active Feature Info
-- **Active Task:** WBS Task 2 (State Machine, Idempotency Gate & Candidate API): [`02-database-and-state-machine.md`](file:///d:/AssignmentFDE/context/features/02-database-and-state-machine.md)
-  - ✅ **Sub-task 2.1 (SQLite WAL Mode & ORM Schema Constraints):** Configured [`backend/app/core/database.py`](file:///d:/AssignmentFDE/backend/app/core/database.py) (`PRAGMA journal_mode=WAL`, `PRAGMA foreign_keys=ON`) and 4 ORM models (`User`, `Candidate`, `OutreachLedger` with `UNIQUE(candidate_id)`, `UNIQUE(handle)`, `UNIQUE(idempotency_key)`, and `JobQueue`).
-  - ✅ **Sub-task 2.2 (9-State Lifecycle Machine & Two-Tier Idempotency Gate):** Created [`backend/app/services/state_machine.py`](file:///d:/AssignmentFDE/backend/app/services/state_machine.py) enforcing legal transitions across all 9 states (`QUEUED_FOR_AI`, `PENDING_REVIEW`, `INSUFFICIENT_EVIDENCE`, `AI_FAILED`, `REJECTED`, `APPROVED_QUEUED`, `SEND_BLOCKED`, `SENT`, `REPLIED`) and the Two-Tier Zero Double-Messaging Gate (Application logic check + Database `IntegrityError` atomic catch returning `409 Conflict`).
-  - ✅ **Sub-task 2.3 (Candidate Lifecycle & Outreach Action API Router):** Created [`backend/app/api/candidates.py`](file:///d:/AssignmentFDE/backend/app/api/candidates.py) (`GET /api/candidates`, `GET /api/candidates/state-summary`, `GET /api/candidates/{id}`, `POST /api/candidates/{id}/send`, `POST /api/candidates/{id}/reject`, `POST /api/candidates/{id}/retry`, `POST /api/candidates/{id}/reply`, `POST /api/candidates/{id}/handled`) and registered in [`backend/app/main.py`](file:///d:/AssignmentFDE/backend/app/main.py).
-  - ✅ **Sub-task 2.4 (Automated Pytest Suite for State Machine & Idempotency):** Created [`backend/tests/test_state_machine.py`](file:///d:/AssignmentFDE/backend/tests/test_state_machine.py) verifying all Acceptance Criteria in `02-database-and-state-machine.md` (Double-click `409 Conflict` idempotency test, Seed History `already_contacted` protection test, Closed DM `SEND_BLOCKED` test, 9-state transition rules, and SQLite WAL persistence).
-  - ✅ **Sub-task 2.5 (End-to-End Verification & Sprint Log Update):** Verified `python -m pytest backend/tests/ -v` -> **14/14 PASSED** (`9` in `test_ingestion.py` + `5` in `test_state_machine.py`).
+- **Active Task:** WBS Task 3 (BFF Auth, 7-Day HttpOnly Session, Pre-filled Login & API Guards): [`03-auth-and-security.md`](file:///d:/AssignmentFDE/context/features/03-auth-and-security.md)
+  - ✅ **Sub-task 3.1 (Backend Security Core & `get_current_user` Guard):** Upgraded [`backend/app/core/config.py`](file:///d:/AssignmentFDE/backend/app/core/config.py) (7-day token = `10080` mins) and [`backend/app/core/security.py`](file:///d:/AssignmentFDE/backend/app/core/security.py) with salted password hashing, JWT creation/verification, `ensure_default_partner_user`, and `get_current_user` FastAPI dependency (supporting both `Authorization: Bearer` header and `session_token` HttpOnly cookie).
+  - ✅ **Sub-task 3.2 (Backend FastAPI Auth Router & Route Protection):** Created [`backend/app/api/auth.py`](file:///d:/AssignmentFDE/backend/app/api/auth.py) (`POST /api/auth/login`, `POST /api/auth/demo-login`, `POST /api/auth/register`, `GET /api/auth/me`, `POST /api/auth/logout`), protected `/api/candidates` with `Depends(get_current_user)`, and wired into [`backend/app/main.py`](file:///d:/AssignmentFDE/backend/app/main.py).
+  - ✅ **Sub-task 3.3 (Automated Pytest Suite for Auth & Security):** Created [`backend/tests/test_auth.py`](file:///d:/AssignmentFDE/backend/tests/test_auth.py) verifying all Acceptance Criteria in `03-auth-and-security.md` (`401 Unauthorized` on unauthenticated `/api/candidates`, 1-click pre-filled login with `partner@genaifund.ai`, `401` on wrong password, expired/tampered JWT rejection, logout cookie clearing, and zero secret key leakage) -> **5/5 PASSED** (`19/19` total backend tests).
+  - ✅ **Sub-task 3.4 (Frontend Next.js BFF Auth Routes, Pre-filled `/login` Page & Header Session Controls):** Created [`frontend/src/app/api/auth/login/route.ts`](file:///d:/AssignmentFDE/frontend/src/app/api/auth/login/route.ts), [`frontend/src/app/api/auth/logout/route.ts`](file:///d:/AssignmentFDE/frontend/src/app/api/auth/logout/route.ts), [`frontend/src/app/login/page.tsx`](file:///d:/AssignmentFDE/frontend/src/app/login/page.tsx) (Wireframe 1 with pre-filled `partner@genaifund.ai` / `GenAIFund2026!`), updated [`TopHeader.tsx`](file:///d:/AssignmentFDE/frontend/src/components/organisms/TopHeader.tsx) (Wireframe 2), and added symmetrical i18n keys (`en.json` & `vi.json`).
+  - ✅ **Sub-task 3.5 (End-to-End Verification & Sprint Log Update):** Verified `python -m pytest backend/tests/ -v` (`19 passed`) and `npm run build` in `frontend/` (`9/9 routes generated, 0 errors`).
 - **Completed Foundation Tasks:**
   - ✅ **Task 0:** [`00-base-layout-design-system.md`](file:///d:/AssignmentFDE/context/features/00-base-layout-design-system.md) (Atomic Design System, Pure Tailwind v4 `@theme`, English-First i18n, Paginated Table & AppShell)
   - ✅ **Task 1:** [`01-data-pack-and-ingestion.md`](file:///d:/AssignmentFDE/context/features/01-data-pack-and-ingestion.md) (Full-Stack Triple-Tab Ingestion Hub, Pre-flight CSV Check, Live X Lookup & 3-Tier Deduplication)
   - ✅ **Task 2:** [`02-database-and-state-machine.md`](file:///d:/AssignmentFDE/context/features/02-database-and-state-machine.md) (SQLite WAL Schema, 9-State Lifecycle Machine, Two-Tier Zero Double-Messaging Gate & Candidate Lifecycle API)
-- **Next Spec Reference:** [`03-auth-and-session.md`](file:///d:/AssignmentFDE/context/features/03-auth-and-session.md) & [`04-dual-queue-and-ai-send-engine.md`](file:///d:/AssignmentFDE/context/features/04-dual-queue-and-ai-send-engine.md)
-- **Current Status:** `COMPLETED (Feature 02)`
+  - ✅ **Task 3:** [`03-auth-and-security.md`](file:///d:/AssignmentFDE/context/features/03-auth-and-security.md) (Next.js BFF HttpOnly Cookie Auth, 7-Day JWT, Pre-filled Partner Login & Protected FastAPI Routes)
+- **Next Spec Reference:** [`04-dual-queue-and-ai-send-engine.md`](file:///d:/AssignmentFDE/context/features/04-dual-queue-and-ai-send-engine.md)
+- **Current Status:** `COMPLETED (Feature 03)`
 
 ---
 
@@ -83,6 +84,23 @@
       - Implemented `GET /api/candidates`, `GET /api/candidates/state-summary`, `GET /api/candidates/{id}`, `POST /api/candidates/{id}/send`, `POST /api/candidates/{id}/reject`, `POST /api/candidates/{id}/retry`, `POST /api/candidates/{id}/reply`, and `POST /api/candidates/{id}/handled`.
     - **Automated Pytest Suite (`backend/tests/test_state_machine.py`):**
       - Added 5 comprehensive tests covering double-click idempotency (`409 Conflict`), seed history protection (`@linhtran_robo`), closed DM protection (`@arjun_infer`), 9-state lifecycle transitions + reply/handled workflow, and file-backed SQLite WAL persistence across server restarts -> **14/14 total tests PASSED**.
+11. ✅ **Full-Stack Implementation of Feature 03 (`03-auth-and-security.md`):**
+    - **Backend Security Core & `get_current_user` Guard (`backend/app/core/security.py` & `backend/app/core/config.py`):**
+      - Configured 7-day JWT session lifetime (`ACCESS_TOKEN_EXPIRE_MINUTES = 10080`).
+      - Implemented `ensure_default_partner_user` to guarantee the pre-filled Partner account (`partner@genaifund.ai` / `GenAIFund2026!`) always exists in SQLite.
+      - Built `get_current_user` FastAPI dependency supporting both `Authorization: Bearer <jwt>` header and `session_token` HttpOnly cookie, rejecting unauthenticated/expired requests with `401 Unauthorized`.
+    - **FastAPI Auth Router (`backend/app/api/auth.py`):**
+      - Implemented `POST /api/auth/login`, `POST /api/auth/demo-login`, `POST /api/auth/register`, `GET /api/auth/me`, and `POST /api/auth/logout`.
+      - Protected `/api/candidates` router with `Depends(get_current_user)`.
+    - **Next.js BFF Route Handlers, Private Route Middleware & Error Pages (`frontend/src/`):**
+      - Built `POST /api/auth/login` and `POST /api/auth/logout` Next.js BFF route handlers managing the 7-day `HttpOnly` `session_token` cookie (`SameSite=Lax`).
+      - Built [`frontend/src/middleware.ts`](file:///d:/AssignmentFDE/frontend/src/middleware.ts) enforcing private route protection on all workspace pages (`/`, `/ingestion`, `/workspace`, `/ledger`, `/calibration`), checking JWT expiration (`exp`), redirecting unauthenticated sessions to `/login?from=...`, and enforcing Partner role RBAC (`/403` for unauthorized roles).
+      - Built `/login` page ([`login/page.tsx`](file:///d:/AssignmentFDE/frontend/src/app/login/page.tsx)) with pre-filled `partner@genaifund.ai` & `GenAIFund2026!`, show/hide password toggle, language switcher (`EN`/`VI`), and 1-click sign-in.
+      - Built dedicated Next.js App Router error pages: [`/401/page.tsx`](file:///d:/AssignmentFDE/frontend/src/app/401/page.tsx) (401 Session Expired), [`/403/page.tsx`](file:///d:/AssignmentFDE/frontend/src/app/403/page.tsx) (403 Forbidden), [`not-found.tsx`](file:///d:/AssignmentFDE/frontend/src/app/not-found.tsx) (404 Not Found), [`error.tsx`](file:///d:/AssignmentFDE/frontend/src/app/error.tsx) & [`global-error.tsx`](file:///d:/AssignmentFDE/frontend/src/app/global-error.tsx) (500 Runtime Error).
+      - Updated `TopHeader.tsx` (Wireframe 2) to invoke `/api/auth/logout` and redirect cleanly to `/login`.
+    - **Verification (`pytest` & `next build`):**
+      - `python -m pytest backend/tests/ -v` -> **19/19 PASSED** (including 5 new tests in `test_auth.py`).
+      - `npm run build` in `frontend/` -> **11/11 static pages + Edge Middleware compiled with 0 errors**.
 
 ---
 

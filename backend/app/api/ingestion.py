@@ -3,6 +3,7 @@ from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import get_db
+from backend.app.core.security import get_current_user
 from backend.app.schemas.candidate import (
     CandidateCreate,
     SeedIngestRequest,
@@ -20,7 +21,11 @@ from backend.app.services.ingestion import (
     lookup_x_handle,
 )
 
-router = APIRouter(prefix="/ingestion", tags=["Ingestion"])
+router = APIRouter(
+    prefix="/ingestion",
+    tags=["Ingestion"],
+    dependencies=[Depends(get_current_user)],
+)
 
 SAMPLE_CSV_TEMPLATE = """handle,name,location,bio,recent_tweets,can_dm,segment
 @minh_quant,Minh Nguyen,"Hanoi, Vietnam","Founder @TensorEdgeVN. Ultra-fast C++/CUDA/ARM LLM inference engine.","[2026-11-08] Just open-sourced our AWQ-W4A8 speculative decoding kernel for L40S GPUs.",true,SEG-02: LLM Inference & AI Infra

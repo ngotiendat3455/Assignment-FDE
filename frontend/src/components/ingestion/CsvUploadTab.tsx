@@ -34,11 +34,17 @@ export function CsvUploadTab() {
 
   useEffect(() => {
     let active = true;
-    runCsvPreflight(csvContent).then((res) => {
-      if (active) {
-        setPreflight(res);
-      }
-    });
+    runCsvPreflight(csvContent)
+      .then((res) => {
+        if (active) {
+          setPreflight(res);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setPreflight(null);
+        }
+      });
     return () => {
       active = false;
     };
@@ -50,10 +56,14 @@ export function CsvUploadTab() {
       const text = typeof ev.target?.result === "string" ? ev.target.result : "";
       setCsvContent(text);
       setReport(null);
-      const pre = await runCsvPreflight(text);
-      setPreflight(pre);
-      if (!pre.valid) {
-        toast(t("ingestion.toast_preflight_error"), "error");
+      try {
+        const pre = await runCsvPreflight(text);
+        setPreflight(pre);
+        if (!pre.valid) {
+          toast(t("ingestion.toast_preflight_error"), "error");
+        }
+      } catch {
+        toast(t("errors.500_desc"), "error");
       }
     };
     reader.readAsText(file);
@@ -83,6 +93,8 @@ export function CsvUploadTab() {
       const res = await ingestCsvBatch(csvContent);
       setReport(res);
       toast(t("ingestion.toast_csv_success"), "success");
+    } catch {
+      toast(t("errors.500_desc"), "error");
     } finally {
       setLoading(false);
     }

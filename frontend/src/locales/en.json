@@ -119,6 +119,9 @@
     "403_title": "403 - Access Forbidden",
     "403_desc": "Your current account does not have permission to perform this action. Dedicated to General Partners only.",
     "403_action": "Back to Workspace",
+    "404_title": "404 - Page Not Found",
+    "404_desc": "The scouting workspace or candidate profile you are looking for does not exist or has been moved.",
+    "404_action": "Back to Workspace",
     "500_title": "500 - Internal Server Connection Error",
     "500_desc": "Cannot connect to Backend FastAPI server (http://localhost:8000). Please check if backend process is running.",
     "500_action": "Retry Connection",
@@ -191,5 +194,19 @@
     "toast_csv_success": "CSV batch ingested and queued for AI evaluation!",
     "toast_single_success": "Candidate pushed to AI evaluation queue!",
     "toast_preflight_error": "CSV is missing required columns. Please check the pre-flight report."
+  },
+  "auth": {
+    "system_subtitle": "AUTONOMOUS SCOUTING & PERSONALIZED OUTREACH CRM",
+    "card_title": "SIGN IN TO WORKSPACE",
+    "prefilled_badge": "Reviewer Ready • Pre-filled Partner Account",
+    "email_label": "Partner Email:",
+    "password_label": "Password:",
+    "remember_me": "Remember session (7-day HttpOnly cookie)",
+    "btn_sign_in": "SIGN IN TO WORKSPACE",
+    "btn_signing_in": "Authenticating...",
+    "security_note": "Protected by Next.js BFF HttpOnly Cookie & FastAPI HS256 JWT (Zero XSS exposure)",
+    "toast_login_success": "Signed in as GenAI Fund Investment Partner!",
+    "toast_login_error": "Invalid email or password. Please check your credentials.",
+    "toast_logout": "Signed out safely."
   }
 }

@@ -29,6 +29,8 @@ export function SeedPackTab() {
       const res = await triggerSeedPackIngest(segment || undefined);
       setReport(res);
       toast(t("ingestion.toast_seed_success"), "success");
+    } catch {
+      toast(t("errors.500_desc"), "error");
     } finally {
       setLoading(false);
     }

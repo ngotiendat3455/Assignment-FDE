@@ -4,8 +4,10 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import get_db
+from backend.app.core.security import get_current_user
 from backend.app.models.candidate import Candidate
 from backend.app.models.ledger import OutreachLedger, OutreachStatus
+from backend.app.models.user import User
 from backend.app.schemas.ledger import SendOutreachRequest, RecordReplyRequest
 from backend.app.services.state_machine import (
     approve_and_send_candidate,
@@ -19,7 +21,11 @@ from backend.app.services.state_machine import (
     StateTransitionError,
 )
 
-router = APIRouter(prefix="/candidates", tags=["Candidates & State Machine"])
+router = APIRouter(
+    prefix="/candidates",
+    tags=["Candidates & State Machine"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 class RejectCandidateRequest(BaseModel):
@@ -122,6 +128,7 @@ def send_candidate_dm(
     candidate_id: int,
     payload: SendOutreachRequest = SendOutreachRequest(),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Approve & Send DM with Two-Tier Zero Double-Messaging Protection.
@@ -134,6 +141,7 @@ def send_candidate_dm(
             candidate_id=candidate_id,
             custom_message=payload.custom_message,
             idempotency_key=payload.idempotency_key,
+            sent_by_user_id=current_user.id,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

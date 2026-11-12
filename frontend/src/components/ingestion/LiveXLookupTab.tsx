@@ -44,6 +44,8 @@ export function LiveXLookupTab() {
       const res = await lookupLiveXHandle(raw);
       setProfile(res);
       setSegment(res.segment);
+    } catch {
+      toast(t("errors.500_desc"), "error");
     } finally {
       setLookingUp(false);
     }
@@ -65,6 +67,8 @@ export function LiveXLookupTab() {
       });
       setReport(res);
       toast(t("ingestion.toast_single_success"), "success");
+    } catch {
+      toast(t("errors.500_desc"), "error");
     } finally {
       setIngesting(false);
     }

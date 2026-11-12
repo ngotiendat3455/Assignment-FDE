@@ -20,9 +20,9 @@ class Settings:
     HOST: str = os.getenv("HOST", "0.0.0.0")
     DEBUG: bool = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
-    # Security
+    # Security (7-day default session = 10080 minutes for zero-friction evaluation)
     SECRET_KEY: str = os.getenv("SECRET_KEY", "genai-fund-fde-secret-key-change-in-production-2026")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))
     ALGORITHM: str = "HS256"
 
     # Database

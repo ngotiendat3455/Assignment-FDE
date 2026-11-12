@@ -37,7 +37,7 @@ def db_session():
 
 @pytest.fixture
 def api_client(db_session):
-    """FastAPI TestClient bound to the isolated test session."""
+    """FastAPI TestClient bound to the isolated test session with Partner JWT session."""
     def _override_db():
         try:
             yield db_session
@@ -46,6 +46,10 @@ def api_client(db_session):
 
     app.dependency_overrides[get_db] = _override_db
     client = TestClient(app)
+    login_resp = client.post("/api/auth/demo-login")
+    assert login_resp.status_code == 200
+    token = login_resp.json()["access_token"]
+    client.headers.update({"Authorization": f"Bearer {token}"})
     yield client
     app.dependency_overrides.clear()
 

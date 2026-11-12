@@ -119,6 +119,9 @@
     "403_title": "403 - Từ Chối Truy Cập",
     "403_desc": "Tài khoản hiện tại không có quyền thực hiện hành động này. Chức năng chỉ dành riêng cho General Partner.",
     "403_action": "Về Bàn duyệt",
+    "404_title": "404 - Không Tìm Thấy Trang",
+    "404_desc": "Trang làm việc hoặc hồ sơ ứng viên bạn đang tìm kiếm không tồn tại hoặc đã được di chuyển.",
+    "404_action": "Về Bàn duyệt",
     "500_title": "500 - Lỗi Hệ Thống Máy Chủ",
     "500_desc": "Không thể kết nối tới Backend FastAPI (http://localhost:8000). Vui lòng kiểm tra lại tiến trình máy chủ Python.",
     "500_action": "Thử lại kết nối",
@@ -191,5 +194,19 @@
     "toast_csv_success": "Đã nạp lô CSV và xếp hàng phân tích AI thành công!",
     "toast_single_success": "Đã đẩy ứng viên vào hàng đợi AI chấm điểm!",
     "toast_preflight_error": "Tệp CSV thiếu cột bắt buộc. Vui lòng kiểm tra bảng báo cáo tiền trạm."
+  },
+  "auth": {
+    "system_subtitle": "HỆ THỐNG SĂN TÌM TỰ ĐỘNG & TIẾP CẬN CÁ NHÂN HÓA",
+    "card_title": "ĐĂNG NHẬP HỆ THỐNG",
+    "prefilled_badge": "Sẵn sàng chấm điểm • Đã điền sẵn tài khoản Partner",
+    "email_label": "Email Đối tác:",
+    "password_label": "Mật khẩu:",
+    "remember_me": "Ghi nhớ đăng nhập (HttpOnly Cookie 7 ngày)",
+    "btn_sign_in": "ĐĂNG NHẬP (SIGN IN)",
+    "btn_signing_in": "Đang xác thực...",
+    "security_note": "Bảo vệ bởi Next.js BFF HttpOnly Cookie & FastAPI HS256 JWT (Chống XSS 100%)",
+    "toast_login_success": "Đăng nhập thành công với quyền GenAI Fund Investment Partner!",
+    "toast_login_error": "Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.",
+    "toast_logout": "Đã đăng xuất an toàn."
   }
 }
