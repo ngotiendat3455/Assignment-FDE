@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Primary brand colors */
+  --color-primary: #314ae9;
+  --color-secondary: #13cfde;
+  --color-tertiary: #35abff;
+
+  /* Semantic colors for UI components */
+  --color-primary-foreground: #ffffff;
+  --color-secondary-foreground: #ffffff;
+  --color-tertiary-foreground: #ffffff;
+  --color-destructive: #e5240c;
+  --color-destructive-foreground: #ffffff;
+  --color-background: #ffffff;
+  --color-foreground: #021337;
+  --color-accent: #f8fafc;
+  --color-accent-foreground: #021337;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #677187;
+  --color-border: #e2e8f0;
+  --color-input: #ffffff;
+  --color-ring: #314ae9;
+
+  /* Content colors for text and elements */
+  --color-content-primary: #314ae9;
+  --color-content-primary-20: #314ae933;
+  --color-content-primary-disabled: #cbcee3;
+  --color-content-dark: #021337;
+  --color-content-positive: #00a349;
+  --color-content-secondary: #677187;
+  --color-content-positive-secondary: #0f741f;
+  --color-content-tertiary: #a1abbf;
+  --color-content-warning: #f59e0b;
+  --color-content-warning-secondary: #805f0c;
+  --color-content-disabled: #737c8f;
+  --color-content-negative: #e5240c;
+  --color-content-negative-secondary: #9f2626;
+  --color-content-primary-2: #00359E;
+  --color-content-secondary-2: #667085;
+  --color-content-dark-2: #2C2A2A;
+
+  /* Background semantic colors */
+  --color-background-white: #ffffff;
+  --color-background-light-grey: #f2f4f5;
+  --color-background-grey: #e6e9ed;
+  --color-background-light-blue-grey: #edf2fd;
+  --color-background-dark: #1a1717;
+  --color-background-primary: #314ae9;
+  --color-background-primary-hover: #5c70f3;
+  --color-background-light-primary: #cfddff;
+  --color-background-primary-disable: #cbcee3;
+  --color-background-secondary: #13cfde;
+  --color-background-positive: #00a349;
+  --color-background-warning: #ffa916;
+  --color-background-light-warning: #ffe2a9;
+  --color-background-negative: #e5240c;
+  --color-background-light-negative: #ffd3d5;
+  --color-background-purple: #7620c1;
+  --color-background-soft-purple: #e1d9f9;
+  --color-background-disabled: #d3dce0;
+
+  /* Border semantic colors */
+  --color-border-default: #cfd6de;
+  --color-border-strong: #b0b9c5;
+  --color-border-dark: #021337;
+  --color-border-selected: #3273f1;
+  --color-border-positive: #00a349;
+  --color-border-warning: #f59e0b;
+  --color-border-negative: #e5240c;
+
+  --color-dark: #021337;
+  --color-dark-secondary: #677187;
+  --color-dark-tertiary: #a1abbf;
+  --color-white: #ffffff;
+  --color-disabled: #737c8f;
+  --color-primary-disable: #cbcee3;
+  --color-positive: #00a349;
+  --color-positive-secondary: #0f741f;
+  --color-warning: #f59e0b;
+  --color-warning-secondary: #805f0c;
+  --color-negative: #e5240c;
+  --color-negative-secondary: #9f2626;
+
+  /* Custom shadows */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-accent);
+  color: var(--color-foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom sleek scrollbars for Sidebar & Wide DataTables */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-muted);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-dark-secondary);
+}

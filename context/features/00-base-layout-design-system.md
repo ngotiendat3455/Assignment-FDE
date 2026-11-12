@@ -197,19 +197,26 @@ body {
 
 ---
 
-## 4. Kiến trúc Đa ngôn ngữ (Multi-language / i18n Architecture)
+## 4. Kiến trúc Đa ngôn ngữ (Multi-language / i18n Architecture) & Quy tắc Bất biến
 
-Hệ thống được thiết kế sẵn sàng cho môi trường đa quốc gia với 2 ngôn ngữ:
-- **English (`en`) - Mặc định:** Ngôn ngữ làm việc chuẩn quốc tế của quỹ đầu tư và hội đồng chấm bài.
-- **Tiếng Việt (`vi`):** Dành cho đội ngũ scout/associate bản địa tại Việt Nam.
+Hệ thống được thiết kế theo tiêu chuẩn quốc tế cho quỹ đầu tư mạo hiểm (Silicon Valley / DeepTech VC), hỗ trợ 2 ngôn ngữ:
+- **English (`en`) - Ngôn ngữ Cốt lõi & Mặc định (Primary/Default Language):** Dành cho hội đồng thẩm định quốc tế, nhà đầu tư quỹ và bài thi đánh giá. Toàn bộ mã nguồn, fallback string, và template phải chuẩn mực Tiếng Anh.
+- **Tiếng Việt (`vi`):** Dành cho đội ngũ scout/associate bản địa tại Đông Nam Á.
+
+> [!IMPORTANT]
+> **4 Quy tắc Bất biến về Ngôn ngữ (Strict i18n Rules):**
+> 1. **Ngôn ngữ Mặc định là Tiếng Anh (`en`):** Khi tải ứng dụng lần đầu (hoặc không có cài đặt lưu trước), toàn bộ hệ thống hiển thị 100% bằng Tiếng Anh chuẩn mực.
+> 2. **Tuyệt đối CẤM Hardcode Tiếng Việt hoặc Text Song ngữ Lẫn lộn trong Component:** Cấm viết những chuỗi như `"Vượt quá giới hạn (Exceeds chars)"` hay `"Xóa (Delete)"` trực tiếp trong JSX. Tất cả chuỗi hiển thị bắt buộc phải gọi qua hàm dịch `t("keyPath")`.
+> 3. **Tính Đối Xứng Từ Điển (Symmetrical Dictionaries):** Mọi key xuất hiện trong [`locales/en.json`](file:///d:/AssignmentFDE/frontend/src/locales/en.json) đều phải có key tương ứng chuẩn xác trong [`locales/vi.json`](file:///d:/AssignmentFDE/frontend/src/locales/vi.json).
+> 4. **Chuyển đổi Tức thì Không Cần Tải lại Trang:** Người dùng chuyển đổi qua Menu Profile `[👤 General Partner ▾] -> [🌐 EN | VI]` $\rightarrow$ Toàn bộ Sidebar, Header, Bảng, Nút bấm, Huy hiệu, Modal và Drawer lập tức cập nhật ngôn ngữ trong bộ nhớ React và lưu vào `localStorage.setItem('preferred_locale', locale)`.
 
 ```mermaid
 graph LR
-    User["Người dùng"] --> Switcher["Language Switcher (EN | VI)"]
-    Switcher --> Context["i18n Context / Next-intl"]
-    Context --> DictEN["Dictionary: locales/en.json"]
-    Context --> DictVI["Dictionary: locales/vi.json"]
-    Context --> UI["Giao diện Tự động Cập nhật Không Cần Reload"]
+    User["Người dùng chọn EN | VI"] --> Switcher["TopHeader Profile Menu"]
+    Switcher --> Context["I18nProvider Context Hook"]
+    Context --> DictEN["locales/en.json (Default)"]
+    Context --> DictVI["locales/vi.json (Vietnamese)"]
+    Context --> UI["Toàn bộ Component Re-render tức thì"]
 ```
 
 ### Cấu trúc Từ điển i18n Chuẩn:

@@ -1,0 +1,129 @@
+{
+  "nav": {
+    "brand_title": "GenAI Fund",
+    "brand_subtitle": "Autonomous Scouting",
+    "ingestion": "Nạp Ứng viên",
+    "workspace": "Bàn duyệt HITL",
+    "ledger": "Sổ cái Tiếp cận & CRM",
+    "calibration": "Ma trận Hiệu chuẩn AI",
+    "collapse": "Thu gọn Sidebar",
+    "expand": "Mở rộng Sidebar",
+    "logout": "Đăng xuất",
+    "language": "Ngôn ngữ"
+  },
+  "actions": {
+    "approve_send": "Phê duyệt & Gửi DM",
+    "reject": "Từ chối",
+    "retry": "Thử lại phân tích",
+    "regenerate": "Tạo lại bằng AI",
+    "record_reply": "Ghi nhận phản hồi",
+    "mark_handled": "Đã tiếp quản & Xử lý",
+    "view_review": "Xem & Duyệt",
+    "view_details": "Xem chi tiết",
+    "delete": "Xóa",
+    "search": "Tìm kiếm",
+    "search_placeholder": "Tìm theo tên, handle, lĩnh vực...",
+    "cancel": "Hủy bỏ",
+    "save": "Lưu thay đổi",
+    "close": "Đóng",
+    "upload": "Tải lên CSV",
+    "select_file": "Chọn tệp tin",
+    "open_x_chat": "Chat trên X",
+    "refresh": "Làm mới",
+    "restore_draft": "Khôi phục bản nháp AI"
+  },
+  "status": {
+    "all": "Tất cả",
+    "match": "Phù hợp Match",
+    "needs_human": "Chờ duyệt HITL",
+    "needs_attention": "CẦN XỬ LÝ GẤP",
+    "urgent_tag": "GẤP",
+    "blocked": "Khóa DM / Bị chặn",
+    "sent": "Đã gửi DM",
+    "replied": "Đã phản hồi",
+    "queued_ai": "Đang xếp hàng AI",
+    "queued_send": "Đang chờ gửi DM",
+    "rejected": "Đã từ chối"
+  },
+  "kpi": {
+    "dispatched": "ĐÃ GỬI DM",
+    "dispatched_sub": "100% tỷ lệ an toàn",
+    "replied": "PHẢN HỒI",
+    "replied_sub": "Tỷ lệ phản hồi 25.0%",
+    "urgent": "CẦN XỬ LÝ GẤP",
+    "urgent_sub": "Founder đang chờ trên X DM",
+    "blocked": "BẢO VỆ CHỐNG LẶP",
+    "blocked_sub": "Chặn gửi trùng & Đóng DM"
+  },
+  "evidence": {
+    "why_fit": "Lý do AI đánh giá phù hợp (Why They Fit):",
+    "verbatim": "Bằng chứng trích dẫn nguyên văn (Verbatim Evidence):",
+    "recent_tweets": "Bài đăng gần nhất (Recent Tweets):",
+    "grounded_badge": "100% Bằng chứng xác thực",
+    "eval_title": "Đánh Giá Năng Lực AI"
+  },
+  "composer": {
+    "title": "Tin Nhắn Cá Nhân Hóa (Editable)",
+    "dispatch_mode": "Kênh gửi:",
+    "sandbox_option": "⚡ Chế độ Sandbox (Giả lập)",
+    "live_option": "🚀 Chế độ Live X API",
+    "optimal": "Độ dài chuẩn mực",
+    "exceeded": "Vượt quá giới hạn 500 ký tự của X"
+  },
+  "table": {
+    "col_id": "Mã",
+    "col_candidate": "Ứng viên & Handle",
+    "col_track": "Lĩnh vực / Track",
+    "col_score": "Điểm AI",
+    "col_status": "Trạng thái",
+    "col_actions": "Thao tác",
+    "empty_title": "Không tìm thấy ứng viên phù hợp",
+    "empty_desc": "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm của bạn.",
+    "showing": "Hiển thị",
+    "to": "-",
+    "of": "của",
+    "records": "bản ghi",
+    "rows_per_page": "Số dòng:",
+    "first_page": "Trang đầu",
+    "last_page": "Trang cuối",
+    "prev": "Trước",
+    "next": "Sau"
+  },
+  "dropzone": {
+    "drag_title": "Kéo thả file CSV vào đây hoặc",
+    "browse": "chọn từ máy tính",
+    "subtitle": "Hỗ trợ tệp .csv tối đa 5MB • Tự động chuẩn hóa handle",
+    "err_csv_only": "Vui lòng chỉ tải lên tệp định dạng .csv",
+    "err_max_size": "Dung lượng tệp vượt quá giới hạn cho phép (5MB)",
+    "ready": "Tệp CSV sẵn sàng"
+  },
+  "drawer": {
+    "audit_title": "Hội Thoại & Dấu Vết Tiếp Cận",
+    "urgent_alert": "CỜ BÁO ĐỘNG: NEEDS ATTENTION ĐANG BẬT",
+    "urgent_desc": "Founder đã phản hồi tích cực. Partner cần vào chat để chốt lịch gọi Google Meet.",
+    "timeline_title": "DÒNG THỜI GIAN BẤT BIẾN",
+    "dm_delivered": "Gửi DM thành công",
+    "founder_reply": "Founder phản hồi qua X DM",
+    "open_x": "Mở Hội Thoại Trực Tiếp Trên X",
+    "mark_resolved": "Đã Tiếp Quản Xong (Tắt Cờ)"
+  },
+  "tabs": {
+    "catalog": "🎨 Bảng Dữ Liệu & Danh Mục Thành Phần",
+    "metrics": "📊 Chỉ Số Đo Lường Hiệu Suất (KPIs)",
+    "resilience": "🛡️ Khả Năng Phục Hồi & Xử Lý Lỗi"
+  },
+  "errors": {
+    "401_title": "401 - Phiên Làm Việc Đã Hết Hạn",
+    "401_desc": "Phiên đăng nhập của bạn đã hết hạn hoặc bạn chưa được cấp quyền truy cập. Vui lòng đăng nhập lại để tiếp tục.",
+    "401_action": "Quay lại Đăng nhập",
+    "403_title": "403 - Từ Chối Truy Cập",
+    "403_desc": "Tài khoản hiện tại không có quyền thực hiện hành động này. Chức năng chỉ dành riêng cho General Partner.",
+    "403_action": "Về Bàn duyệt",
+    "500_title": "500 - Lỗi Hệ Thống Máy Chủ",
+    "500_desc": "Không thể kết nối tới Backend FastAPI (http://localhost:8000). Vui lòng kiểm tra lại tiến trình máy chủ Python.",
+    "500_action": "Thử lại kết nối",
+    "boundary_title": "Sự Cố Hiển Thị Thành Phần",
+    "boundary_desc": "Một lỗi không mong muốn đã xảy ra trong quá trình kết xuất giao diện.",
+    "boundary_action": "Tải lại thành phần"
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "nav": {
+    "brand_title": "GenAI Fund",
+    "brand_subtitle": "Autonomous Scouting",
+    "ingestion": "Candidate Ingestion",
+    "workspace": "HITL Review Workspace",
+    "ledger": "Outreach Ledger & CRM",
+    "calibration": "AI Calibration Matrix",
+    "collapse": "Collapse Sidebar",
+    "expand": "Expand Sidebar",
+    "logout": "Sign Out",
+    "language": "Language"
+  },
+  "actions": {
+    "approve_send": "Approve & Send",
+    "reject": "Reject",
+    "retry": "Retry Evaluation",
+    "regenerate": "Regenerate Draft",
+    "record_reply": "Record Reply",
+    "mark_handled": "Mark Handled",
+    "view_review": "Review & Approve",
+    "view_details": "View Details",
+    "delete": "Delete",
+    "search": "Search",
+    "search_placeholder": "Search by name, handle, track...",
+    "cancel": "Cancel",
+    "save": "Save Changes",
+    "close": "Close",
+    "upload": "Upload CSV",
+    "select_file": "Select File",
+    "open_x_chat": "Chat on X",
+    "refresh": "Refresh",
+    "restore_draft": "Reset to AI Draft"
+  },
+  "status": {
+    "all": "All",
+    "match": "High Fit Match",
+    "needs_human": "Pending Review",
+    "needs_attention": "NEEDS ATTENTION",
+    "urgent_tag": "URGENT",
+    "blocked": "Blocked / DMs Closed",
+    "sent": "DM Sent",
+    "replied": "Replied",
+    "queued_ai": "Queued for AI",
+    "queued_send": "Queued for Send",
+    "rejected": "Rejected"
+  },
+  "kpi": {
+    "dispatched": "DM DISPATCHED",
+    "dispatched_sub": "100% safety delivery",
+    "replied": "REPLIES RECEIVED",
+    "replied_sub": "25.0% reply rate",
+    "urgent": "NEEDS ATTENTION",
+    "urgent_sub": "Founder waiting on X DM",
+    "blocked": "SAFETY BLOCKED",
+    "blocked_sub": "Dedup & Closed DMs"
+  },
+  "evidence": {
+    "why_fit": "AI Fit Assessment (Why They Fit):",
+    "verbatim": "Verbatim Evidence Snippet:",
+    "recent_tweets": "Recent Tweets:",
+    "grounded_badge": "100% Grounded Evidence",
+    "eval_title": "AI Competency Evaluation"
+  },
+  "composer": {
+    "title": "Personalized DM Draft (Editable)",
+    "dispatch_mode": "Dispatch Channel:",
+    "sandbox_option": "⚡ Sandbox Mode (Simulation)",
+    "live_option": "🚀 Live X API",
+    "optimal": "Optimal length",
+    "exceeded": "Exceeds X limit of 500 characters"
+  },
+  "table": {
+    "col_id": "ID",
+    "col_candidate": "Candidate & Handle",
+    "col_track": "Track / Segment",
+    "col_score": "AI Score",
+    "col_status": "Status",
+    "col_actions": "Actions",
+    "empty_title": "No candidates found",
+    "empty_desc": "Try adjusting your search query or switching to another filter tab.",
+    "showing": "Showing",
+    "to": "-",
+    "of": "of",
+    "records": "records",
+    "rows_per_page": "Rows per page:",
+    "first_page": "First page",
+    "last_page": "Last page",
+    "prev": "Prev",
+    "next": "Next"
+  },
+  "dropzone": {
+    "drag_title": "Drag & drop CSV file here or",
+    "browse": "browse from computer",
+    "subtitle": "Supports .csv up to 5MB • Automatic handle normalization",
+    "err_csv_only": "Please upload a valid .csv file only",
+    "err_max_size": "File size exceeds allowed limit (5MB)",
+    "ready": "CSV ready"
+  },
+  "drawer": {
+    "audit_title": "Conversation & Outreach Trail",
+    "urgent_alert": "URGENT ALERT: NEEDS ATTENTION ACTIVE",
+    "urgent_desc": "Founder replied positively. Investment Partner action required to schedule meeting.",
+    "timeline_title": "IMMUTABLE AUDIT TIMELINE",
+    "dm_delivered": "DM Delivered successfully",
+    "founder_reply": "Founder replied via X DM",
+    "open_x": "Open Direct Message on X",
+    "mark_resolved": "Mark Handled & Resolve"
+  },
+  "tabs": {
+    "catalog": "🎨 Data Table & Component Catalog",
+    "metrics": "📊 Key Performance Indicators (KPIs)",
+    "resilience": "🛡️ Resilience & Error Handling"
+  },
+  "errors": {
+    "401_title": "401 - Session Expired",
+    "401_desc": "Your session has expired or you need to authenticate. Please log in again to continue.",
+    "401_action": "Back to Login",
+    "403_title": "403 - Access Forbidden",
+    "403_desc": "Your current account does not have permission to perform this action. Dedicated to General Partners only.",
+    "403_action": "Back to Workspace",
+    "500_title": "500 - Internal Server Connection Error",
+    "500_desc": "Cannot connect to Backend FastAPI server (http://localhost:8000). Please check if backend process is running.",
+    "500_action": "Retry Connection",
+    "boundary_title": "Component Rendering Error",
+    "boundary_desc": "An unexpected error occurred while rendering this component.",
+    "boundary_action": "Reload Component"
+  }
+}
