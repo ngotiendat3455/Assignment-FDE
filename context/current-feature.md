@@ -1,22 +1,21 @@
-# Current Active Feature: Feature 01 – Data Pack & Scouting Ingestion (Full-Stack)
+# Current Active Feature: Feature 02 – Database Schema, ORM Models & 9-State Lifecycle Machine
 *(Sprint Status & Active Tracking)*
 
 ---
 
 ## 1. Active Feature Info
-- **Active Task:** WBS Task 1 (Full-Stack Implementation): [`01-data-pack-and-ingestion.md`](file:///d:/AssignmentFDE/context/features/01-data-pack-and-ingestion.md)
-  - ✅ **Sub-task 1.1 (Backend Ingestion Service Enhancement):** Upgraded [`backend/app/services/ingestion.py`](file:///d:/AssignmentFDE/backend/app/services/ingestion.py) with URL-aware `normalize_handle`, `ingest_seed_pack`, `preflight_csv_check`, `lookup_x_handle` (Live X API v2 + Seed/Synthetic Fallback), and enriched Audit Report (`collision_details`, `duplicate_handles`, `queued_for_ai_count`).
-  - ✅ **Sub-task 1.2 (Backend FastAPI Ingestion Router & App Entrypoint):** Created [`backend/app/api/ingestion.py`](file:///d:/AssignmentFDE/backend/app/api/ingestion.py) (`POST /api/ingestion/seed`, `POST /api/ingestion/preflight`, `POST /api/ingestion/csv`, `GET /api/ingestion/x-lookup`, `POST /api/ingestion/single`, `GET /api/ingestion/template`) and [`backend/app/main.py`](file:///d:/AssignmentFDE/backend/app/main.py) with CORS and lifespan initialization.
-  - ✅ **Sub-task 1.3 (Backend Automated Tests):** Expanded [`backend/tests/test_ingestion.py`](file:///d:/AssignmentFDE/backend/tests/test_ingestion.py) to 9 comprehensive unit & API integration tests covering URL normalization, pre-flight validation, 1-click seed pack audit metrics (16 queued, 1 in-batch dedup, 3 historical collisions), Live X lookup fallback, and FastAPI endpoints (`9/9 PASSED`).
-  - ✅ **Sub-task 1.4 (Frontend Types, API Client & i18n Keys):** Created [`frontend/src/types/ingestion.ts`](file:///d:/AssignmentFDE/frontend/src/types/ingestion.ts), [`frontend/src/lib/ingestion-api.ts`](file:///d:/AssignmentFDE/frontend/src/lib/ingestion-api.ts) (with seamless client-side fallback), and symmetrical i18n keys in [`en.json`](file:///d:/AssignmentFDE/frontend/src/locales/en.json) and [`vi.json`](file:///d:/AssignmentFDE/frontend/src/locales/vi.json).
-  - ✅ **Sub-task 1.5 (Frontend Triple-Tab Ingestion Hub UI):** Built [`SeedPackTab.tsx`](file:///d:/AssignmentFDE/frontend/src/components/ingestion/SeedPackTab.tsx) (Wireframe 1), [`CsvUploadTab.tsx`](file:///d:/AssignmentFDE/frontend/src/components/ingestion/CsvUploadTab.tsx) (Wireframe 2), [`LiveXLookupTab.tsx`](file:///d:/AssignmentFDE/frontend/src/components/ingestion/LiveXLookupTab.tsx) (Wireframe 3), [`IngestionAuditCard.tsx`](file:///d:/AssignmentFDE/frontend/src/components/ingestion/IngestionAuditCard.tsx), and [`frontend/src/app/ingestion/page.tsx`](file:///d:/AssignmentFDE/frontend/src/app/ingestion/page.tsx).
-  - ✅ **Sub-task 1.6 (End-to-End Verification):** Verified `python -m pytest backend/tests/ -v` (`9 passed`) and `npm run build` in `frontend/` (`6/6 static pages generated, 0 errors`).
+- **Active Task:** WBS Task 2 (State Machine, Idempotency Gate & Candidate API): [`02-database-and-state-machine.md`](file:///d:/AssignmentFDE/context/features/02-database-and-state-machine.md)
+  - ✅ **Sub-task 2.1 (SQLite WAL Mode & ORM Schema Constraints):** Configured [`backend/app/core/database.py`](file:///d:/AssignmentFDE/backend/app/core/database.py) (`PRAGMA journal_mode=WAL`, `PRAGMA foreign_keys=ON`) and 4 ORM models (`User`, `Candidate`, `OutreachLedger` with `UNIQUE(candidate_id)`, `UNIQUE(handle)`, `UNIQUE(idempotency_key)`, and `JobQueue`).
+  - ✅ **Sub-task 2.2 (9-State Lifecycle Machine & Two-Tier Idempotency Gate):** Created [`backend/app/services/state_machine.py`](file:///d:/AssignmentFDE/backend/app/services/state_machine.py) enforcing legal transitions across all 9 states (`QUEUED_FOR_AI`, `PENDING_REVIEW`, `INSUFFICIENT_EVIDENCE`, `AI_FAILED`, `REJECTED`, `APPROVED_QUEUED`, `SEND_BLOCKED`, `SENT`, `REPLIED`) and the Two-Tier Zero Double-Messaging Gate (Application logic check + Database `IntegrityError` atomic catch returning `409 Conflict`).
+  - ✅ **Sub-task 2.3 (Candidate Lifecycle & Outreach Action API Router):** Created [`backend/app/api/candidates.py`](file:///d:/AssignmentFDE/backend/app/api/candidates.py) (`GET /api/candidates`, `GET /api/candidates/state-summary`, `GET /api/candidates/{id}`, `POST /api/candidates/{id}/send`, `POST /api/candidates/{id}/reject`, `POST /api/candidates/{id}/retry`, `POST /api/candidates/{id}/reply`, `POST /api/candidates/{id}/handled`) and registered in [`backend/app/main.py`](file:///d:/AssignmentFDE/backend/app/main.py).
+  - ✅ **Sub-task 2.4 (Automated Pytest Suite for State Machine & Idempotency):** Created [`backend/tests/test_state_machine.py`](file:///d:/AssignmentFDE/backend/tests/test_state_machine.py) verifying all Acceptance Criteria in `02-database-and-state-machine.md` (Double-click `409 Conflict` idempotency test, Seed History `already_contacted` protection test, Closed DM `SEND_BLOCKED` test, 9-state transition rules, and SQLite WAL persistence).
+  - ✅ **Sub-task 2.5 (End-to-End Verification & Sprint Log Update):** Verified `python -m pytest backend/tests/ -v` -> **14/14 PASSED** (`9` in `test_ingestion.py` + `5` in `test_state_machine.py`).
 - **Completed Foundation Tasks:**
   - ✅ **Task 0:** [`00-base-layout-design-system.md`](file:///d:/AssignmentFDE/context/features/00-base-layout-design-system.md) (Atomic Design System, Pure Tailwind v4 `@theme`, English-First i18n, Paginated Table & AppShell)
   - ✅ **Task 1:** [`01-data-pack-and-ingestion.md`](file:///d:/AssignmentFDE/context/features/01-data-pack-and-ingestion.md) (Full-Stack Triple-Tab Ingestion Hub, Pre-flight CSV Check, Live X Lookup & 3-Tier Deduplication)
-  - ✅ **Task 2:** [`02-database-and-state-machine.md`](file:///d:/AssignmentFDE/context/features/02-database-and-state-machine.md) (SQLite schema, WAL mode, ORM models, unique idempotency constraints)
+  - ✅ **Task 2:** [`02-database-and-state-machine.md`](file:///d:/AssignmentFDE/context/features/02-database-and-state-machine.md) (SQLite WAL Schema, 9-State Lifecycle Machine, Two-Tier Zero Double-Messaging Gate & Candidate Lifecycle API)
 - **Next Spec Reference:** [`03-auth-and-session.md`](file:///d:/AssignmentFDE/context/features/03-auth-and-session.md) & [`04-dual-queue-and-ai-send-engine.md`](file:///d:/AssignmentFDE/context/features/04-dual-queue-and-ai-send-engine.md)
-- **Current Status:** `COMPLETED (Feature 01)`
+- **Current Status:** `COMPLETED (Feature 02)`
 
 ---
 
@@ -72,6 +71,18 @@
      - **UX Refinement:** Chuyển `IngestionAuditCard` thành Primary View nổi bật ngay vị trí chính khi thực hiện nạp dữ liệu xong (thay vì chèn xuống cuối), tích hợp nút `[↺ Quay lại Biểu mẫu / Nạp tiếp]` và `[🚀 Chuyển tới Bàn duyệt HITL]`.
      - Added full symmetrical English/Vietnamese i18n dictionary under `ingestion.*` in `en.json` and `vi.json`.
      - Verified via `npm run build` -> **Compiled successfully (6/6 static pages including `/ingestion`) with 0 errors**.
+10. ✅ **Full Implementation of Feature 02 (`02-database-and-state-machine.md`):**
+    - **9-State Lifecycle Machine (`backend/app/services/state_machine.py`):**
+      - Implemented formal `ALLOWED_TRANSITIONS` matrix across all 9 states (`QUEUED_FOR_AI`, `PENDING_REVIEW`, `INSUFFICIENT_EVIDENCE`, `AI_FAILED`, `REJECTED`, `APPROVED_QUEUED`, `SEND_BLOCKED`, `SENT`, `REPLIED`).
+      - Prevented terminal outreach states (`SENT`, `REPLIED`) from ever regressing to pre-send states.
+    - **Two-Tier Idempotency & Zero Double-Messaging Gate (`approve_and_send_candidate`):**
+      - *Tier 1 (Application Guard):* Verifies candidate status, existing `outreach_ledger` entries (`candidate_id` or `handle`), and `idempotency_key` before dispatch -> returns `409 Conflict` on duplicate attempts.
+      - *Closed DM Guard:* Automatically transitions `can_dm = False` profiles (`@arjun_infer`) to `SEND_BLOCKED` (`422 Unprocessable Entity`) and records a `BLOCKED` ledger entry.
+      - *Tier 2 (Database Unique Constraint + Atomic Transaction):* Catches `sqlalchemy.exc.IntegrityError` on concurrent double-clicks and rolls back cleanly with `409 Conflict`.
+    - **Candidate Lifecycle REST API (`backend/app/api/candidates.py`):**
+      - Implemented `GET /api/candidates`, `GET /api/candidates/state-summary`, `GET /api/candidates/{id}`, `POST /api/candidates/{id}/send`, `POST /api/candidates/{id}/reject`, `POST /api/candidates/{id}/retry`, `POST /api/candidates/{id}/reply`, and `POST /api/candidates/{id}/handled`.
+    - **Automated Pytest Suite (`backend/tests/test_state_machine.py`):**
+      - Added 5 comprehensive tests covering double-click idempotency (`409 Conflict`), seed history protection (`@linhtran_robo`), closed DM protection (`@arjun_infer`), 9-state lifecycle transitions + reply/handled workflow, and file-backed SQLite WAL persistence across server restarts -> **14/14 total tests PASSED**.
 
 ---
 
