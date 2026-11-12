@@ -5,6 +5,7 @@ from typing import Dict, Any, Optional, Set
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from backend.app.core.config import settings
 from backend.app.models.candidate import Candidate, CandidateStatus
 from backend.app.models.ledger import OutreachLedger, OutreachStatus
 from backend.app.models.queue import JobQueue, JobStatus
@@ -196,6 +197,32 @@ def approve_and_send_candidate(
         raise SendBlockedError(
             f"Cannot send DM to @{candidate.handle}: Recipient has DMs closed (can_dm=false). Status set to SEND_BLOCKED."
         )
+
+    # --- SAFETY GUARD: Live X Whitelist Check (ALLOWED_TEST_HANDLES) ---
+    normalized_mode = (dispatch_mode or settings.DISPATCH_MODE or "SANDBOX").upper()
+    if normalized_mode == "LIVE_X":
+        allowed_handles = settings.ALLOWED_TEST_HANDLES
+        if candidate.handle.lower().lstrip("@") not in allowed_handles:
+            candidate.status = CandidateStatus.SEND_BLOCKED.value
+            candidate.error_message = (
+                f"Safety Whitelist Guard: @{candidate.handle} is not in ALLOWED_TEST_HANDLES "
+                f"({', '.join(allowed_handles)}) for LIVE_X dispatch. Status set to SEND_BLOCKED."
+            )
+            candidate.updated_at = datetime.now(timezone.utc)
+            if not existing_ledger:
+                blocked_ledger = OutreachLedger(
+                    candidate_id=candidate.id,
+                    handle=candidate.handle,
+                    idempotency_key=idempotency_key or f"blocked-live-{candidate.handle}-{uuid.uuid4().hex[:8]}",
+                    sent_message=custom_message or candidate.edited_dm or candidate.draft_dm or "(blocked by LIVE_X safety whitelist)",
+                    dispatch_mode="LIVE_X",
+                    sent_by_user_id=sent_by_user_id,
+                    status=OutreachStatus.BLOCKED.value,
+                    needs_attention=False,
+                )
+                db.add(blocked_ledger)
+            db.commit()
+            raise SendBlockedError(candidate.error_message)
 
     # --- Prepare Final Message ---
     final_message = (

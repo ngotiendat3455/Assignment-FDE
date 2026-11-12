@@ -1,22 +1,23 @@
-# Current Active Feature: Feature 03 – Authentication, Security Hygiene & Demo Login
+# Current Active Feature: Feature 04 – Dual Queue Engine & AI Send Dispatcher
 *(Sprint Status & Active Tracking)*
 
 ---
 
 ## 1. Active Feature Info
-- **Active Task:** WBS Task 3 (BFF Auth, 7-Day HttpOnly Session, Pre-filled Login & API Guards): [`03-auth-and-security.md`](file:///d:/AssignmentFDE/context/features/03-auth-and-security.md)
-  - ✅ **Sub-task 3.1 (Backend Security Core & `get_current_user` Guard):** Upgraded [`backend/app/core/config.py`](file:///d:/AssignmentFDE/backend/app/core/config.py) (7-day token = `10080` mins) and [`backend/app/core/security.py`](file:///d:/AssignmentFDE/backend/app/core/security.py) with salted password hashing, JWT creation/verification, `ensure_default_partner_user`, and `get_current_user` FastAPI dependency (supporting both `Authorization: Bearer` header and `session_token` HttpOnly cookie).
-  - ✅ **Sub-task 3.2 (Backend FastAPI Auth Router & Route Protection):** Created [`backend/app/api/auth.py`](file:///d:/AssignmentFDE/backend/app/api/auth.py) (`POST /api/auth/login`, `POST /api/auth/demo-login`, `POST /api/auth/register`, `GET /api/auth/me`, `POST /api/auth/logout`), protected `/api/candidates` with `Depends(get_current_user)`, and wired into [`backend/app/main.py`](file:///d:/AssignmentFDE/backend/app/main.py).
-  - ✅ **Sub-task 3.3 (Automated Pytest Suite for Auth & Security):** Created [`backend/tests/test_auth.py`](file:///d:/AssignmentFDE/backend/tests/test_auth.py) verifying all Acceptance Criteria in `03-auth-and-security.md` (`401 Unauthorized` on unauthenticated `/api/candidates`, 1-click pre-filled login with `partner@genaifund.ai`, `401` on wrong password, expired/tampered JWT rejection, logout cookie clearing, and zero secret key leakage) -> **5/5 PASSED** (`19/19` total backend tests).
-  - ✅ **Sub-task 3.4 (Frontend Next.js BFF Auth Routes, Pre-filled `/login` Page & Header Session Controls):** Created [`frontend/src/app/api/auth/login/route.ts`](file:///d:/AssignmentFDE/frontend/src/app/api/auth/login/route.ts), [`frontend/src/app/api/auth/logout/route.ts`](file:///d:/AssignmentFDE/frontend/src/app/api/auth/logout/route.ts), [`frontend/src/app/login/page.tsx`](file:///d:/AssignmentFDE/frontend/src/app/login/page.tsx) (Wireframe 1 with pre-filled `partner@genaifund.ai` / `GenAIFund2026!`), updated [`TopHeader.tsx`](file:///d:/AssignmentFDE/frontend/src/components/organisms/TopHeader.tsx) (Wireframe 2), and added symmetrical i18n keys (`en.json` & `vi.json`).
-  - ✅ **Sub-task 3.5 (End-to-End Verification & Sprint Log Update):** Verified `python -m pytest backend/tests/ -v` (`19 passed`) and `npm run build` in `frontend/` (`9/9 routes generated, 0 errors`).
+- **Active Task:** WBS Task 4 (SQLite Dual Queue, Tri-Guard AI Evaluation Engine, Token Bucket Limiter & Dual-Mode Safe Send Dispatcher): [`04-dual-queue-and-ai-send-engine.md`](file:///d:/AssignmentFDE/context/features/04-dual-queue-and-ai-send-engine.md)
+  - ✅ **Sub-task 4.1 (Tri-Guard AI Evaluation Engine – `backend/app/services/ai_evaluator.py`):** Implemented [`backend/app/services/ai_evaluator.py`](file:///d:/AssignmentFDE/backend/app/services/ai_evaluator.py) with `AIEvaluationResult` Pydantic schema, Layer 1 `<untrusted_candidate_data>` prompt-injection shield (neutralizing `P017` `@override_bot99`), Layer 2 LLM integration (Gemini 2.0 Flash / OpenAI GPT-4o-mini + deterministic rubric-grounded evaluator fallback), and Layer 3 verbatim `evidence_snippet` grounding & zero-invented-familiarity validator (`P018` `@ghost_builder_sea` -> `INSUFFICIENT_EVIDENCE`).
+  - ✅ **Sub-task 4.2 (Token Bucket Rate Limiter & Dual-Mode Safe Send Dispatcher – `backend/app/services/dispatcher.py`):** Implemented [`backend/app/services/dispatcher.py`](file:///d:/AssignmentFDE/backend/app/services/dispatcher.py) with `TokenBucketRateLimiter` (handling X rate limits & HTTP 429 circuit-breaker halt) and `dispatch_candidate_dm` supporting `SANDBOX` mode ($0 cost, simulated latency) and `LIVE_X` mode with strict `ALLOWED_TEST_HANDLES` whitelist protection and `can_dm=False` `SEND_BLOCKED` guard.
+  - ✅ **Sub-task 4.3 (Persistent SQLite Dual Queue Worker – `backend/app/services/queue_worker.py`):** Implemented [`backend/app/services/queue_worker.py`](file:///d:/AssignmentFDE/backend/app/services/queue_worker.py) for asynchronous/background processing of Queue 1 (`AI_EVALUATE`) and Queue 2 (`SEND_DM`), error isolation (`AI_FAILED` with Retry vs low score), and automatic background trigger on ingestion endpoints (`/seed`, `/csv`, `/single`) and `seed_data.py`.
+  - ✅ **Sub-task 4.4 (Queue & AI Evaluation FastAPI Router – `backend/app/api/queue.py`):** Created [`backend/app/api/queue.py`](file:///d:/AssignmentFDE/backend/app/api/queue.py) (`GET /api/queue/status`, `POST /api/queue/process`, `POST /api/queue/evaluate/{candidate_id}`, `POST /api/queue/dispatch/{candidate_id}`) protected by `Depends(get_current_user)` and HTTP Auth Guard Middleware in [`backend/app/main.py`](file:///d:/AssignmentFDE/backend/app/main.py).
+  - ✅ **Sub-task 4.5 (Automated Pytest Suite – `backend/tests/test_dual_queue_and_ai.py`):** Created [`backend/tests/test_dual_queue_and_ai.py`](file:///d:/AssignmentFDE/backend/tests/test_dual_queue_and_ai.py) verifying all 6+ Acceptance Criteria in `04-dual-queue-and-ai-send-engine.md` -> **6/6 PASSED (`25/25` total backend tests PASSED)**.
 - **Completed Foundation Tasks:**
   - ✅ **Task 0:** [`00-base-layout-design-system.md`](file:///d:/AssignmentFDE/context/features/00-base-layout-design-system.md) (Atomic Design System, Pure Tailwind v4 `@theme`, English-First i18n, Paginated Table & AppShell)
   - ✅ **Task 1:** [`01-data-pack-and-ingestion.md`](file:///d:/AssignmentFDE/context/features/01-data-pack-and-ingestion.md) (Full-Stack Triple-Tab Ingestion Hub, Pre-flight CSV Check, Live X Lookup & 3-Tier Deduplication)
   - ✅ **Task 2:** [`02-database-and-state-machine.md`](file:///d:/AssignmentFDE/context/features/02-database-and-state-machine.md) (SQLite WAL Schema, 9-State Lifecycle Machine, Two-Tier Zero Double-Messaging Gate & Candidate Lifecycle API)
-  - ✅ **Task 3:** [`03-auth-and-security.md`](file:///d:/AssignmentFDE/context/features/03-auth-and-security.md) (Next.js BFF HttpOnly Cookie Auth, 7-Day JWT, Pre-filled Partner Login & Protected FastAPI Routes)
-- **Next Spec Reference:** [`04-dual-queue-and-ai-send-engine.md`](file:///d:/AssignmentFDE/context/features/04-dual-queue-and-ai-send-engine.md)
-- **Current Status:** `COMPLETED (Feature 03)`
+  - ✅ **Task 3:** [`03-auth-and-security.md`](file:///d:/AssignmentFDE/context/features/03-auth-and-security.md) (Next.js BFF HttpOnly Cookie Auth, 7-Day JWT, Pre-filled Partner Login, Protected FastAPI Middleware & Error Pages)
+  - ✅ **Task 4:** [`04-dual-queue-and-ai-send-engine.md`](file:///d:/AssignmentFDE/context/features/04-dual-queue-and-ai-send-engine.md) (SQLite Dual Queue Worker, Tri-Guard AI Evaluator, Token Bucket Limiter & Dual-Mode Safe Send Dispatcher)
+- **Next Spec Reference:** [`05-hitl-review-and-composer-ui.md`](file:///d:/AssignmentFDE/context/features/05-hitl-review-and-composer-ui.md)
+- **Current Status:** `COMPLETED (Feature 04)`
 
 ---
 
@@ -101,22 +102,24 @@
     - **Verification (`pytest` & `next build`):**
       - `python -m pytest backend/tests/ -v` -> **19/19 PASSED** (including 5 new tests in `test_auth.py`).
       - `npm run build` in `frontend/` -> **11/11 static pages + Edge Middleware compiled with 0 errors**.
+12. ✅ **Full Implementation of Feature 04 (`04-dual-queue-and-ai-send-engine.md`):**
+    - **Tri-Guard AI Evaluation Engine ([`backend/app/services/ai_evaluator.py`](file:///d:/AssignmentFDE/backend/app/services/ai_evaluator.py)):**
+      - *Layer 1 (Fortified Delimiters & Prompt Injection Shield):* Wraps untrusted candidate profile fields inside `<untrusted_candidate_data>` XML delimiters and detects adversarial prompt injection (`P017` `@override_bot99`), forcing `is_match = False`, `fit_score = 1`, `draft_dm = ""`, and blocking `PWNED_BY_PROMPT_INJECTION`.
+      - *Layer 2 (LLM Provider Integration + Rubric-Faithful Fallback):* Supports live structured JSON calls via Google Gemini 2.0 Flash (`GEMINI_API_KEY`) or OpenAI GPT-4o-mini (`OPENAI_API_KEY`), with a turnkey rubric-faithful deterministic evaluator calibrated to `scoring_guide.md`.
+      - *Layer 3 (Evidence Grounding & Anti-Hallucination Guard):* Detects sparse profiles (`P018` `@ghost_builder_sea` -> `insufficient_evidence = True`, `draft_dm = ""`, status `INSUFFICIENT_EVIDENCE`), verifies `evidence_snippet` is an exact verbatim quote from `bio`/`recent_tweets`, and enforces peer-to-peer DM length (250–600 chars) with zero invented familiarity.
+    - **Token Bucket Rate Limiter & Dual-Mode Safe Send Dispatcher ([`backend/app/services/dispatcher.py`](file:///d:/AssignmentFDE/backend/app/services/dispatcher.py)):**
+      - Implemented `TokenBucketRateLimiter` with HTTP `429 Too Many Requests` circuit-breaker halt.
+      - Built `dispatch_candidate_dm` supporting `SANDBOX` mode ($0 cost, simulated latency) and `LIVE_X` mode with strict `ALLOWED_TEST_HANDLES` safety whitelist enforcement (blocking non-whitelisted handles into `SEND_BLOCKED`) and `can_dm = False` protection (`P019` `@arjun_infer` -> `SEND_BLOCKED`).
+    - **Persistent SQLite Dual Queue Worker ([`backend/app/services/queue_worker.py`](file:///d:/AssignmentFDE/backend/app/services/queue_worker.py)) & Router ([`backend/app/api/queue.py`](file:///d:/AssignmentFDE/backend/app/api/queue.py)):**
+      - Processes Queue 1 (`AI_EVALUATE`) and Queue 2 (`SEND_DM`), isolating LLM outages into `AI_FAILED` (with Retry) rather than assigning a fake low score.
+      - Wired `BackgroundTasks` into `/api/ingestion/seed`, `/api/ingestion/csv`, and `/api/ingestion/single` so newly ingested profiles are automatically evaluated in the background.
+      - Added `GET /api/queue/status`, `POST /api/queue/process`, `POST /api/queue/evaluate/{candidate_id}`, and `POST /api/queue/dispatch/{candidate_id}`.
+    - **Verification (`pytest`):**
+      - Created [`backend/tests/test_dual_queue_and_ai.py`](file:///d:/AssignmentFDE/backend/tests/test_dual_queue_and_ai.py) -> **6/6 PASSED (`25/25` total backend tests PASSED)**.
 
 ---
 
-## 3. Next Immediate Steps (Task 4 & Task 3 Backend Execution)
-1. **Implement AI Fit Scorer & Grounded DM Service (`backend/app/services/ai_scorer.py`):**
-   - Google Gemini Flash / OpenAI client integration with structured Pydantic schema output.
-   - Prompt Injection Defense (Fortified Delimiters `<untrusted_candidate_data>` against `P017`).
-   - Sparse profile detection (`insufficient_evidence = true` for `P018`).
-   - Evidence Grounding Guard (assert `evidence_snippet` is a valid substring of raw bio/tweets).
-2. **Implement Safe Send Dispatcher Service (`backend/app/services/dispatcher.py`):**
-   - Dual-Mode dispatch: Sandbox Simulator vs. Live X API.
-   - Rate limiting via Token Bucket.
-   - Closed DM protection (`can_dm = false` -> `SEND_BLOCKED`).
-   - Safety whitelist enforcement (`ALLOWED_TEST_HANDLES`).
-3. **Build FastAPI REST API Endpoints:**
-   - `/api/auth` (Register, Login, Me, 1-Click Demo Login)
-   - `/api/candidates` (List with filters, Ingest Seed, Ingest CSV, Ingest Single Handle)
-   - `/api/outreach` (Approve & Send, Reject, Record Reply)
-   - `/api/dashboard` (KPIs, Ledger list, Calibration benchmark)
+## 3. Next Immediate Steps (Feature 05: HITL Review Workspace & Grounded DM Composer UI)
+1. **Implement Feature 05 (`05-hitl-review-and-composer-ui.md`):**
+   - Connect the HITL Review Workspace (`frontend/src/app/page.tsx`) to live FastAPI backend endpoints (`/api/candidates`, `/api/queue/evaluate/{id}`, `/api/candidates/{id}/send`, `/api/candidates/{id}/reject`, `/api/candidates/{id}/retry`).
+   - Build Interactive Evidence Highlighting (matching `evidence_snippet` in bio/tweets with `<EvidenceMark>`), Split-View / Drawer Grounded DM Composer with live character counter, and 1-Click Approve & Send / Reject / Retry actions.

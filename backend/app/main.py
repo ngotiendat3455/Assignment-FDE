@@ -13,6 +13,7 @@ from backend.app.core.security import (
 from backend.app.api.auth import router as auth_router
 from backend.app.api.ingestion import router as ingestion_router
 from backend.app.api.candidates import router as candidates_router
+from backend.app.api.queue import router as queue_router
 
 PUBLIC_API_PATHS = {
     "/",
@@ -102,6 +103,11 @@ app.include_router(
 )
 app.include_router(
     candidates_router,
+    prefix=settings.API_V1_PREFIX,
+    dependencies=[Depends(get_current_user)],
+)
+app.include_router(
+    queue_router,
     prefix=settings.API_V1_PREFIX,
     dependencies=[Depends(get_current_user)],
 )

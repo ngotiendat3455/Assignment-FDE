@@ -44,6 +44,15 @@ class Candidate(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
+    @property
+    def insufficient_evidence(self) -> bool:
+        return self.status == CandidateStatus.INSUFFICIENT_EVIDENCE.value
+
+    @insufficient_evidence.setter
+    def insufficient_evidence(self, value: bool) -> None:
+        if value:
+            self.status = CandidateStatus.INSUFFICIENT_EVIDENCE.value
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -61,6 +70,7 @@ class Candidate(Base):
             "evidence_snippet": self.evidence_snippet,
             "draft_dm": self.draft_dm,
             "edited_dm": self.edited_dm,
+            "insufficient_evidence": self.insufficient_evidence,
             "status": self.status,
             "error_message": self.error_message,
             "created_at": self.created_at.isoformat() if self.created_at else None,

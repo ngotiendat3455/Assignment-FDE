@@ -17,6 +17,7 @@ from backend.app.services.ingestion import (
     parse_csv_content,
     ingest_candidate_batch,
 )
+from backend.app.services.queue_worker import process_pending_jobs
 
 
 def seed_database():
@@ -69,6 +70,10 @@ def seed_database():
             print(f"         - In-batch duplicates skipped: {report['in_batch_duplicates_skipped']}")
             print(f"         - Already in DB skipped: {report['already_in_db_skipped']}")
             print(f"         - Flagged as already contacted in ledger: {report['already_contacted_in_ledger']}")
+
+            print("--> Running Queue 1 (Tri-Guard AI Evaluation Engine) on queued profiles...")
+            ai_report = process_pending_jobs(db, job_type="AI_EVALUATE")
+            print(f"    [OK] AI Evaluation Complete: {ai_report['ai_evaluated']} profiles evaluated.")
         else:
             print(f"    [WARN] Candidates seed CSV not found at {seed_csv}")
 

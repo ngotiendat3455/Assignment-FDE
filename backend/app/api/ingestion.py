@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
@@ -20,6 +20,7 @@ from backend.app.services.ingestion import (
     ingest_candidate_batch,
     lookup_x_handle,
 )
+from backend.app.services.queue_worker import process_pending_jobs
 
 router = APIRouter(
     prefix="/ingestion",
@@ -35,12 +36,14 @@ SAMPLE_CSV_TEMPLATE = """handle,name,location,bio,recent_tweets,can_dm,segment
 
 @router.post("/seed", response_model=IngestionAuditReport)
 def load_seed_pack(
+    background_tasks: BackgroundTasks,
     payload: SeedIngestRequest = SeedIngestRequest(),
     db: Session = Depends(get_db),
 ) -> IngestionAuditReport:
     """1-Click Seed Pack ingestion for Tab 1 (20 SEA AI/Robotics profiles)."""
     try:
         report = ingest_seed_pack(db, default_segment=payload.segment)
+        background_tasks.add_task(process_pending_jobs, db, "AI_EVALUATE")
         return IngestionAuditReport(**report)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -56,6 +59,7 @@ def check_csv_preflight(payload: CsvPreflightRequest) -> CsvPreflightResponse:
 @router.post("/csv", response_model=IngestionAuditReport)
 def upload_csv_batch(
     payload: CsvIngestRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> IngestionAuditReport:
     """Parse and ingest a custom CSV batch for Tab 2."""
@@ -67,6 +71,7 @@ def upload_csv_batch(
             source_label="CSV_UPLOAD",
             default_segment=payload.default_segment,
         )
+        background_tasks.add_task(process_pending_jobs, db, "AI_EVALUATE")
         return IngestionAuditReport(**report)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -88,6 +93,7 @@ def lookup_handle_on_x(
 @router.post("/single", response_model=IngestionAuditReport)
 def ingest_single_profile(
     payload: CandidateCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> IngestionAuditReport:
     """Ingest a single looked-up X profile into the AI evaluation queue (Tab 3)."""
@@ -98,6 +104,7 @@ def ingest_single_profile(
         source_label="LIVE_X_LOOKUP",
         default_segment=payload.segment,
     )
+    background_tasks.add_task(process_pending_jobs, db, "AI_EVALUATE")
     return IngestionAuditReport(**report)
 
 
