@@ -1,10 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root {
+@theme {
   /* Primary brand colors */
   --color-primary: #314ae9;
+  --color-primary-hover: #5c70f3;
+  --color-primary-light: #cfddff;
   --color-secondary: #13cfde;
   --color-tertiary: #35abff;
 
@@ -24,7 +24,7 @@
   --color-input: #ffffff;
   --color-ring: #314ae9;
 
-  /* Content colors for text and elements */
+  /* Content colors */
   --color-content-primary: #314ae9;
   --color-content-primary-20: #314ae933;
   --color-content-primary-disabled: #cbcee3;
@@ -38,9 +38,6 @@
   --color-content-disabled: #737c8f;
   --color-content-negative: #e5240c;
   --color-content-negative-secondary: #9f2626;
-  --color-content-primary-2: #00359E;
-  --color-content-secondary-2: #667085;
-  --color-content-dark-2: #2C2A2A;
 
   /* Background semantic colors */
   --color-background-white: #ffffff;

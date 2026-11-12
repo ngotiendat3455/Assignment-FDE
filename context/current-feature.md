@@ -54,6 +54,11 @@
    - Removed 100% of hardcoded Vietnamese and mixed bilingual strings from templates; all user-facing copy is now routed through `useI18n().t()`.
    - Created symmetrical translation dictionaries in `locales/en.json` and `locales/vi.json`.
    - Updated Rule in [`00-base-layout-design-system.md`](file:///d:/AssignmentFDE/context/features/00-base-layout-design-system.md#L200-L225).
+8. ✅ **Strict Coding Standards & Pure Tailwind CSS v4 Adoption:**
+   - Documented full coding standards in [`context/coding-standards.md`](file:///d:/AssignmentFDE/context/coding-standards.md).
+   - Upgraded `frontend/` to pure **Tailwind CSS v4** (`@tailwindcss/postcss: ^4.3.5`, `tailwindcss: ^4.3.5`).
+   - Completely removed legacy `tailwind.config.ts`; all theme variables and styling rules are 100% CSS-driven via `@theme` in `src/app/globals.css`.
+   - Verified via `npm run build` -> **Compiled successfully (5/5 static pages) with 0 errors**.
 
 ---
 
