@@ -26,14 +26,14 @@ Hệ thống Ingestion phục vụ 2 nhóm người dùng với nhu cầu và á
   - **HMW-4 (Context Preservation):** Làm thế nào để bảo toàn nguyên vẹn 100% ngữ cảnh thô (raw bio, tweets) phục vụ trích xuất bằng chứng ở các bước sau?
 
 ### C. Ideate (Ý tưởng hóa giải pháp)
-1. **Mô hình "Cửa ngõ 3 lối vào" (Triple-Door Ingestion):**
-   - *Lối 1 (1-Click Seed Pack):* Nút bấm `[⚡ Nạp 20 Hồ sơ Mẫu ĐNÁ]` để giám khảo test ngay lập tức với đầy đủ ca Match, Noise, Prompt Injection, Khóa DM.
-   - *Lối 2 (Drag & Drop CSV):* Kéo thả file CSV bất kỳ với các trường cơ bản.
-   - *Lối 3 (Live Handle Lookup):* Ô nhập `@handle` gọi trực tiếp X API v2 (nếu có cấu hình key).
+1. **Không gian Nạp Ứng viên 3 Tab Riêng biệt (Triple-Tab Ingestion Canvas):**
+   - *Tab 1 (1-Click Seed Pack):* Nút bấm `[⚡ Nạp 20 Hồ sơ Mẫu ĐNÁ]` để giám khảo test ngay lập tức với đầy đủ ca Match, Noise, Prompt Injection, Khóa DM.
+   - *Tab 2 (Bulk CSV Upload):* Kéo thả file CSV bất kỳ kèm bảng xem trước dữ liệu và kiểm tra cấu trúc cột tự động.
+   - *Tab 3 (Live Handle Lookup):* Ô nhập `@handle` gọi trực tiếp X API v2, hiển thị thẻ xem trước thông tin trước khi nạp.
 2. **Bộ chuẩn hóa "Bàn tay vô hình" (Silent Normalizer):**
    - Tự động hạ lowercase, xóa ký tự `@` và khoảng trắng thừa.
    - Tự động gán giá trị mặc định cho các cột không bắt buộc (`location`, `segment`).
-3. **Báo cáo nạp dữ liệu minh bạch (Ingestion Feedback Report):**
+3. **Báo cáo nạp dữ liệu minh bạch (Ingestion Audit Report):**
    - Hiển thị rõ số lượng nạp thành công, số lượng bản ghi trùng lặp bị bỏ qua trong batch, và số ứng viên đã từng liên hệ trong lịch sử.
 
 ---
@@ -45,15 +45,15 @@ Hệ thống nạp dữ liệu được cấu trúc phân tầng rõ ràng từ 
 ```mermaid
 graph TD
     subgraph Layer1["1. Tầng Đầu vào (Ingestion Triggers)"]
-        A1["1-Click Seed Pack (20 hồ sơ ĐNÁ)"]
-        A2["CSV File Upload (Drag & Drop)"]
-        A3["Live X Handle Lookup (@handle)"]
+        A1["Tab 1: 1-Click Seed Pack (20 hồ sơ ĐNÁ)"]
+        A2["Tab 2: CSV File Upload (Drag & Drop + Preview)"]
+        A3["Tab 3: Live X Handle Lookup (@handle + Live Card)"]
     end
 
     subgraph Layer2["2. Tầng Chuẩn hóa & Lọc trùng (Silent Normalizer & Deduplicator)"]
         B1["Sanitize: Trim space, Lowercase, Strip '@'"]
-        B2["In-Batch Dedup: Gộp dòng trùng ngay trong file"]
-        B3["Ledger Cross-Check: Đối chiếu lịch sử gửi trong quá khứ"]
+        B2["In-Batch Dedup: Gộp dòng trùng ngay trong file (e.g. P002 vs P020)"]
+        B3["Ledger Cross-Check: Đối chiếu lịch sử gửi trong quá khứ (outreach_ledger)"]
     end
 
     subgraph Layer3["3. Tầng Phản hồi & Báo cáo (Ingestion Audit & Feedback)"]
@@ -64,7 +64,7 @@ graph TD
     subgraph Layer4["4. Tầng Lưu trữ & Kích hoạt (Persistence & Queue Handover)"]
         D1[("SQLite DB: Candidate Record")]
         D2["Trạng thái: QUEUED_FOR_AI"]
-        D3["Module 02: AI Scorer Worker"]
+        D3["Task 4: AI Scorer Worker Loop"]
     end
 
     Layer1 --> Layer2
@@ -85,110 +85,175 @@ graph TD
 
 ---
 
-## 3. Sơ đồ Điều hướng & Luồng Người dùng (Sitemaps & User Flows)
+## 3. Sơ đồ Điều hướng & 3 Hành trình Người dùng Riêng biệt (User Flows)
 
-Module 01 đóng vai trò là cửa ngõ nạp ứng viên trong kiến trúc Single-Page Dashboard:
+Trong kiến trúc AppShell, **Nạp Ứng viên** là phân hệ chính trên Sidebar. Màn hình làm việc cung cấp 3 Tab với 3 hành trình khép kín:
 
 ```mermaid
 graph LR
-    Root["GenAI Fund Outreach Workspace"] --> Tab1["1. Scouting & Ingestion Hub (Module 01)"]
-    Root --> Tab2["2. HITL Review Queue (Module 05)"]
-    Root --> Tab3["3. Outreach Ledger & CRM (Module 06)"]
-    Root --> Tab4["4. Calibration & Settings (Module 07)"]
+    Sidebar["Sidebar: 📥 Nạp Ứng viên"] --> IngestionView["Ingestion Hub Canvas"]
+    
+    IngestionView --> Tab1["⚡ Tab 1: Gói Mẫu 20 ĐNÁ"]
+    IngestionView --> Tab2["📁 Tab 2: Tải lên CSV"]
+    IngestionView --> Tab3["🔍 Tab 3: Tra cứu Live X"]
 
-    Tab1 --> Door1["⚡ 1-Click Seed Pack Flow"]
-    Tab1 --> Door2["📁 CSV Upload Flow"]
-    Tab1 --> Door3["🔍 Live X Handle Flow"]
+    Tab1 --> J1["Xem tóm tắt 20 profiles\n$\rightarrow$ Bấm [Nạp ngay]\n$\rightarrow$ Audit Report hiển thị\n$\rightarrow$ Bấm [Vào Bàn Duyệt (17)]"]
+    Tab2 --> J2["Kéo thả file CSV\n$\rightarrow$ Preflight Check & Preview 5 dòng\n$\rightarrow$ Bấm [Xử lý & Nạp]\n$\rightarrow$ Báo cáo Dedup & Collision"]
+    Tab3 --> J3["Nhập @handle\n$\rightarrow$ Gọi X API v2 lấy Bio & Tweets\n$\rightarrow$ Live Profile Preview Card\n$\rightarrow$ Bấm [Đưa vào Hàng đợi AI]"]
 ```
 
-### 3 Luồng Thao tác Chính:
-1. **Flow 1 – Giám khảo Kiểm thử Nhanh (Reviewer Express Flow - < 3 giây):**
-   - Người dùng bấm nút `[⚡ Nạp 20 Hồ sơ Mẫu ĐNÁ]` trên Header/Modal.
-   - Backend gọi `POST /api/candidates/seed`, nạp 20 hồ sơ từ [`candidates_seed.csv`](file:///d:/AssignmentFDE/genai-outreach-pack/candidates_seed.csv).
-   - Hệ thống hiển thị Toast thành công, danh sách trên Review Workspace tự động cập nhật sang trạng thái sẵn sàng duyệt.
-2. **Flow 2 – Tải tệp CSV tùy chỉnh (Bulk CSV Ingestion Flow):**
-   - Associate kéo thả file CSV vào khu vực Dropzone.
-   - Client pre-flight kiểm tra sự tồn tại của các cột bắt buộc.
-   - Backend phân tích cú pháp, chuẩn hóa, lọc trùng và trả về bản tóm tắt **Ingestion Audit Drawer**.
-3. **Flow 3 – Tra cứu Trực tiếp Handle trên X (Live Handle Lookup Flow):**
-   - Associate nhập `@handle` vào ô tìm kiếm.
-   - Backend gọi X API v2 `/2/users/by/username` và `/2/users/:id/tweets`.
-   - Hiển thị thẻ xem trước tóm tắt (Avatar, Bio, Tweets, Trạng thái DM).
-   - Associate bấm `[Nạp vào Hàng đợi AI]`.
+### 3 Hành trình Thao tác Chi tiết:
+
+#### Hành trình 1 – Giám khảo Kiểm thử Nhanh (Reviewer Express Journey - < 3 giây):
+1. Giám khảo chọn `📥 Nạp Ứng viên` trên Sidebar $\rightarrow$ Mặc định vào **Tab 1: ⚡ Gói Mẫu ĐNÁ**.
+2. Thẻ thông tin hiển thị rõ: 20 hồ sơ đã được hiệu chuẩn bao gồm các ca High Fit, Wrapper, Prompt Attack (`P017`), Sparse Profile (`P018`), Closed DM (`P019`), Trùng lặp (`P020`).
+3. Giám khảo bấm nút **`[⚡ NẠP NGAY 20 HỒ SƠ MẪU]`**.
+4. Backend nạp vào SQLite, trả về bản báo cáo Audit ngay bên dưới: *17 hồ sơ mới nạp, 1 bản ghi trùng lặp được gộp, 2 ứng viên đã liên hệ trong quá khứ được bảo vệ*.
+5. Nút bấm điều hướng nhanh xuất hiện: **`[🚀 Chuyển sang Bàn Duyệt HITL (17 hồ sơ đang chờ)]`**.
+
+#### Hành trình 2 – Tải tệp CSV tùy chỉnh (Bulk Associate Journey):
+1. Associate chuyển sang **Tab 2: 📁 Tải lên CSV**.
+2. Kéo thả file `candidates.csv` vào vùng Dropzone (hoặc click nút tải file mẫu `candidates_template.csv`).
+3. **Client Preflight Check:** Hệ thống tự động phân tích và hiển thị bảng xem trước 3–5 dòng đầu tiên kèm nhãn trạng thái hợp lệ/lỗi cột.
+4. Bấm nút **`[📥 Nạp & Xử lý Batch]`**.
+5. Bảng kết quả Audit hiển thị chi tiết số dòng thành công và số dòng bị loại bỏ kèm lý do.
+
+#### Hành trình 3 – Săn tìm Ứng viên Trực tiếp (Live Sourcing Journey):
+1. Scout/Associate chuyển sang **Tab 3: 🔍 Tra cứu Live X**.
+2. Nhập `@handle` vào ô tìm kiếm (ví dụ `@minh_quant`).
+3. Bấm **`[🔍 Tra cứu trên X]`** $\rightarrow$ Backend gọi X API v2 `/2/users/by/username` và `/2/users/:id/tweets`.
+4. **Live Profile Card** hiện ra ngay trên màn hình: Avatar, Tên, Bio, 3 Tweet gần nhất và nhãn kiểm tra `DM: MỞ` hoặc `DM: KHÓA`.
+5. Associate bấm **`[⚡ Đưa vào Hàng đợi AI]`** $\rightarrow$ Hồ sơ được đưa vào pipeline chấm điểm tự động.
 
 ---
 
-## 4. Khung dây Giao diện (Wireframes & UI Component Blueprints)
+## 4. Khung dây Giao diện Chuẩn theo AppShell (Wireframes)
 
-### Wireframe 1: Modal Trung tâm Nạp Dữ liệu (Ingestion Hub Modal)
+Toàn bộ các Wireframe dưới đây được đặt gọn gàng trong **Khung vỏ AppShell (Sidebar cố định bên trái, Top Header bên trên)**:
+
+---
+
+### Wireframe 1: Tab 1 – Gói Mẫu ĐNÁ (Hành trình Giám khảo Test Nhanh)
+
 ```
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│  📥 THU THẬP & NẠP HỒ SƠ ỨNG VIÊN (Scouting & Ingestion)                     [✕] │
-├──────────────────────────────────────────────────────────────────────────────────┤
-│  [⚡ 1-Click Seed Pack (Được chọn)]    [📁 Tải lên CSV]    [🔍 Tra cứu Live X]   │
-├──────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                  │
-│  ┌────────────────────────────────────────────────────────────────────────────┐  │
-│  │ ⚡ GÓI DỮ LIỆU MẪU ĐÔNG NAM Á (genai-outreach-pack)                       │  │
-│  │                                                                            │  │
-│  │ Dành riêng cho Giám khảo / Test nhanh: Nạp tức thì 20 hồ sơ AI/Robotics   │  │
-│  │ thực tế tại Việt Nam, Singapore, Indonesia mà không cần trả phí X API.    │  │
-│  │                                                                            │  │
-│  │ • Bao gồm: Founder Infra, Robotics, Edge AI, Stealth, Noise, Prompt Attack │  │
-│  │ • Tự động liên kết: 3 ứng viên đã có lịch sử liên hệ trong quá khứ       │  │
-│  │ • Lưu trữ: Ghi trực tiếp vào SQLite bền vững (outreach.db)                │  │
-│  └────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                  │
-│  Phân khúc mặc định: [ SEA AI & Robotics Ecosystem ▼ ]                           │
-│                                                                                  │
-│                                           [Hủy]   [⚡ NẠP NGAY 20 HỒ SƠ MẪU]     │
-└──────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ [GenAI Fund Logo] ◀│ 📥 NẠP ỨNG VIÊN (CANDIDATE INGESTION)                 [👤 General Partner ▾]│
+├────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
+│ 🧭 ĐIỀU HƯỚNG       │  ┌───────────────────────────────────────────────────────────────────────┐  │
+│                    │  │ [⚡ 1-Click Seed Pack (Đang chọn)]   [📁 Tải lên CSV]   [🔍 Tra cứu Live X]│  │
+│ 📥 Nạp Ứng viên    │  └───────────────────────────────────────────────────────────────────────┘  │
+│    (Đang chọn)     │                                                                             │
+│                    │  ┌───────────────────────────────────────────────────────────────────────┐  │
+│ 🎯 Bàn Duyệt HITL  │  │ ⚡ GÓI DỮ LIỆU MẪU ĐÔNG NAM Á (genai-outreach-pack/candidates_seed.csv)│  │
+│    [Queue: 17]     │  │                                                                       │  │
+│                    │  │ Dành riêng cho Giám khảo: Nạp tức thì 20 hồ sơ AI/Robotics thực tế    │  │
+│ 📜 Sổ cái Gửi tin  │  │ tại Singapore, Việt Nam, Indonesia mà không cần trả phí X API.        │  │
+│    [Needs: 2]      │  │                                                                       │  │
+│                    │  │  Phân bố kịch bản kiểm thử bao phủ 100%:                              │  │
+│ ⚖️ Đối chiếu AI    │  │  • 9 hồ sơ Chuẩn Deep-Tech (Score 3-4: Infra, Robotics, Edge LLM)     │  │
+│                    │  │  • 4 hồ sơ Nhiễu / Wrapper (Score 1-2: AI Wrapper, Crypto, General)   │  │
+│ ⚙️ Sức khỏe Queue  │  │  • 1 ca Tấn công Prompt Injection (P017: @override_bot99)             │  │
+│                    │  │  • 1 ca Hồ sơ rỗng / Thiếu bằng chứng (P018: @ghost_builder_sea)      │  │
+│                    │  │  • 1 ca Người nhận khóa DM (P019: @arjun_infer)                       │  │
+│                    │  │  • 1 ca Trùng lặp ngay trong batch (P020 trùng với P002)             │  │
+│                    │  │  • 3 ca Đã liên hệ trong quá khứ (Anti Double-Messaging Protection)   │  │
+│                    │  │                                                                       │  │
+│                    │  │ Phân khúc nạp: [ SEA AI & Robotics Ecosystem ▼ ]                      │  │
+│                    │  │                                                                       │  │
+│                    │  │ ┌───────────────────────────────────────────────────────────────────┐ │  │
+│                    │  │ │                  ⚡ NẠP NGAY 20 HỒ SƠ MẪU ĐNÁ                     │ │  │
+│                    │  │ └───────────────────────────────────────────────────────────────────┘ │  │
+│                    │  └───────────────────────────────────────────────────────────────────────┘  │
+│                    │                                                                             │
+│                    │  ┌───────────────────────────────────────────────────────────────────────┐  │
+│                    │  │ ✅ KẾT QUẢ XỬ LÝ AN TOÀN (Ingestion Audit Report):                    │  │
+│                    │  │ • 🟢 17 ứng viên mới hợp lệ đã xếp hàng: [QUEUED_FOR_AI]              │  │
+│                    │  │ • 🟡 1 bản ghi trùng lặp đã tự động gộp: @minh_quant (P020 $\rightarrow$ P002) │  │
+│                    │  │ • 🔴 2 ứng viên đã liên hệ trong quá khứ được bỏ qua chống gửi trùng: │  │
+│                    │  │      @linhtran_robo (Đã REPLIED), @putri_agentic (Đã SENT)            │  │
+│                    │  │                                                                       │  │
+│                    │  │           [ 🚀 CHUYỂN SANG BÀN DUYỆT HITL (17 HỒ SƠ) ]                │  │
+│                    │  └───────────────────────────────────────────────────────────────────────┘  │
+├────────────────────┤                                                                             │
+│ [◀ Thu gọn Sidebar]│                                                                             │
+└────────────────────┴─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Wireframe 2: Tab Kéo thả Tệp CSV (CSV Drag & Drop View)
+---
+
+### Wireframe 2: Tab 2 – Tải lên Tệp CSV (Hành trình Associate Kéo thả & Xem trước)
+
 ```
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│  📥 THU THẬP & NẠP HỒ SƠ ỨNG VIÊN                                            [✕] │
-├──────────────────────────────────────────────────────────────────────────────────┤
-│  [⚡ 1-Click Seed Pack]    [📁 Tải lên CSV (Được chọn)]    [🔍 Tra cứu Live X]   │
-├──────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                  │
-│  ┌ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  ┐  │
-│  │                      📂 Kéo thả file .CSV vào đây                         │  │
-│  │                         hoặc [Chọn file từ máy tính]                       │  │
-│  │                                                                            │  │
-│  │    Hỗ trợ định dạng CSV có các cột: handle, name, bio, recent_tweets       │  │
-│  │    [Tải file CSV mẫu chuẩn] | Tự động làm sạch @, lowercase và khoảng trắng│  │
-│  └ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  ┘  │
-│                                                                                  │
-│  Tùy chọn nạp:                                                                   │
-│  ☑ Tự động kích hoạt AI chấm điểm ngay sau khi nạp xong                          │
-│  ☑ Bỏ qua các ứng viên đã có lịch sử gửi tin nhắn (Bảo vệ Double-Messaging)     │
-│                                                                                  │
-│                                           [Hủy]   [Nạp & Xử lý File CSV]         │
-└──────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ [GenAI Fund Logo] ◀│ 📥 NẠP ỨNG VIÊN (CANDIDATE INGESTION)                 [👤 General Partner ▾]│
+├────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
+│ 🧭 ĐIỀU HƯỚNG       │  ┌───────────────────────────────────────────────────────────────────────┐  │
+│                    │  │ [⚡ 1-Click Seed Pack]   [📁 Tải lên CSV (Đang chọn)]   [🔍 Tra cứu Live X]│  │
+│ 📥 Nạp Ứng viên    │  └───────────────────────────────────────────────────────────────────────┘  │
+│                    │                                                                             │
+│ 🎯 Bàn Duyệt HITL  │  ┌ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  ┐  │
+│    [Queue: 17]     │  │                    📂 KÉO THẢ TỆP CSV VÀO ĐÂY                        │  │
+│                    │  │                   hoặc bấm [Chọn file từ máy tính]                   │  │
+│ 📜 Sổ cái Gửi tin  │  │                                                                      │  │
+│    [Needs: 2]      │  │  Định dạng bắt buộc: handle, name, bio, recent_tweets                │  │
+│                    │  │  [📥 Tải file CSV mẫu chuẩn] | Tự động làm sạch dấu @, khoảng trắng   │  │
+│ ⚖️ Đối chiếu AI    │  └ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  ┘  │
+│                    │                                                                             │
+│ ⚙️ Sức khỏe Queue  │  BẢNG XEM TRƯỚC DỮ LIỆU (Pre-flight Data Preview - 3 dòng đầu):             │
+│                    │  ┌──────────────┬──────────────────┬──────────────────────┬─────────────┐   │
+│                    │  │ Handle       │ Họ và Tên        │ Bio trích xuất       │ Cột bắt buộc│   │
+│                    │  ├──────────────┼──────────────────┼──────────────────────┼─────────────┤   │
+│                    │  │ @minh_quant  │ Minh Nguyen      │ Building inference...│ 🟢 Hợp lệ   │   │
+│                    │  │ @dr_somchai  │ Somchai Prasert  │ Robotics researcher..│ 🟢 Hợp lệ   │   │
+│                    │  │ @kevin_dev   │ Kevin Tan        │ Wrapper builder...   │ 🟢 Hợp lệ   │   │
+│                    │  └──────────────┴──────────────────┴──────────────────────┴─────────────┘   │
+│                    │                                                                             │
+│                    │  Tùy chọn:                                                                  │
+│                    │  [X] Tự động kích hoạt AI chấm điểm ngay sau khi nạp                        │
+│                    │  [X] Bỏ qua ứng viên đã có trong Sổ cái Outreach Ledger (Chống gửi trùng)  │
+│                    │                                                                             │
+│                    │                                         [Hủy bỏ]   [📥 TIẾN HÀNH NẠP BATCH] │
+├────────────────────┤                                                                             │
+│ [◀ Thu gọn Sidebar]│                                                                             │
+└────────────────────┴─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Wireframe 3: Báo cáo Kiểm duyệt Nạp (Ingestion Audit & Feedback Drawer)
+---
+
+### Wireframe 3: Tab 3 – Tra cứu Trực tiếp Handle trên X (Hành trình Scout Săn tìm Realtime)
+
 ```
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│  ✅ KẾT QUẢ NẠP DỮ LIỆU (Ingestion Audit Report)                             [✕] │
-├──────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                  │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐      │
-│  │ 🟢 17 HỒ SƠ   │  │ 🟡 1 ĐÃ GỘP   │  │ 🔴 2 ĐÃ GỬI   │  │ ⚪ 0 LỖI      │      │
-│  │ Nạp thành công│  │ Trùng lặp file│  │ Đã gửi quá khứ│  │ Thiếu cột     │      │
-│  └───────────────┘  └───────────────┘  └───────────────┘  └───────────────┘      │
-│                                                                                  │
-│  Chi tiết xử lý bảo vệ an toàn:                                                  │
-│  ──────────────────────────────────────────────────────────────────────────────  │
-│  • 🟡 Trùng lặp trong file: Đã gộp dòng P020 vào @minh_quant (chỉ giữ 1 bản ghi)│
-│  • 🔴 Đã liên hệ trước đây: Bỏ qua @arjun_infer và @kevin_wrapper vì đã có      │
-│     trạng thái SENT trong Outreach Ledger (Tránh Double-Messaging).             │
-│  • 🟢 17 ứng viên mới đã chuyển sang trạng thái: [ QUEUED_FOR_AI ]              │
-│                                                                                  │
-│                                                    [Đóng]   [Chuyển tới Bàn Duyệt]│
-└──────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ [GenAI Fund Logo] ◀│ 📥 NẠP ỨNG VIÊN (CANDIDATE INGESTION)                 [👤 General Partner ▾]│
+├────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
+│ 🧭 ĐIỀU HƯỚNG       │  ┌───────────────────────────────────────────────────────────────────────┐  │
+│                    │  │ [⚡ 1-Click Seed Pack]   [📁 Tải lên CSV]   [🔍 Tra cứu Live X (Đang chọn)]│  │
+│ 📥 Nạp Ứng viên    │  └───────────────────────────────────────────────────────────────────────┘  │
+│                    │                                                                             │
+│ 🎯 Bàn Duyệt HITL  │  NHẬP HANDLE HOẶC ĐƯỜNG DẪN X:                                              │
+│    [Queue: 17]     │  ┌───────────────────────────────────────────────┬──────────────────────┐   │
+│                    │  │ @minh_quant                                   │ 🔍 TRA CỨU TRÊN X    │   │
+│ 📜 Sổ cái Gửi tin  │  └───────────────────────────────────────────────┴──────────────────────┘   │
+│    [Needs: 2]      │  Trạng thái kết nối: 🟢 X API v2 Connected (Bearer Token Active) | Quota: OK│
+│                    │                                                                             │
+│ ⚖️ Đối chiếu AI    │  THẺ XEM TRƯỚC HỒ SƠ (Live Profile Preview Card):                           │
+│                    │  ┌───────────────────────────────────────────────────────────────────────┐  │
+│ ⚙️ Sức khỏe Queue  │  │ 👤 Minh Nguyen (@minh_quant) • Hanoi, Vietnam                         │  │
+│                    │  │ Trạng thái DM: [ 🟢 Mở nhận tin nhắn (can_dm = true) ]                │  │
+│                    │  │                                                                       │  │
+│                    │  │ Bio: Co-founder @ TensorEdge VN. Building inference engine for telcos.│  │
+│                    │  │                                                                       │  │
+│                    │  │ Bài đăng gần nhất (Recent Tweets):                                    │  │
+│                    │  │ 1. "Released AWQ-W4A8 speculative decoding kernel for L40S GPUs..."   │  │
+│                    │  │ 2. "Benchmarking vLLM vs our custom kernel on V100/A100 instances..." │  │
+│                    │  │                                                                       │  │
+│                    │  │ Phân khúc gán: [ SEG-01: AI Infra & Models ▼ ]                        │  │
+│                    │  │                                                                       │  │
+│                    │  │                                     [⚡ ĐƯA VÀO HÀNG ĐỢI CHẤM ĐIỂM AI]│  │
+│                    │  └───────────────────────────────────────────────────────────────────────┘  │
+├────────────────────┤                                                                             │
+│ [◀ Thu gọn Sidebar]│                                                                             │
+└────────────────────┴─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -266,5 +331,6 @@ Cho phép đội ngũ GenAI Fund nạp danh sách ứng viên mục tiêu từ t
 ## 11. Kịch bản Kiểm thử & Nghiệm thu (Acceptance Criteria)
 - [ ] **Test In-batch Dedup:** Nạp file có `P002` và `P020` (cùng `@minh_quant`), DB chỉ lưu 1 bản ghi `minh_quant`.
 - [ ] **Test Normalization:** Nhập `@Minh_Quant ` $\rightarrow$ lưu thành `minh_quant`.
-- [ ] **Test Missing Columns:** File CSV thiếu cột `bio` hoặc `recent_tweets` sẽ bị từ chối với thông báo lỗi rõ ràng ở dòng tương ứng.
-
+- [ ] **Test Tab 1 One-Click Seed:** Nhấn nút nạp 20 hồ sơ mẫu $\rightarrow$ trả về đúng 17 bản ghi mới, 1 gộp trùng, 2 collision lịch sử.
+- [ ] **Test Tab 2 Pre-flight Check:** Kéo file thiếu cột `bio` vào $\rightarrow$ hiển thị cảnh báo đỏ ngay trên bảng xem trước trước khi bấm nạp.
+- [ ] **Test Tab 3 Live Preview:** Nhập `@minh_quant` có cấu hình API $\rightarrow$ hiển thị thẻ xem trước với đầy đủ Bio và Recent Tweets.
