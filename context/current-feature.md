@@ -1,17 +1,15 @@
-# Current Active Feature: Feature 05 – Human-in-the-Loop Review Workspace & Inline Composer
+# Current Active Feature: Feature 06 – Outreach Ledger, Inbox Tracker & Calibration Matrix
 *(Sprint Status & Active Tracking)*
 
 ---
 
 ## 1. Active Feature Info
-- **Active Task:** WBS Task 5 (Table-First Candidate Workspace, Search/Filter Triage, Grounded Evidence Highlighting & Review/Composer Modal): [`05-hitl-review-and-composer-ui.md`](file:///d:/AssignmentFDE/context/features/05-hitl-review-and-composer-ui.md)
-  - ✅ **Sub-task 5.1 (Candidates Client API & Type Definitions – `frontend/src/types/candidate.ts` & `frontend/src/lib/candidates-api.ts`):** Defined strict TypeScript interfaces for `CandidateItem`, `CandidateListResponse`, `StateMachineSummary`, `SendCandidatePayload`, and created typed client API methods (`fetchCandidates`, `fetchCandidateDetail`, `fetchStateMachineSummary`, `sendCandidateDm`, `rejectCandidate`, `retryCandidateEvaluation`, `regenerateAiEvaluation`).
-  - ✅ **Sub-task 5.2 (Table-First Workspace Canvas – `frontend/src/app/page.tsx`):** Built live data fetching with real-time search-as-you-type, multi-tab triage filters (All, High Fit Match, Pending Review, Sparse/Needs Human, Closed DMs/Blocked, Sent/Replied, Rejected), responsive data table with score pills, fast direct actions (`[👁️ Review & Approve]`, `[🗑️ Quick Reject]`, `[🔄 Retry AI]`, `CRM` drawer), and table pagination (10/25/50 selector).
-  - ✅ **Sub-task 5.3 (Dedicated Review & Grounded Composer Modal – `frontend/src/components/organisms/ReviewComposerModal.tsx`):** Built two-column deep focus modal:
-    - *Left column (Evidence):* Bio, segment, why they fit, recent tweets with amber `<EvidenceMark>` verbatim highlighting, and raw quote callout.
-    - *Right column (Composer):* Editable DM textarea, live character counter (250–600 chars), closed DM guard (`can_dm=false` -> disabled with red alert), sparse profile guard, double-messaging guard, and action buttons (`[🔄 Regenerate with AI]`, `[🗑️ Reject]`, `[⚡ Approve & Send DM]`).
-  - ✅ **Sub-task 5.4 (Symmetrical i18n & Design Token Purity):** Expanded `frontend/src/context/i18n.tsx` with parameter interpolation (`t("key", { handle: "@..." })`) and added symmetrical translations in `locales/en.json` and `locales/vi.json` with zero hardcoded strings and pure Tailwind CSS v4 styling.
-  - ✅ **Sub-task 5.5 (End-to-End Verification & Build):** Verified `python -m pytest backend/tests/ -v` (**25/25 PASSED**) and `npm run build` in `frontend/` (**11/11 static pages + Edge Middleware compiled with 0 errors**).
+- **Active Task:** WBS Task 6 (Immutable Outreach Ledger, Founder Reply Simulator/Tracker, Conversation Audit Drawer & Partner Calibration Matrix): [`06-outreach-ledger-and-dashboard.md`](file:///d:/AssignmentFDE/context/features/06-outreach-ledger-and-dashboard.md)
+  - ✅ **Sub-task 6.1 (Backend Ledger & Calibration Service & Router – `backend/app/services/ledger_service.py` & `backend/app/api/ledger.py`):** Implemented `GET /api/ledger` (with `filter_tab`, `search`, KPI summary metrics, and auto-seeding of `OUT-101`..`OUT-104` baseline), `POST /api/ledger/{id}/reply` (simulate/record founder reply -> `REPLIED` + `needs_attention=True`), `POST /api/ledger/{id}/handled` (resolve attention flag -> `needs_attention=False`), and `GET /api/ledger/calibration` (benchmarking AI Scorer against `candidates_seed.csv` & `fund_reference_scores.csv`).
+  - ✅ **Sub-task 6.2 (Automated Pytest Suite – `backend/tests/test_ledger_and_calibration.py`):** Wrote 4 comprehensive tests covering `OUT-101`..`OUT-104` seed history baseline, filter pills (`needs_attention`, `sent`, `blocked`), founder reply simulation -> `needs_attention=True`, mark handled -> `needs_attention=False`, closed DM reply rejection (`422`), and calibration matrix accuracy (`100%` across 19 unique profiles) -> **29/29 total backend tests PASSED**.
+  - ✅ **Sub-task 6.3 (Frontend Ledger & Calibration Types, Client API & Symmetrical i18n – `frontend/src/types/ledger.ts`, `frontend/src/lib/ledger-api.ts`, `en.json`, `vi.json`):** Defined strict TypeScript contracts (`no-explicit-any`), zero-fake-fallback API client functions (`fetchLedgerEntries`, `recordLedgerReply`, `markLedgerHandled`, `fetchCalibrationMatrix`), and 100% symmetrical English/Vietnamese translation keys under `ledger.*` and `calibration.*`.
+  - ✅ **Sub-task 6.4 (Frontend Outreach Ledger, Record Reply Modal, Audit Drawer & Calibration Matrix Pages – `frontend/src/components/ledger/LedgerDashboardClient.tsx`, `frontend/src/app/ledger/page.tsx`, `frontend/src/app/calibration/page.tsx`, `frontend/src/app/dashboard/page.tsx`):** Built Tab 1 (Outreach Ledger & Inbox with 4 KPI StatCards, Filter Pills, Search, Record Reply Modal, and Conversation Detail & Immutable Audit Trail Drawer) and Tab 2 (Partner Calibration Matrix comparing AI scores against Fund Reference scores).
+  - ✅ **Sub-task 6.5 (End-to-End Verification & Sprint Log Finalization):** Verified `python -m pytest backend/tests/ -v` (**29/29 PASSED**) and `npm run build` in `frontend/`.
 - **Completed Foundation Tasks:**
   - ✅ **Task 0:** [`00-base-layout-design-system.md`](file:///d:/AssignmentFDE/context/features/00-base-layout-design-system.md) (Atomic Design System, Pure Tailwind v4 `@theme`, English-First i18n, Paginated Table & AppShell)
   - ✅ **Task 1:** [`01-data-pack-and-ingestion.md`](file:///d:/AssignmentFDE/context/features/01-data-pack-and-ingestion.md) (Full-Stack Triple-Tab Ingestion Hub, Pre-flight CSV Check, Live X Lookup & 3-Tier Deduplication)
@@ -19,8 +17,9 @@
   - ✅ **Task 3:** [`03-auth-and-security.md`](file:///d:/AssignmentFDE/context/features/03-auth-and-security.md) (Next.js BFF HttpOnly Cookie Auth, 7-Day JWT, Pre-filled Partner Login, Protected FastAPI Middleware & Error Pages)
   - ✅ **Task 4:** [`04-dual-queue-and-ai-send-engine.md`](file:///d:/AssignmentFDE/context/features/04-dual-queue-and-ai-send-engine.md) (SQLite Dual Queue Worker, Tri-Guard AI Evaluator, Token Bucket Limiter & Dual-Mode Safe Send Dispatcher)
   - ✅ **Task 5:** [`05-hitl-review-and-composer-ui.md`](file:///d:/AssignmentFDE/context/features/05-hitl-review-and-composer-ui.md) (Table-First Review Workspace, Search/Filter Triage, Grounded Evidence Highlighting & Review/Composer Modal)
-- **Next Spec Reference:** [`06-outreach-ledger-and-dashboard.md`](file:///d:/AssignmentFDE/context/features/06-outreach-ledger-and-dashboard.md)
-- **Current Status:** `COMPLETED (Feature 05)`
+  - ✅ **Task 6:** [`06-outreach-ledger-and-dashboard.md`](file:///d:/AssignmentFDE/context/features/06-outreach-ledger-and-dashboard.md) (Immutable Outreach Ledger, Founder Reply Simulator/Tracker, Audit Trail Drawer & Partner Calibration Matrix)
+- **Next Spec Reference:** [`07-testing-and-deployment.md`](file:///d:/AssignmentFDE/context/features/07-testing-and-deployment.md)
+- **Current Status:** `COMPLETED (Feature 06)`
 
 ---
 
@@ -131,11 +130,21 @@
     - **Verification:**
       - `python -m pytest backend/tests/ -v` -> **25/25 PASSED**.
       - `npm run build` in `frontend/` -> **11/11 static pages + Edge Middleware compiled with 0 errors**.
+14. ✅ **Full-Stack Implementation of Feature 06 (`06-outreach-ledger-and-dashboard.md`):**
+    - **Backend Ledger & Calibration Service & Router ([`backend/app/services/ledger_service.py`](file:///d:/AssignmentFDE/backend/app/services/ledger_service.py) & [`backend/app/api/ledger.py`](file:///d:/AssignmentFDE/backend/app/api/ledger.py)):**
+      - Implemented `GET /api/ledger` returning `OUT-101`..`OUT-104` baseline + newly dispatched DMs, filter pill counts (`all`, `needs_attention`, `replied`, `sent`, `blocked`), search query matching, and KPI summary metrics (`dispatched_count`, `replied_count`, `reply_rate`, `needs_attention_count`, `total_safety_interceptions`).
+      - Implemented `POST /api/ledger/{id}/reply` to record/simulate founder replies (`status = REPLIED`, `needs_attention = True`, rejecting `BLOCKED` DMs with `422`).
+      - Implemented `POST /api/ledger/{id}/handled` to resolve urgent attention flags (`needs_attention = False`).
+      - Implemented `GET /api/ledger/calibration` benchmarking the Tri-Guard AI Evaluator against `candidates_seed.csv` & `fund_reference_scores.csv` (`100%` alignment accuracy across 19 unique profiles, `2/2` prompt injection & sparse traps neutralized, `0.00` mean score delta).
+    - **Automated Pytest Suite ([`backend/tests/test_ledger_and_calibration.py`](file:///d:/AssignmentFDE/backend/tests/test_ledger_and_calibration.py)):**
+      - Added 4 comprehensive tests covering seed history baseline, filter pills, founder reply simulation, mark handled, closed DM guard, and calibration matrix accuracy -> **29/29 total backend tests PASSED**.
+    - **Frontend Outreach Ledger, Reply Simulator Modal, Audit Drawer & Calibration Matrix ([`frontend/src/components/ledger/LedgerDashboardClient.tsx`](file:///d:/AssignmentFDE/frontend/src/components/ledger/LedgerDashboardClient.tsx), [`/ledger`](file:///d:/AssignmentFDE/frontend/src/app/ledger/page.tsx), [`/calibration`](file:///d:/AssignmentFDE/frontend/src/app/calibration/page.tsx), [`/dashboard`](file:///d:/AssignmentFDE/frontend/src/app/dashboard/page.tsx)):**
+      - Built Tab 1 (Outreach Ledger & Inbox with 4 KPI StatCards, Filter Pills, Search, Record Reply Modal with 1-click sample reply, and Conversation Detail & Immutable Audit Trail Drawer).
+      - Built Tab 2 (Partner Calibration Matrix comparing AI scores vs. Fund Reference scores across `P001`..`P020`).
+      - Added 100% symmetrical English & Vietnamese translations under `ledger.*` and `calibration.*` in `en.json` and `vi.json`.
 
 ---
 
-## 3. Next Immediate Steps (Feature 06: Outreach Ledger CRM & Analytics Dashboard)
-1. **Implement Feature 06 (`06-outreach-ledger-and-dashboard.md`):**
-   - Create `/ledger` page for the Immutable Outreach Ledger & CRM (tracking `OUT-101`..`OUT-104`, status pills, double-messaging audit trail, urgent reply banner).
-   - Create Reply Recording & Handle modal/endpoint to test the founder reply loop.
-   - Wire KPI Analytics cards and export audit logs.
+## 3. Next Immediate Steps (Feature 07: E2E Testing & Turnkey Deployment)
+1. **Implement Feature 07 (`07-testing-and-deployment.md`):**
+   - Finalize end-to-end verification, turnkey startup scripts, and deployment readiness.
