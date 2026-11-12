@@ -109,7 +109,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         {/* Navigation Links */}
         <nav className="p-2 space-y-1 mt-2">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.href === "/workspace" && pathname === "/");
             const Icon = item.icon;
             const label = t(item.labelKey);
 
