@@ -1,23 +1,26 @@
-# Current Active Feature: Feature 04 – Dual Queue Engine & AI Send Dispatcher
+# Current Active Feature: Feature 05 – Human-in-the-Loop Review Workspace & Inline Composer
 *(Sprint Status & Active Tracking)*
 
 ---
 
 ## 1. Active Feature Info
-- **Active Task:** WBS Task 4 (SQLite Dual Queue, Tri-Guard AI Evaluation Engine, Token Bucket Limiter & Dual-Mode Safe Send Dispatcher): [`04-dual-queue-and-ai-send-engine.md`](file:///d:/AssignmentFDE/context/features/04-dual-queue-and-ai-send-engine.md)
-  - ✅ **Sub-task 4.1 (Tri-Guard AI Evaluation Engine – `backend/app/services/ai_evaluator.py`):** Implemented [`backend/app/services/ai_evaluator.py`](file:///d:/AssignmentFDE/backend/app/services/ai_evaluator.py) with `AIEvaluationResult` Pydantic schema, Layer 1 `<untrusted_candidate_data>` prompt-injection shield (neutralizing `P017` `@override_bot99`), Layer 2 LLM integration (Gemini 2.0 Flash / OpenAI GPT-4o-mini + deterministic rubric-grounded evaluator fallback), and Layer 3 verbatim `evidence_snippet` grounding & zero-invented-familiarity validator (`P018` `@ghost_builder_sea` -> `INSUFFICIENT_EVIDENCE`).
-  - ✅ **Sub-task 4.2 (Token Bucket Rate Limiter & Dual-Mode Safe Send Dispatcher – `backend/app/services/dispatcher.py`):** Implemented [`backend/app/services/dispatcher.py`](file:///d:/AssignmentFDE/backend/app/services/dispatcher.py) with `TokenBucketRateLimiter` (handling X rate limits & HTTP 429 circuit-breaker halt) and `dispatch_candidate_dm` supporting `SANDBOX` mode ($0 cost, simulated latency) and `LIVE_X` mode with strict `ALLOWED_TEST_HANDLES` whitelist protection and `can_dm=False` `SEND_BLOCKED` guard.
-  - ✅ **Sub-task 4.3 (Persistent SQLite Dual Queue Worker – `backend/app/services/queue_worker.py`):** Implemented [`backend/app/services/queue_worker.py`](file:///d:/AssignmentFDE/backend/app/services/queue_worker.py) for asynchronous/background processing of Queue 1 (`AI_EVALUATE`) and Queue 2 (`SEND_DM`), error isolation (`AI_FAILED` with Retry vs low score), and automatic background trigger on ingestion endpoints (`/seed`, `/csv`, `/single`) and `seed_data.py`.
-  - ✅ **Sub-task 4.4 (Queue & AI Evaluation FastAPI Router – `backend/app/api/queue.py`):** Created [`backend/app/api/queue.py`](file:///d:/AssignmentFDE/backend/app/api/queue.py) (`GET /api/queue/status`, `POST /api/queue/process`, `POST /api/queue/evaluate/{candidate_id}`, `POST /api/queue/dispatch/{candidate_id}`) protected by `Depends(get_current_user)` and HTTP Auth Guard Middleware in [`backend/app/main.py`](file:///d:/AssignmentFDE/backend/app/main.py).
-  - ✅ **Sub-task 4.5 (Automated Pytest Suite – `backend/tests/test_dual_queue_and_ai.py`):** Created [`backend/tests/test_dual_queue_and_ai.py`](file:///d:/AssignmentFDE/backend/tests/test_dual_queue_and_ai.py) verifying all 6+ Acceptance Criteria in `04-dual-queue-and-ai-send-engine.md` -> **6/6 PASSED (`25/25` total backend tests PASSED)**.
+- **Active Task:** WBS Task 5 (Table-First Candidate Workspace, Search/Filter Triage, Grounded Evidence Highlighting & Review/Composer Modal): [`05-hitl-review-and-composer-ui.md`](file:///d:/AssignmentFDE/context/features/05-hitl-review-and-composer-ui.md)
+  - ✅ **Sub-task 5.1 (Candidates Client API & Type Definitions – `frontend/src/types/candidate.ts` & `frontend/src/lib/candidates-api.ts`):** Defined strict TypeScript interfaces for `CandidateItem`, `CandidateListResponse`, `StateMachineSummary`, `SendCandidatePayload`, and created typed client API methods (`fetchCandidates`, `fetchCandidateDetail`, `fetchStateMachineSummary`, `sendCandidateDm`, `rejectCandidate`, `retryCandidateEvaluation`, `regenerateAiEvaluation`).
+  - ✅ **Sub-task 5.2 (Table-First Workspace Canvas – `frontend/src/app/page.tsx`):** Built live data fetching with real-time search-as-you-type, multi-tab triage filters (All, High Fit Match, Pending Review, Sparse/Needs Human, Closed DMs/Blocked, Sent/Replied, Rejected), responsive data table with score pills, fast direct actions (`[👁️ Review & Approve]`, `[🗑️ Quick Reject]`, `[🔄 Retry AI]`, `CRM` drawer), and table pagination (10/25/50 selector).
+  - ✅ **Sub-task 5.3 (Dedicated Review & Grounded Composer Modal – `frontend/src/components/organisms/ReviewComposerModal.tsx`):** Built two-column deep focus modal:
+    - *Left column (Evidence):* Bio, segment, why they fit, recent tweets with amber `<EvidenceMark>` verbatim highlighting, and raw quote callout.
+    - *Right column (Composer):* Editable DM textarea, live character counter (250–600 chars), closed DM guard (`can_dm=false` -> disabled with red alert), sparse profile guard, double-messaging guard, and action buttons (`[🔄 Regenerate with AI]`, `[🗑️ Reject]`, `[⚡ Approve & Send DM]`).
+  - ✅ **Sub-task 5.4 (Symmetrical i18n & Design Token Purity):** Expanded `frontend/src/context/i18n.tsx` with parameter interpolation (`t("key", { handle: "@..." })`) and added symmetrical translations in `locales/en.json` and `locales/vi.json` with zero hardcoded strings and pure Tailwind CSS v4 styling.
+  - ✅ **Sub-task 5.5 (End-to-End Verification & Build):** Verified `python -m pytest backend/tests/ -v` (**25/25 PASSED**) and `npm run build` in `frontend/` (**11/11 static pages + Edge Middleware compiled with 0 errors**).
 - **Completed Foundation Tasks:**
   - ✅ **Task 0:** [`00-base-layout-design-system.md`](file:///d:/AssignmentFDE/context/features/00-base-layout-design-system.md) (Atomic Design System, Pure Tailwind v4 `@theme`, English-First i18n, Paginated Table & AppShell)
   - ✅ **Task 1:** [`01-data-pack-and-ingestion.md`](file:///d:/AssignmentFDE/context/features/01-data-pack-and-ingestion.md) (Full-Stack Triple-Tab Ingestion Hub, Pre-flight CSV Check, Live X Lookup & 3-Tier Deduplication)
   - ✅ **Task 2:** [`02-database-and-state-machine.md`](file:///d:/AssignmentFDE/context/features/02-database-and-state-machine.md) (SQLite WAL Schema, 9-State Lifecycle Machine, Two-Tier Zero Double-Messaging Gate & Candidate Lifecycle API)
   - ✅ **Task 3:** [`03-auth-and-security.md`](file:///d:/AssignmentFDE/context/features/03-auth-and-security.md) (Next.js BFF HttpOnly Cookie Auth, 7-Day JWT, Pre-filled Partner Login, Protected FastAPI Middleware & Error Pages)
   - ✅ **Task 4:** [`04-dual-queue-and-ai-send-engine.md`](file:///d:/AssignmentFDE/context/features/04-dual-queue-and-ai-send-engine.md) (SQLite Dual Queue Worker, Tri-Guard AI Evaluator, Token Bucket Limiter & Dual-Mode Safe Send Dispatcher)
-- **Next Spec Reference:** [`05-hitl-review-and-composer-ui.md`](file:///d:/AssignmentFDE/context/features/05-hitl-review-and-composer-ui.md)
-- **Current Status:** `COMPLETED (Feature 04)`
+  - ✅ **Task 5:** [`05-hitl-review-and-composer-ui.md`](file:///d:/AssignmentFDE/context/features/05-hitl-review-and-composer-ui.md) (Table-First Review Workspace, Search/Filter Triage, Grounded Evidence Highlighting & Review/Composer Modal)
+- **Next Spec Reference:** [`06-outreach-ledger-and-dashboard.md`](file:///d:/AssignmentFDE/context/features/06-outreach-ledger-and-dashboard.md)
+- **Current Status:** `COMPLETED (Feature 05)`
 
 ---
 
@@ -116,10 +119,23 @@
       - Added `GET /api/queue/status`, `POST /api/queue/process`, `POST /api/queue/evaluate/{candidate_id}`, and `POST /api/queue/dispatch/{candidate_id}`.
     - **Verification (`pytest`):**
       - Created [`backend/tests/test_dual_queue_and_ai.py`](file:///d:/AssignmentFDE/backend/tests/test_dual_queue_and_ai.py) -> **6/6 PASSED (`25/25` total backend tests PASSED)**.
+13. ✅ **Full Implementation of Feature 05 (`05-hitl-review-and-composer-ui.md`):**
+    - **Candidates Client API & Types ([`frontend/src/types/candidate.ts`](file:///d:/AssignmentFDE/frontend/src/types/candidate.ts) & [`frontend/src/lib/candidates-api.ts`](file:///d:/AssignmentFDE/frontend/src/lib/candidates-api.ts)):**
+      - Typed interfaces for candidate records, 9 lifecycle states, and state summary metrics.
+      - Client methods (`fetchCandidates`, `fetchCandidateDetail`, `fetchStateMachineSummary`, `sendCandidateDm`, `rejectCandidate`, `retryCandidateEvaluation`, `regenerateAiEvaluation`) handling authentication, errors, and redirects.
+    - **Table-First Review Workspace Canvas ([`frontend/src/app/page.tsx`](file:///d:/AssignmentFDE/frontend/src/app/page.tsx)):**
+      - Built full-width Table canvas with search-as-you-type, multi-tab triage pills (All, Matches 3-4, Pending Review, Sparse, Closed DMs/Blocked, Sent/Replied, Rejected), real-time KPI stat cards, and table pagination (10/25/50).
+      - Fast table actions: `[👁️ Review & Approve]`, `[🗑️ Quick Reject]`, `[🔄 Retry AI]`, and `CRM` audit drawer for replied candidates.
+    - **Dedicated Review & Grounded Composer Modal ([`frontend/src/components/organisms/ReviewComposerModal.tsx`](file:///d:/AssignmentFDE/frontend/src/components/organisms/ReviewComposerModal.tsx)):**
+      - Two-column deep focus view: Left column renders grounded evidence with amber `<EvidenceMark>` verbatim highlighting and quote callout; Right column renders live DM editor with live character counter (250-600 chars), closed DM guard, sparse profile guard, double-messaging lock, and actions (`[🔄 Regenerate with AI]`, `[🗑️ Reject]`, `[⚡ Approve & Send DM]`).
+    - **Verification:**
+      - `python -m pytest backend/tests/ -v` -> **25/25 PASSED**.
+      - `npm run build` in `frontend/` -> **11/11 static pages + Edge Middleware compiled with 0 errors**.
 
 ---
 
-## 3. Next Immediate Steps (Feature 05: HITL Review Workspace & Grounded DM Composer UI)
-1. **Implement Feature 05 (`05-hitl-review-and-composer-ui.md`):**
-   - Connect the HITL Review Workspace (`frontend/src/app/page.tsx`) to live FastAPI backend endpoints (`/api/candidates`, `/api/queue/evaluate/{id}`, `/api/candidates/{id}/send`, `/api/candidates/{id}/reject`, `/api/candidates/{id}/retry`).
-   - Build Interactive Evidence Highlighting (matching `evidence_snippet` in bio/tweets with `<EvidenceMark>`), Split-View / Drawer Grounded DM Composer with live character counter, and 1-Click Approve & Send / Reject / Retry actions.
+## 3. Next Immediate Steps (Feature 06: Outreach Ledger CRM & Analytics Dashboard)
+1. **Implement Feature 06 (`06-outreach-ledger-and-dashboard.md`):**
+   - Create `/ledger` page for the Immutable Outreach Ledger & CRM (tracking `OUT-101`..`OUT-104`, status pills, double-messaging audit trail, urgent reply banner).
+   - Create Reply Recording & Handle modal/endpoint to test the founder reply loop.
+   - Wire KPI Analytics cards and export audit logs.

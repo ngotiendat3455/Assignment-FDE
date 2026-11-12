@@ -11,7 +11,7 @@ type Dictionary = typeof en;
 interface I18nContextType {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (keyPath: string) => string;
+  t: (keyPath: string, params?: Record<string, string | number>) => string;
 }
 
 const dictionaries: Record<Locale, Dictionary> = { en, vi };
@@ -33,7 +33,10 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("preferred_locale", newLocale);
   };
 
-  const t = (keyPath: string): string => {
+  const t = (
+    keyPath: string,
+    params?: Record<string, string | number>
+  ): string => {
     const keys = keyPath.split(".");
     let curr: unknown = dictionaries[locale] || dictionaries.en;
     for (const k of keys) {
@@ -43,7 +46,16 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
         return keyPath;
       }
     }
-    return typeof curr === "string" ? curr : keyPath;
+    let result = typeof curr === "string" ? curr : keyPath;
+    if (params) {
+      Object.entries(params).forEach(([paramKey, paramVal]) => {
+        result = result.replace(
+          new RegExp(`\\{\\{${paramKey}\\}\\}|\\{${paramKey}\\}`, "g"),
+          String(paramVal)
+        );
+      });
+    }
+    return result;
   };
 
   return (
