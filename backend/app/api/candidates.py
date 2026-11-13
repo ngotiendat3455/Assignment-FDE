@@ -154,7 +154,8 @@ def send_candidate_dm(
     except XApiRateLimitError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     except XApiDispatchError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        status_code = 503 if str(exc).startswith("[LIVE_PRODUCTION]") else 502
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
 
 @router.post("/{candidate_id}/reject")

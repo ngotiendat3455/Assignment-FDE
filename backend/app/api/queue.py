@@ -21,6 +21,10 @@ from backend.app.services.state_machine import (
     DoubleMessageConflictError,
     SendBlockedError,
 )
+from backend.app.services.x_client import (
+    XApiDispatchError,
+    XApiRateLimitError,
+)
 
 router = APIRouter(
     prefix="/queue",
@@ -146,10 +150,14 @@ def trigger_candidate_dm_dispatch(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except SendBlockedError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except RateLimitExceededError as exc:
+    except (RateLimitExceededError, XApiRateLimitError) as exc:
+        retry_sec = getattr(exc, "retry_after_seconds", 60.0)
         raise HTTPException(
             status_code=429,
             detail=str(exc),
-            headers={"Retry-After": str(int(exc.retry_after_seconds))},
+            headers={"Retry-After": str(int(retry_sec))},
         ) from exc
+    except XApiDispatchError as exc:
+        status_code = 503 if str(exc).startswith("[LIVE_PRODUCTION]") else 502
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 

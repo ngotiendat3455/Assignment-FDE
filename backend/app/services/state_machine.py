@@ -6,10 +6,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import settings
+from backend.app.core.runtime_gateway import RuntimeGateway
 from backend.app.models.candidate import Candidate, CandidateStatus
 from backend.app.models.ledger import OutreachLedger, OutreachStatus
 from backend.app.models.queue import JobQueue, JobStatus
 from backend.app.services.x_client import (
+    XApiDispatchError,
     has_x_oauth_credentials,
     send_x_dm,
 )
@@ -203,7 +205,8 @@ def approve_and_send_candidate(
         )
 
     # --- SAFETY GUARD: Live X Whitelist Check (ALLOWED_TEST_HANDLES) ---
-    normalized_mode = (dispatch_mode or settings.DISPATCH_MODE or "SANDBOX").upper()
+    dm_plan = RuntimeGateway.resolve_dm_dispatch_plan(requested_mode=dispatch_mode)
+    normalized_mode = dm_plan.dispatch_mode
     if normalized_mode == "LIVE_X":
         allowed_handles = settings.ALLOWED_TEST_HANDLES
         if candidate.handle.lower().lstrip("@") not in allowed_handles:
@@ -228,6 +231,10 @@ def approve_and_send_candidate(
             db.commit()
             raise SendBlockedError(candidate.error_message)
 
+    # --- RUNTIME GATEWAY GUARD: Block silent sim_dm fallback in LIVE_PRODUCTION ---
+    if dm_plan.strict_error:
+        raise XApiDispatchError(dm_plan.strict_error)
+
     # --- Prepare Final Message ---
     final_message = (
         custom_message
@@ -241,9 +248,9 @@ def approve_and_send_candidate(
 
     final_idem_key = idempotency_key or f"dm-{candidate.id}-{uuid.uuid4().hex}"
 
-    # --- Dispatch externally if LIVE_X mode with OAuth credentials and not dry-run ---
+    # --- Dispatch externally if RuntimeGateway plan mandates real X OAuth 1.0a dispatch ---
     external_dm_id = f"sim_dm_{candidate.id}_{uuid.uuid4().hex[:6]}"
-    if normalized_mode == "LIVE_X" and has_x_oauth_credentials() and not settings.LIVE_X_DRY_RUN:
+    if dm_plan.should_call_external_x:
         live_resp = send_x_dm(
             handle=candidate.handle,
             message=final_message,
@@ -283,6 +290,7 @@ def approve_and_send_candidate(
     return {
         "candidate": candidate.to_dict(),
         "ledger": ledger_entry.to_dict(),
+        "execution_meta": dm_plan.to_meta(),
     }
 
 

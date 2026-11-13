@@ -9,6 +9,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import settings
+from backend.app.core.runtime_gateway import RuntimeGateway
 from backend.app.models.candidate import Candidate, CandidateStatus
 from backend.app.models.ledger import OutreachLedger, OutreachStatus
 from backend.app.models.queue import JobQueue, JobStatus
@@ -509,14 +510,12 @@ def lookup_x_handle(db: Session, raw_handle: str) -> Dict[str, Any]:
     ledger_status = existing_ledger.status if existing_ledger else None
     existing_cand = db.query(Candidate).filter(Candidate.handle == handle).first()
 
-    bearer_token = (settings.X_BEARER_TOKEN or "").strip()
-    if not bearer_token or bearer_token.startswith("your_"):
-        raise XApiLookupError(
-            503,
-            "X_BEARER_TOKEN is not configured. Set X_BEARER_TOKEN in backend/.env, or run the local X API simulator (`python -m backend.scripts.x_simulator`) with X_API_BASE_URL=http://127.0.0.1:8099/2.",
-        )
+    lookup_plan = RuntimeGateway.resolve_x_lookup_plan()
+    if lookup_plan.strict_error:
+        raise XApiLookupError(503, lookup_plan.strict_error)
 
-    base_url = get_x_api_base()
+    base_url = lookup_plan.base_url
+    bearer_token = lookup_plan.bearer_token
     headers = {"Authorization": f"Bearer {bearer_token}"}
 
     try:
@@ -573,7 +572,7 @@ def lookup_x_handle(db: Session, raw_handle: str) -> Dict[str, Any]:
         if existing_cand and existing_cand.segment
         else "SEG-02: LLM Inference & AI Infra"
     )
-    source_mode = "X_API_SIMULATOR" if is_local_x_simulator() else "LIVE_X_API"
+    source_mode = lookup_plan.source_mode
 
     return {
         "handle": handle,
@@ -589,4 +588,5 @@ def lookup_x_handle(db: Session, raw_handle: str) -> Dict[str, Any]:
         "api_connected": True,
         "already_contacted": already_contacted,
         "existing_ledger_status": ledger_status,
+        "execution_meta": lookup_plan.to_meta(),
     }

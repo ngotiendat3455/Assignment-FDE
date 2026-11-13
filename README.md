@@ -52,6 +52,19 @@ Mở `backend/.env` và dán các key tương ứng với phần bạn muốn ki
 
 *(Các biến cơ bản giữ nguyên mặc định: `PORT=8000`, `DATABASE_URL=sqlite:///./outreach.db`, `SECRET_KEY=...`)*
 
+### Cổng Điều phối Trung tâm `RuntimeGateway` (`RUNTIME_PROFILE`)
+
+Toàn bộ quyết định gọi **AI (Gemini/OpenAI vs `$0` Rubric)** và **X API v2 (Real vs Local Simulator / Sandbox)** tại `/backend` được gom về **1 cổng duy nhất** [`backend/app/core/runtime_gateway.py`](backend/app/core/runtime_gateway.py) thông qua biến `RUNTIME_PROFILE` trong `backend/.env`:
+
+| `RUNTIME_PROFILE` | 1. Chấm điểm & Soạn DM (AI) | 2. Tra cứu X (`GET /api/ingestion/x-lookup`) | 3. Gửi DM (`POST /api/candidates/{id}/send`) |
+| :--- | :--- | :--- | :--- |
+| **`OFFLINE_MOCK`** *(Trường hợp 1: `$0` Offline / Mock X)* | Khóa cứng `DETERMINISTIC_RUBRIC` (`tri-guard-local-v1`, `0` gọi mạng ngoài kể cả khi máy có lưu `GEMINI_API_KEY`). | Tự động trỏ về **Mock X Simulator** (`http://127.0.0.1:8099/2`) và tự cấp `sim_dev_bearer_token`. | Không bao giờ gọi OAuth 1.0a ra ngoài (`SANDBOX_SIMULATED` / `LIVE_X_DRY_RUN`). |
+| **`LIVE_PRODUCTION`** *(Trường hợp 2: Live Gemini + Live X API, cấm fallback ngầm)* | Bắt buộc có `GEMINI_API_KEY` hoặc `OPENAI_API_KEY` thật. **Cấm tự fallback về điểm giả `$0`** — nếu thiếu key hoặc lỗi mạng sẽ đẩy thẳng sang `AI_FAILED`. | Bắt buộc gọi `https://api.twitter.com/2` kèm `X_BEARER_TOKEN` thật (nếu trỏ localhost hoặc dùng token `sim_*` sẽ chặn `HTTP 503`). | Khi gửi `LIVE_X`: kiểm tra `ALLOWED_TEST_HANDLES` **và bắt buộc đủ 4 khóa OAuth 1.0a** (`LIVE_X_DRY_RUN=False`). Thiếu khóa chặn ngay `HTTP 503` (cấm sinh `sim_dm_...` giả). |
+| **`HYBRID_AUTO`** *(Mặc định tương thích)* | Có `GEMINI_API_KEY` thì gọi thật, để trống chạy `$0`. | Chạy theo `X_API_BASE_URL` & `X_BEARER_TOKEN` trong `.env`. | Chạy theo `DISPATCH_MODE` & cấu hình OAuth trong `.env`. |
+
+- **Đóng dấu nguồn gốc (`execution_meta`):** Mọi response từ `/api/queue/evaluate/{id}`, `/api/queue/process`, `/api/ingestion/x-lookup`, `/api/candidates/{id}/send` đều đính kèm trường `execution_meta` ghi rõ `profile`, `ai_engine` / `source_mode` / `dispatch_execution` và `external_network_call: true | false`.
+- **Tra cứu trạng thái tập trung:** Mở `GET http://127.0.0.1:8000/api/system/runtime` (hoặc `/api/health`, `/api/queue/status`) để xem bảng tổng kết chế độ đang chạy và danh sách biến còn thiếu nếu muốn lên `LIVE_PRODUCTION`.
+
 ---
 
 ## 4. Các Script Điều khiển Dữ liệu & Kiểm chứng Key (CLI)

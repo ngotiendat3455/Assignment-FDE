@@ -5,6 +5,7 @@ import httpx
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
+from backend.app.core.runtime_gateway import RuntimeGateway
 from backend.app.models.candidate import Candidate
 
 
@@ -537,6 +538,7 @@ def evaluate_candidate_profile(
     """
     Main entrypoint for Queue 1 (Tri-Guard AI Evaluation Engine).
     - Raises AIEvaluationServiceError on simulated or live LLM outage so caller transitions to AI_FAILED.
+    - Consults RuntimeGateway (OFFLINE_MOCK vs LIVE_PRODUCTION vs HYBRID_AUTO).
     - Runs Layer 1 (<untrusted_candidate_data> & injection shield), Layer 2 (LLM/Rubric scorer),
       and Layer 3 (verbatim evidence grounding & zero-invented-familiarity validator).
     """
@@ -545,14 +547,23 @@ def evaluate_candidate_profile(
             f"LLM API connection failed while evaluating @{candidate.handle} (HTTP 503 Service Unavailable)."
         )
 
+    ai_plan = RuntimeGateway.resolve_ai_plan(allow_external_override=allow_external_llm)
+    if ai_plan.strict_error:
+        raise AIEvaluationServiceError(ai_plan.strict_error)
+
     # Layer 1 fast-path: Prompt injection or sparse profile
     if detect_prompt_injection(candidate) or detect_sparse_profile(candidate):
         raw_result = _evaluate_deterministically(candidate)
         return _enforce_post_guards(raw_result, candidate)
 
-    # Layer 2: Try live LLM if allowed & API key is configured, otherwise deterministic rubric engine
-    llm_result = _call_external_llm(candidate) if allow_external_llm else None
+    # Layer 2: Execute according to RuntimeGateway plan
+    llm_result = _call_external_llm(candidate) if ai_plan.allow_external_llm else None
     if llm_result is None:
+        if ai_plan.require_external_llm:
+            raise AIEvaluationServiceError(
+                f"[LIVE_PRODUCTION] External LLM evaluation returned no result for @{candidate.handle}; "
+                "silent fallback to deterministic rubric ($0) is disabled."
+            )
         llm_result = _evaluate_deterministically(candidate)
 
     # Layer 3: Post-processing grounding & safety verification

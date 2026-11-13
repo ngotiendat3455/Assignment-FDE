@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from backend.app.core.config import settings
 from backend.app.core.database import Base, SessionLocal, engine, get_db
+from backend.app.core.runtime_gateway import RuntimeGateway
 from backend.app.core.security import (
     decode_access_token,
     ensure_default_partner_user,
@@ -30,6 +31,7 @@ from backend.app.api.ledger import router as ledger_router
 PUBLIC_API_PATHS = {
     "/",
     "/api/health",
+    "/api/system/runtime",
     "/api/_trace/session",
     "/api/_trace/step",
     "/api/_trace/finish",
@@ -204,12 +206,28 @@ app.include_router(
 
 @app.get("/api/health")
 def health_check():
+    ai_plan = RuntimeGateway.resolve_ai_plan()
+    x_plan = RuntimeGateway.resolve_x_lookup_plan()
+    dm_plan = RuntimeGateway.resolve_dm_dispatch_plan(settings.DISPATCH_MODE)
     return {
         "status": "ok",
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION,
+        "runtime_profile": RuntimeGateway.get_active_profile(),
         "dispatch_mode": settings.DISPATCH_MODE,
+        "active_drivers": {
+            "ai_engine": ai_plan.ai_engine,
+            "ai_model": ai_plan.model_used,
+            "x_lookup_mode": x_plan.source_mode,
+            "dm_dispatch_execution": dm_plan.dispatch_execution,
+        },
     }
+
+
+@app.get("/api/system/runtime")
+def read_runtime_gateway_status():
+    """Return centralized RuntimeGateway execution table (OFFLINE_MOCK vs LIVE_PRODUCTION vs HYBRID_AUTO)."""
+    return RuntimeGateway.get_runtime_status_summary()
 
 
 class _TraceSessionRequest(BaseModel):

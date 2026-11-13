@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.core.config import settings
 from backend.app.core.database import SessionLocal
+from backend.app.core.runtime_gateway import RuntimeGateway
 from backend.app.models.candidate import Candidate, CandidateStatus
 from backend.app.models.queue import JobQueue, JobStatus
 from backend.app.services.ai_evaluator import (
@@ -20,6 +21,10 @@ from backend.app.services.dispatcher import (
 from backend.app.services.state_machine import (
     DoubleMessageConflictError,
     SendBlockedError,
+)
+from backend.app.services.x_client import (
+    XApiDispatchError,
+    XApiRateLimitError,
 )
 
 
@@ -61,6 +66,8 @@ def evaluate_candidate_by_id(
         j.attempts = (j.attempts or 0) + 1
     db.commit()
 
+    ai_plan = RuntimeGateway.resolve_ai_plan()
+
     try:
         eval_result = evaluate_candidate_profile(
             candidate,
@@ -94,6 +101,7 @@ def evaluate_candidate_by_id(
             "handle": candidate.handle,
             "status": candidate.status,
             "evaluation": eval_result.model_dump(),
+            "execution_meta": ai_plan.to_meta(),
             "candidate": candidate.to_dict(),
         }
 
@@ -111,6 +119,7 @@ def evaluate_candidate_by_id(
             "handle": candidate.handle,
             "status": candidate.status,
             "error": str(exc),
+            "execution_meta": ai_plan.to_meta(),
             "candidate": candidate.to_dict(),
         }
 
@@ -206,7 +215,7 @@ def process_send_dm_job(db: Session, job: JobQueue) -> Dict[str, Any]:
             "candidate_id": candidate_id,
             "result": dispatch_res,
         }
-    except RateLimitExceededError as exc:
+    except (RateLimitExceededError, XApiRateLimitError) as exc:
         job.status = JobStatus.RATE_LIMITED.value
         job.last_error = str(exc)
         db.commit()
@@ -216,9 +225,9 @@ def process_send_dm_job(db: Session, job: JobQueue) -> Dict[str, Any]:
             "status": JobStatus.RATE_LIMITED.value,
             "candidate_id": candidate_id,
             "error": str(exc),
-            "retry_after_seconds": exc.retry_after_seconds,
+            "retry_after_seconds": getattr(exc, "retry_after_seconds", 60.0),
         }
-    except (SendBlockedError, DoubleMessageConflictError, LookupError) as exc:
+    except (SendBlockedError, DoubleMessageConflictError, LookupError, XApiDispatchError) as exc:
         job.status = JobStatus.FAILED.value
         job.last_error = str(exc)
         job.completed_at = datetime.now(timezone.utc)
@@ -298,6 +307,7 @@ def process_pending_jobs(
         "dm_sent": dm_sent_count,
         "failed_or_blocked": failed_or_blocked_count,
         "rate_limited": rate_limited_count,
+        "execution_meta": RuntimeGateway.resolve_ai_plan().to_meta(),
         "rate_limiter": send_rate_limiter.get_status(),
         "details": details,
     }
@@ -335,6 +345,8 @@ def get_dual_queue_status(db: Session) -> Dict[str, Any]:
     )
 
     return {
+        "runtime_profile": RuntimeGateway.get_active_profile(),
+        "runtime_gateway": RuntimeGateway.get_runtime_status_summary(),
         "dispatch_mode": settings.DISPATCH_MODE,
         "allowed_test_handles": settings.ALLOWED_TEST_HANDLES,
         "ai_evaluation_queue": {

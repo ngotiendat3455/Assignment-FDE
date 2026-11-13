@@ -116,3 +116,4 @@ class LiveXLookupResponse(BaseModel):
     api_connected: bool
     already_contacted: bool = False
     existing_ledger_status: Optional[str] = None
+    execution_meta: Optional[Dict[str, Any]] = None

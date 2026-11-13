@@ -45,6 +45,9 @@ class Settings:
         str(Path(__file__).resolve().parent.parent.parent.parent / "tests" / "manual" / "results" / "traces"),
     )
 
+    # Centralized Runtime Profile ("OFFLINE_MOCK" | "LIVE_PRODUCTION" | "HYBRID_AUTO")
+    RUNTIME_PROFILE: str = os.getenv("RUNTIME_PROFILE", "HYBRID_AUTO").upper()
+
     # Dispatch & Safety
     DISPATCH_MODE: str = os.getenv("DISPATCH_MODE", "SANDBOX").upper()
     LIVE_X_DRY_RUN: bool = os.getenv("LIVE_X_DRY_RUN", "False").lower() in ("true", "1", "yes")
@@ -70,6 +73,7 @@ class Settings:
 
     # X API v2 Base URL & Keys (override X_API_BASE_URL for $0 local dev simulator)
     X_API_BASE_URL: str = os.getenv("X_API_BASE_URL", "https://api.twitter.com/2")
+    X_SIMULATOR_BASE_URL: str = os.getenv("X_SIMULATOR_BASE_URL", "http://127.0.0.1:8099/2")
     X_BEARER_TOKEN: str = os.getenv("X_BEARER_TOKEN", "")
     X_API_KEY: str = os.getenv("X_API_KEY", "")
     X_API_SECRET: str = os.getenv("X_API_SECRET", "")
