@@ -9,12 +9,9 @@ import {
   Eye,
   EyeOff,
   LogIn,
-  ShieldCheck,
-  CheckCircle2,
   Globe,
 } from "lucide-react";
 import { Button } from "@/components/atoms/Button";
-import { Badge } from "@/components/atoms/Badge";
 import { Input } from "@/components/atoms/Input";
 import { useToast } from "@/components/molecules/ToastNotification";
 import { useI18n } from "@/context/i18n";
@@ -130,14 +127,9 @@ export default function LoginPage() {
       {/* Pre-filled Login Card (Wireframe 1) */}
       <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col items-center border-b border-border pb-4 text-center">
-          <h2 className="text-base font-bold tracking-wide text-foreground uppercase">
+          <h2 className="text-base font-bold tracking-tight text-foreground">
             {t("auth.card_title")}
           </h2>
-          <div className="mt-2">
-            <Badge variant="positive" size="sm" icon={CheckCircle2}>
-              {t("auth.prefilled_badge")}
-            </Badge>
-          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
@@ -221,11 +213,6 @@ export default function LoginPage() {
             {loading ? t("auth.btn_signing_in") : t("auth.btn_sign_in")}
           </Button>
         </form>
-
-        <div className="mt-6 flex items-center justify-center gap-2 border-t border-border pt-4 text-center text-[11px] text-muted-foreground">
-          <ShieldCheck className="h-4 w-4 shrink-0 text-positive" />
-          <span>{t("auth.security_note")}</span>
-        </div>
       </div>
     </div>
   );

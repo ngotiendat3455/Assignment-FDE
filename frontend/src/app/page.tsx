@@ -12,6 +12,9 @@ import {
   CheckCircle2,
   ExternalLink,
   MessageSquare,
+  ChevronDown,
+  ChevronUp,
+  BarChart3,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/atoms/Button";
@@ -70,6 +73,7 @@ export default function HitlReviewWorkspacePage() {
   // Filter & Search State
   const [activeFilterTab, setActiveFilterTab] = useState<FilterTabKey>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [showKpis, setShowKpis] = useState<boolean>(false);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -371,40 +375,62 @@ export default function HitlReviewWorkspacePage() {
       needsAttentionCount={summary?.ledger_summary.needs_attention_count ?? 0}
     >
       <div className="space-y-6">
-        {/* Top KPI Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            icon={Send}
-            label={t("kpi.dispatched")}
-            value={String(summary?.ledger_summary.total_dispatched ?? counts.sent)}
-            subtext={t("kpi.dispatched_sub")}
-            variant="primary"
-            testId="kpi-dispatched"
-          />
-          <StatCard
-            icon={MessageSquare}
-            label={t("kpi.replied")}
-            value={String(summary?.ledger_summary.total_replied ?? 0)}
-            subtext={t("kpi.replied_sub")}
-            variant="positive"
-            testId="kpi-replied"
-          />
-          <StatCard
-            icon={AlertCircle}
-            label={t("kpi.urgent")}
-            value={String(summary?.ledger_summary.needs_attention_count ?? 0)}
-            subtext={t("kpi.urgent_sub")}
-            variant="urgent"
-            testId="kpi-urgent"
-          />
-          <StatCard
-            icon={ShieldCheck}
-            label={t("kpi.blocked")}
-            value={String(summary?.ledger_summary.total_blocked ?? counts.blocked)}
-            subtext={t("kpi.blocked_sub")}
-            variant="default"
-            testId="kpi-blocked"
-          />
+        {/* Collapsible KPI Summary Cards */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => setShowKpis((prev) => !prev)}
+              data-testid="toggle-kpis-btn"
+              aria-expanded={showKpis}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors shadow-xs cursor-pointer"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>{showKpis ? t("workspace.hide_metrics") : t("workspace.show_metrics")}</span>
+              {showKpis ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
+
+          {showKpis && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                icon={Send}
+                label={t("kpi.dispatched")}
+                value={String(summary?.ledger_summary.total_dispatched ?? counts.sent)}
+                subtext={t("kpi.dispatched_sub")}
+                variant="primary"
+                testId="kpi-dispatched"
+              />
+              <StatCard
+                icon={MessageSquare}
+                label={t("kpi.replied")}
+                value={String(summary?.ledger_summary.total_replied ?? 0)}
+                subtext={t("kpi.replied_sub")}
+                variant="positive"
+                testId="kpi-replied"
+              />
+              <StatCard
+                icon={AlertCircle}
+                label={t("kpi.urgent")}
+                value={String(summary?.ledger_summary.needs_attention_count ?? 0)}
+                subtext={t("kpi.urgent_sub")}
+                variant="urgent"
+                testId="kpi-urgent"
+              />
+              <StatCard
+                icon={ShieldCheck}
+                label={t("kpi.blocked")}
+                value={String(summary?.ledger_summary.total_blocked ?? counts.blocked)}
+                subtext={t("kpi.blocked_sub")}
+                variant="default"
+                testId="kpi-blocked"
+              />
+            </div>
+          )}
         </div>
 
         {/* Search Bar & Action Controls */}

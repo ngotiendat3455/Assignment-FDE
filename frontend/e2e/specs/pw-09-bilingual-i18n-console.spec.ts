@@ -14,7 +14,7 @@ test.describe("PW-09: Bilingual EN <-> VI & Zero Console Errors", () => {
       page,
       "STEP 1: Switch EN -> VI & Verify Workspace + Modal Localization",
       "Login -> User menu -> VI -> check Vietnamese headings & Review Modal CTA",
-      "Heading 'Bàn duyệt Ứng viên HITL' and 'Phê duyệt' rendered without raw keys"
+      "Heading 'Duyệt ứng viên' and 'Phê duyệt' rendered without raw keys"
     );
     await new LoginPage(page).loginAsPartner();
     const workspace = new WorkspacePage(page);
@@ -23,7 +23,7 @@ test.describe("PW-09: Bilingual EN <-> VI & Zero Console Errors", () => {
     await page.getByTestId("user-menu-btn").click();
     await page.getByTestId("lang-vi-btn").click();
     await expect(
-      page.getByRole("heading", { name: "Bàn duyệt Ứng viên HITL" })
+      page.getByRole("heading", { name: "Duyệt ứng viên" })
     ).toBeVisible();
     await expect(page.getByTestId("filter-pill-ALL")).toContainText("Tất cả Ứng viên");
 
@@ -49,7 +49,7 @@ test.describe("PW-09: Bilingual EN <-> VI & Zero Console Errors", () => {
     await page.getByTestId("lang-en-btn").click();
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: "HITL Review Workspace" })
+      page.getByRole("heading", { name: "Candidate Review" })
     ).toBeVisible();
   });
 });

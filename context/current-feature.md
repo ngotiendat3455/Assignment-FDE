@@ -166,6 +166,10 @@
 
 ---
 
-## 3. Next Immediate Steps (Feature 07: Verification & Handover)
-1. **Finalize Feature 07 ([`07-verification-and-handover.md`](file:///d:/AssignmentFDE/context/features/07-verification-and-handover.md)):**
-   - Complete final README / turnkey verification, startup docs, and handover checklist.
+## 3. Next Immediate Steps (Feature 07: Live Verification, Reset, Docker & AWS Deployment)
+1. **Execute Rebuilt Feature 07 ([`07-verification-and-handover.md`](file:///d:/AssignmentFDE/context/features/07-verification-and-handover.md)):**
+   - **7.1:** Clean User-Only DB Reset (`backend/reset_clean_users.py`).
+   - **7.2:** Live X & AI API Key Verification Suite (`verify_live_keys.py`) + `LIVE_X` real DM dispatch completion.
+   - **7.3:** Docker Images (FE Standalone + BE FastAPI) & `docker-compose.yml`.
+   - **7.4:** Manual QA Checklist Execution (`MQ-A1` -> `MQ-F2`).
+   - **7.5:** AWS Terraform Multi-Environment Design & IaC (`dev` / `staging` / `prod`).

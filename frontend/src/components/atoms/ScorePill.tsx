@@ -10,6 +10,70 @@ export interface ScorePillProps {
   className?: string;
 }
 
+type ScoreBadgeConfig = {
+  label: string;
+  title: string;
+  pillClasses: string;
+  iconColor: string;
+  Icon: React.ComponentType<{ className?: string }>;
+};
+
+function getScoreConfig(score: number | null | undefined): ScoreBadgeConfig {
+  if (score === null || score === undefined) {
+    return {
+      label: "-- / 4",
+      title: "Unscored",
+      pillClasses: "font-medium bg-muted text-muted-foreground border-border",
+      iconColor: "",
+      Icon: HelpCircle,
+    };
+  }
+  if (score >= 4) {
+    return {
+      label: "4 / 4",
+      title: "Score 4/4: Exceptional DeepTech Fit",
+      pillClasses: "font-semibold bg-emerald-100 text-emerald-900 border-emerald-300",
+      iconColor: "text-emerald-700",
+      Icon: Sparkles,
+    };
+  }
+  if (score === 3) {
+    return {
+      label: "3 / 4",
+      title: "Score 3/4: Strong Application Fit",
+      pillClasses: "font-semibold bg-blue-100 text-blue-900 border-blue-300",
+      iconColor: "text-blue-700",
+      Icon: CheckCircle2,
+    };
+  }
+  if (score === 2) {
+    return {
+      label: "2 / 4",
+      title: "Score 2/4: Weak Fit / Chatbot Wrapper",
+      pillClasses: "font-medium bg-amber-100 text-amber-900 border-amber-300",
+      iconColor: "text-amber-700",
+      Icon: AlertTriangle,
+    };
+  }
+  if (score === 1) {
+    return {
+      label: "1 / 4",
+      title: "Score 1/4: Noise / Adversarial Injection",
+      pillClasses: "font-medium bg-red-100 text-red-900 border-red-300",
+      iconColor: "text-red-700",
+      Icon: ShieldAlert,
+    };
+  }
+  return {
+    label: "0 / 4",
+    title: "Score 0/4: Sparse Profile / Insufficient Evidence",
+    pillClasses: "font-medium bg-gray-100 text-gray-700 border-gray-300",
+    iconColor: "text-gray-500",
+    Icon: AlertTriangle,
+  };
+}
+
+/** Displays a single-line AI fit score badge (0/4 to 4/4 or unscored). */
 export const ScorePill: React.FC<ScorePillProps> = ({
   score,
   showIcon = true,
@@ -17,79 +81,15 @@ export const ScorePill: React.FC<ScorePillProps> = ({
   className = "",
 }) => {
   const sizeClasses = size === "sm" ? "text-xs px-2 py-0.5" : "text-sm px-2.5 py-1";
+  const { label, title, pillClasses, iconColor, Icon } = getScoreConfig(score);
 
-  if (score === null || score === undefined) {
-    return (
-      <span
-        className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-muted text-muted-foreground border border-border ${sizeClasses} ${className}`}
-        title="Unscored"
-      >
-        {showIcon && <HelpCircle className="w-3.5 h-3.5" />}
-        <span>-- / 4</span>
-      </span>
-    );
-  }
-
-  // Score 4: DeepTech / Exceptional Match
-  if (score >= 4) {
-    return (
-      <span
-        className={`inline-flex items-center gap-1.5 font-semibold rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 ${sizeClasses} ${className}`}
-        title="Score 4/4: Exceptional DeepTech Fit"
-      >
-        {showIcon && <Sparkles className="w-3.5 h-3.5 text-emerald-700" />}
-        <span>4 / 4</span>
-      </span>
-    );
-  }
-
-  // Score 3: Strong Application Match
-  if (score === 3) {
-    return (
-      <span
-        className={`inline-flex items-center gap-1.5 font-semibold rounded-full bg-blue-100 text-blue-900 border border-blue-300 ${sizeClasses} ${className}`}
-        title="Score 3/4: Strong Application Fit"
-      >
-        {showIcon && <CheckCircle2 className="w-3.5 h-3.5 text-blue-700" />}
-        <span>3 / 4</span>
-      </span>
-    );
-  }
-
-  // Score 2: Weak / Wrapper
-  if (score === 2) {
-    return (
-      <span
-        className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-amber-100 text-amber-900 border border-amber-300 ${sizeClasses} ${className}`}
-        title="Score 2/4: Weak Fit / Chatbot Wrapper"
-      >
-        {showIcon && <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />}
-        <span>2 / 4</span>
-      </span>
-    );
-  }
-
-  // Score 1: Noise / Adversarial Injection
-  if (score === 1) {
-    return (
-      <span
-        className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-red-100 text-red-900 border border-red-300 ${sizeClasses} ${className}`}
-        title="Score 1/4: Noise / Adversarial Injection"
-      >
-        {showIcon && <ShieldAlert className="w-3.5 h-3.5 text-red-700" />}
-        <span>1 / 4</span>
-      </span>
-    );
-  }
-
-  // Score 0: Sparse / Insufficient Evidence
   return (
     <span
-      className={`inline-flex items-center gap-1.5 font-medium rounded-full bg-gray-100 text-gray-700 border border-gray-300 ${sizeClasses} ${className}`}
-      title="Score 0/4: Sparse Profile / Insufficient Evidence"
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 rounded-full border ${pillClasses} ${sizeClasses} ${className}`}
+      title={title}
     >
-      {showIcon && <AlertTriangle className="w-3.5 h-3.5 text-gray-500" />}
-      <span>0 / 4</span>
+      {showIcon && <Icon className={`w-3.5 h-3.5 shrink-0 ${iconColor}`} />}
+      <span>{label}</span>
     </span>
   );
 };
