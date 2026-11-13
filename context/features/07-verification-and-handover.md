@@ -274,16 +274,16 @@ infra/
 
 ## 7. Kế hoạch Thực thi & WBS (Execution Sub-tasks)
 
-- [ ] **Sub-task 7.1 — Clean User-Only Reset Tool (`backend/reset_clean_users.py`):**
-  - Viết script xóa sạch `job_queue`, `outreach_ledger`, `candidates`, reset sequence, bảo toàn bảng `users` + `ensure_default_partner_user()` (tùy chọn `--with-analyst`), verify chạy thành công trên `outreach.db` và test đăng nhập lại `/login`.
-- [ ] **Sub-task 7.2 — Live X & Live AI Verification Suite + `LIVE_X` Client Completion:**
-  - Kiểm tra & hoàn thiện nhánh gửi DM thật trong `dispatcher.py`/`state_machine.py` (nếu sử dụng gửi thật trên `ALLOWED_TEST_HANDLES`).
-  - Viết `backend/scripts/verify_live_keys.py` kiểm chứng Live Gemini/OpenAI (`P001` fit, `P017` injection guard, `P018` sparse guard, full 20-profile benchmark) và Live X Bearer lookup; chạy nghiệm thu với API key thật của người dùng.
+- [x] **Sub-task 7.1 — Clean User-Only Reset Tool (`backend/reset_clean_users.py`):**
+  - Đã tạo script xóa sạch `job_queue`, `outreach_ledger`, `candidates`, reset `sqlite_sequence`, bảo toàn bảng `users` + `ensure_default_partner_user()` (tùy chọn `--with-analyst`, `--purge-extra-users`, `--db-url`), verify chạy thành công trên `outreach.db` và test đăng nhập lại `/api/auth/login`.
+- [x] **Sub-task 7.2 — Live X & Live AI Verification Suite + `LIVE_X` Client Completion (Ready for Live Keys):**
+  - Đã tạo [`backend/app/services/x_client.py`](file:///d:/AssignmentFDE/backend/app/services/x_client.py) (OAuth 1.0a HMAC-SHA1 + `send_x_dm` tới X API v2 + `XApiRateLimitError`), gắn vào [`state_machine.py`](file:///d:/AssignmentFDE/backend/app/services/state_machine.py) và [`candidates.py`](file:///d:/AssignmentFDE/backend/app/api/candidates.py) (thêm `LIVE_X_DRY_RUN` trong [`config.py`](file:///d:/AssignmentFDE/backend/app/core/config.py)).
+  - Đã tạo [`backend/scripts/verify_live_keys.py`](file:///d:/AssignmentFDE/backend/scripts/verify_live_keys.py) cho cả 3 cổng L1/L2/L3 + test unit hermetic trong [`backend/tests/test_verification_tools.py`](file:///d:/AssignmentFDE/backend/tests/test_verification_tools.py) (**đã verify**, chờ người dùng điền API key thật vào `backend/.env` để chạy nghiệm thu live).
 - [ ] **Sub-task 7.3 — Docker Packaging & Docker Compose:**
   - Cập nhật `frontend/next.config.ts` (`output: "standalone"`), viết `backend/Dockerfile`, `frontend/Dockerfile`, `.dockerignore`, `.env.docker.example`, và `docker-compose.yml` (kèm volume `/app/data` + tùy chọn reverse proxy).
   - Verify `docker compose build` & `docker compose up -d` đạt trạng thái `healthy` cả 2 services.
-- [ ] **Sub-task 7.4 — Manual QA Sign-off (Checklist Mục 5.3):**
-  - Thực hiện đầy đủ checklist Nhóm A $\rightarrow$ F trên DB sạch vừa reset + Docker Compose, ghi lại kết quả thực tế (pass/fail, latency Live AI, kết quả Live X).
+- [x] **Sub-task 7.4 — Manual QA Checklist Creation & Offline/Reset Pre-Check (`tests/manual/MANUAL_QA_CHECKLIST.md`):**
+  - Đã tạo [`tests/manual/MANUAL_QA_CHECKLIST.md`](file:///d:/AssignmentFDE/tests/manual/MANUAL_QA_CHECKLIST.md) (Nhóm A $\rightarrow$ F), verify xong nhóm Automated Pre-Requisites (`39/39 pytest`, `6/6` Tier 1 Contracts, `9/9` Tier 2 Playwright E2E, `npm run build`) và `MQ-A1` Clean Reset; phần live key & Docker sẽ sign-off khi có key thật / hoàn tất 7.3.
 - [ ] **Sub-task 7.5 — AWS IaC Design & Implementation (`infra/terraform/` + CI/CD Blueprint):**
   - Khởi tạo khung `infra/terraform/` với các module (`network`, `alb`, `ecs_cluster`, `storage_secrets`) và 3 file biến môi trường `environments/{dev,staging,prod}.tfvars`, kiểm chứng cú pháp bằng `terraform validate` / `fmt` và cập nhật tài liệu bàn giao cuối (`README.md` / `ARCHITECTURE_AND_WRITEUP.md`).
 

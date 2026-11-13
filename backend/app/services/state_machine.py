@@ -9,6 +9,10 @@ from backend.app.core.config import settings
 from backend.app.models.candidate import Candidate, CandidateStatus
 from backend.app.models.ledger import OutreachLedger, OutreachStatus
 from backend.app.models.queue import JobQueue, JobStatus
+from backend.app.services.x_client import (
+    has_x_oauth_credentials,
+    send_x_dm,
+)
 
 
 class StateTransitionError(ValueError):
@@ -237,6 +241,16 @@ def approve_and_send_candidate(
 
     final_idem_key = idempotency_key or f"dm-{candidate.id}-{uuid.uuid4().hex}"
 
+    # --- Dispatch externally if LIVE_X mode with OAuth credentials and not dry-run ---
+    external_dm_id = f"sim_dm_{candidate.id}_{uuid.uuid4().hex[:6]}"
+    if normalized_mode == "LIVE_X" and has_x_oauth_credentials() and not settings.LIVE_X_DRY_RUN:
+        live_resp = send_x_dm(
+            handle=candidate.handle,
+            message=final_message,
+            x_user_id=candidate.x_user_id,
+        )
+        external_dm_id = live_resp["dm_event_id"]
+
     # --- TIER 2: Atomic Database Transaction with Unique Constraints ---
     try:
         # Transition through APPROVED_QUEUED -> SENT
@@ -249,8 +263,8 @@ def approve_and_send_candidate(
             handle=candidate.handle,
             idempotency_key=final_idem_key,
             sent_message=final_message,
-            dispatch_mode=dispatch_mode,
-            external_dm_id=f"sim_dm_{candidate.id}_{uuid.uuid4().hex[:6]}",
+            dispatch_mode=normalized_mode,
+            external_dm_id=external_dm_id,
             sent_by_user_id=sent_by_user_id,
             sent_at=datetime.now(timezone.utc),
             status=OutreachStatus.SENT.value,

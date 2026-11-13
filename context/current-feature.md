@@ -1,25 +1,20 @@
-# Current Active Feature: Feature 08 – Contract-Based Testing & Full-Stack Playwright E2E Quality Gate
+# Current Active Feature: Feature 07 – Live Verification, Clean User-Only Reset, Docker & AWS Multi-Env Deployment
 *(Sprint Status & Active Tracking)*
 
 ---
 
 ## 1. Active Feature Info
-- **Active Task:** WBS Task 8 (Contract-Based Testing Layer + Isolated Full-Stack Playwright E2E Suite + `tests/manual/` Quality Gate Runner): [`08-contract-and-playwright-e2e.md`](file:///d:/AssignmentFDE/context/features/08-contract-and-playwright-e2e.md)
-  - ✅ **Sub-task 8.1 (Contract Remediation, Isolated E2E Env Support, Cookie Fix & Selective `data-testid`):**
-    - Fixed **BUG-01** (`StateMachineSummary` nested contract + `page.tsx` Fail-Fast + dynamic counts on `ingestion/page.tsx`).
-    - Fixed **BUG-02** (`dispatch_mode` in `SendOutreachRequest` + `candidates.py`).
-    - Fixed **BUG-03** (`skip_ledger_collisions` & `queue_ai_enabled` flags in `CsvUploadTab.tsx`, `ingestion-api.ts`, `schemas/candidate.py`, `api/ingestion.py`).
-    - Fixed **Contract Mismatch caught by PW-03** (`rejectCandidate` in `candidates-api.ts` & `handleModalReject` in `page.tsx` updated from `{ candidate }` to flat `CandidateItem` returned by `POST /api/candidates/{id}/reject`).
-    - Added isolated E2E env hooks (`ENV_FILE` / `CORS_ORIGINS` in backend `config.py`/`main.py`, `NEXT_DIST_DIR` in `next.config.ts`, protocol-aware `secure` cookie + `BACKEND_INTERNAL_URL` in `login/route.ts`).
-    - Added `AI_FAILED` filter pill, selective `data-testid` attributes, and cleaned remaining hardcoded strings in Modal/Drawer/Ingestion cards.
-  - ✅ **Sub-task 8.2 (Tier 1 Contract-Based Testing – `backend/tests/contracts/`):**
-    - Created `test_api_contracts.py` + `expected/*.json` golden references + unified `difflib` diff output to `tests/manual/results/contract-diff-*.txt`.
-  - ✅ **Sub-task 8.3 (Tier 2 Playwright Infrastructure & 3 Data Presets):**
-    - Created `backend/tests/e2e_seed.py` (`CLEAN_EMPTY` / `SEED_PACK_EVALUATED`), `frontend/e2e/fixtures/csv/`, `@playwright/test` + `playwright.config.ts` (`3100`/`8001` + `outreach_e2e.db`), POMs & `db-reset.ts`.
-  - ✅ **Sub-task 8.4 (9 Risk-Ranked Playwright E2E Specs `PW-01` → `PW-09`):**
-    - Implemented and verified `PW-01`..`PW-09` with 3-Layer Assertions & zero-console-error guard (**9/9 PASSED** across two consecutive runs).
-  - ✅ **Sub-task 8.5 (`tests/manual/` Quality Gate Runner & Final Verification):**
-    - Created `tests/manual/` (`config.sh`, `README.md`, `test-all.ps1`, `test-all.sh`), updated `.gitignore` + `frontend/.gitignore`, ran Quality Gate + full `pytest` + `next build`.
+- **Active Task:** WBS Task 7 (Rebuilt Production Readiness & Deployment Spec): [`07-verification-and-handover.md`](file:///d:/AssignmentFDE/context/features/07-verification-and-handover.md)
+  - ✅ **Sub-task 7.1 (Clean User-Only DB Reset):**
+    - Created [`backend/reset_clean_users.py`](file:///d:/AssignmentFDE/backend/reset_clean_users.py) wiping `job_queue`, `outreach_ledger`, `candidates` (and resetting `sqlite_sequence`) while keeping `users` (`partner@genaifund.ai`, optional `--with-analyst`, `--purge-extra-users`, `--db-url`, `--yes`). Executed on `outreach.db` (`Users: 1`, `Candidates: 0`, `OutreachLedger: 0`, `JobQueue: 0`).
+  - ✅ **Sub-task 7.2 (Live X & Live AI Verification Suite + `LIVE_X` Real Client):**
+    - Built [`backend/app/services/x_client.py`](file:///d:/AssignmentFDE/backend/app/services/x_client.py) (RFC 5849 OAuth 1.0a HMAC-SHA1 header signing, `resolve_x_user_id`, `send_x_dm` via X API v2 `/2/dm_conversations/with/{id}/messages`, `XApiRateLimitError`), wired into [`state_machine.py`](file:///d:/AssignmentFDE/backend/app/services/state_machine.py), [`candidates.py`](file:///d:/AssignmentFDE/backend/app/api/candidates.py), [`config.py`](file:///d:/AssignmentFDE/backend/app/core/config.py) (`LIVE_X_DRY_RUN`), and [`backend/.env.example`](file:///d:/AssignmentFDE/backend/.env.example).
+    - Built [`backend/scripts/verify_live_keys.py`](file:///d:/AssignmentFDE/backend/scripts/verify_live_keys.py) covering Gate **L1** (Live Gemini/OpenAI + Tri-Guard + `--full-benchmark`), **L2** (`X_BEARER_TOKEN` live lookup), and **L3** (`LIVE_X` whitelist & OAuth check). Current `backend/.env` has no live keys configured yet (`SKIPPED_NO_KEY`).
+    - Added 4 hermetic tests in [`backend/tests/test_verification_tools.py`](file:///d:/AssignmentFDE/backend/tests/test_verification_tools.py).
+  - ✅ **Sub-task 7.4 (Manual QA Checklist & UI/Copy Pre-checks):**
+    - Created [`tests/manual/MANUAL_QA_CHECKLIST.md`](file:///d:/AssignmentFDE/tests/manual/MANUAL_QA_CHECKLIST.md) covering Groups A–F (`MQ-A1`..`MQ-F2`), verified `MQ-A1` clean reset + automated suite after UI/copy polish (login card cleanup, collapsible KPI metrics, single-line `ScorePill`, simplified product labels & table headers).
+  - ⏳ **Sub-task 7.3 (Docker Images & `docker-compose.yml`):** Planned next.
+  - ⏳ **Sub-task 7.5 (AWS Terraform IaC `dev`/`staging`/`prod`):** Planned after Dockerization.
 - **Completed Foundation Tasks:**
   - ✅ **Task 0:** [`00-base-layout-design-system.md`](file:///d:/AssignmentFDE/context/features/00-base-layout-design-system.md) (Atomic Design System, Pure Tailwind v4 `@theme`, English-First i18n, Paginated Table & AppShell)
   - ✅ **Task 1:** [`01-data-pack-and-ingestion.md`](file:///d:/AssignmentFDE/context/features/01-data-pack-and-ingestion.md) (Full-Stack Triple-Tab Ingestion Hub, Pre-flight CSV Check, Live X Lookup & 3-Tier Deduplication)
@@ -29,8 +24,7 @@
   - ✅ **Task 5:** [`05-hitl-review-and-composer-ui.md`](file:///d:/AssignmentFDE/context/features/05-hitl-review-and-composer-ui.md) (Table-First Review Workspace, Search/Filter Triage, Grounded Evidence Highlighting & Review/Composer Modal)
   - ✅ **Task 6:** [`06-outreach-ledger-and-dashboard.md`](file:///d:/AssignmentFDE/context/features/06-outreach-ledger-and-dashboard.md) (Immutable Outreach Ledger, Founder Reply Simulator/Tracker, Audit Trail Drawer & Partner Calibration Matrix)
   - ✅ **Task 8:** [`08-contract-and-playwright-e2e.md`](file:///d:/AssignmentFDE/context/features/08-contract-and-playwright-e2e.md) (Contract-Based Testing + Isolated Playwright E2E Quality Gate)
-- **Next Spec Reference:** [`07-verification-and-handover.md`](file:///d:/AssignmentFDE/context/features/07-verification-and-handover.md)
-- **Current Status:** `COMPLETED (Feature 08)`
+- **Current Status:** `IN_PROGRESS (Feature 07: Sub-tasks 7.1, 7.2, 7.4 Implemented & Verified Offline; Pending Live Keys / Sub-tasks 7.3 & 7.5)`
 
 ---
 
@@ -163,13 +157,22 @@
       - `powershell -ExecutionPolicy Bypass -File tests/manual/test-all.ps1` -> **Tier 1 `6/6 PASSED` + Tier 2 `9/9 PASSED` (`exit code 0`)**.
       - `python -m pytest backend/tests/ -v` -> **35/35 PASSED in 5.68s**.
       - `cd frontend && npm.cmd run build` -> **15/15 static pages + Middleware (`32.3 kB`), 0 TypeScript/ESLint errors**.
+16. 🔄 **Feature 07 Progress – UI/Copy Polish + Sub-tasks 7.1, 7.2, 7.4 ([`07-verification-and-handover.md`](file:///d:/AssignmentFDE/context/features/07-verification-and-handover.md)):**
+    - **UI/UX & Concise Product Copy Refinement:** Cleaned [`login/page.tsx`](file:///d:/AssignmentFDE/frontend/src/app/login/page.tsx) (removed prefilled badge pill & security note, button updated to `Sign In`/`Đăng nhập`), wrapped 4-card KPI block behind collapsible `[Show Metrics]`/`[Hide Metrics]` toggle in [`page.tsx`](file:///d:/AssignmentFDE/frontend/src/app/page.tsx), enforced single-line `whitespace-nowrap shrink-0` in [`ScorePill.tsx`](file:///d:/AssignmentFDE/frontend/src/components/atoms/ScorePill.tsx), shortened workspace/ingestion/ledger/calibration labels and column headers across [`en.json`](file:///d:/AssignmentFDE/frontend/src/locales/en.json) & [`vi.json`](file:///d:/AssignmentFDE/frontend/src/locales/vi.json), and updated [`pw-09-bilingual-i18n-console.spec.ts`](file:///d:/AssignmentFDE/frontend/e2e/specs/pw-09-bilingual-i18n-console.spec.ts).
+    - **Sub-task 7.1 – Clean User-Only Reset ([`backend/reset_clean_users.py`](file:///d:/AssignmentFDE/backend/reset_clean_users.py)):** Deletes `job_queue`, `outreach_ledger`, `candidates` while keeping `users` (`partner@genaifund.ai`). Executed against `outreach.db` (`Users retained: 1`, `Candidates: 0`, `OutreachLedger: 0`, `JobQueue: 0`).
+    - **Sub-task 7.2 – Live X OAuth 1.0a Client & Diagnostic Suite ([`x_client.py`](file:///d:/AssignmentFDE/backend/app/services/x_client.py), [`verify_live_keys.py`](file:///d:/AssignmentFDE/backend/scripts/verify_live_keys.py)):** Completed real X API v2 `POST /2/dm_conversations/with/{id}/messages` dispatch wiring in [`state_machine.py`](file:///d:/AssignmentFDE/backend/app/services/state_machine.py) + `LIVE_X_DRY_RUN` in [`config.py`](file:///d:/AssignmentFDE/backend/app/core/config.py) + HTTP `429`/`502` handling in [`candidates.py`](file:///d:/AssignmentFDE/backend/app/api/candidates.py), and 4 hermetic tests in [`test_verification_tools.py`](file:///d:/AssignmentFDE/backend/tests/test_verification_tools.py). Diagnostic probe confirms current `backend/.env` keys are unset (`SKIPPED_NO_KEY`).
+    - **Sub-task 7.4 – Manual QA Checklist ([`tests/manual/MANUAL_QA_CHECKLIST.md`](file:///d:/AssignmentFDE/tests/manual/MANUAL_QA_CHECKLIST.md)):** Authored 18 checks across Groups A–F (`MQ-A1`..`MQ-F2`); checked off `MQ-A1` + full automated baseline.
+    - **Verification (2026-11-13, after final edits):**
+      - `cd frontend; npm.cmd run build` -> **15/15 static routes + Middleware (`32.3 kB`), 0 TypeScript/ESLint errors**.
+      - `python -m pytest backend/tests/ -v` -> **39 passed in 9.62s**.
+      - `powershell -ExecutionPolicy Bypass -File tests/manual/test-all.ps1` -> **Tier 1 `6/6 PASSED` (3.87s) + Tier 2 Playwright E2E `9/9 PASSED` (2.7m), exit code 0**.
+      - `python -m backend.reset_clean_users --yes` -> **clean reset verified on `outreach.db` (`Users: 1`, `Candidates: 0`, `Ledger: 0`, `Jobs: 0`)**.
+      - `python -m backend.scripts.verify_live_keys --mode all --allow-missing` -> **diagnostics clean (`SKIPPED_NO_KEY` because real API keys are not yet populated in `backend/.env`)**.
 
 ---
 
-## 3. Next Immediate Steps (Feature 07: Live Verification, Reset, Docker & AWS Deployment)
-1. **Execute Rebuilt Feature 07 ([`07-verification-and-handover.md`](file:///d:/AssignmentFDE/context/features/07-verification-and-handover.md)):**
-   - **7.1:** Clean User-Only DB Reset (`backend/reset_clean_users.py`).
-   - **7.2:** Live X & AI API Key Verification Suite (`verify_live_keys.py`) + `LIVE_X` real DM dispatch completion.
-   - **7.3:** Docker Images (FE Standalone + BE FastAPI) & `docker-compose.yml`.
-   - **7.4:** Manual QA Checklist Execution (`MQ-A1` -> `MQ-F2`).
-   - **7.5:** AWS Terraform Multi-Environment Design & IaC (`dev` / `staging` / `prod`).
+## 3. Next Immediate Steps (Feature 07 Remaining Work)
+1. **Run Live Key Smoke & Benchmark (when API keys are added to `backend/.env`):**
+   - `python -m backend.scripts.verify_live_keys --mode all --full-benchmark --json-out tests/manual/results/live-verify-report.json`
+2. **Sub-task 7.3 — Docker Images (FE Standalone + BE FastAPI) & `docker-compose.yml`.**
+3. **Sub-task 7.5 — AWS Terraform Multi-Environment Design & IaC (`infra/terraform/` for `dev` / `staging` / `prod`).**

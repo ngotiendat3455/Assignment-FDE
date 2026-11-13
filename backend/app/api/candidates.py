@@ -20,6 +20,7 @@ from backend.app.services.state_machine import (
     SendBlockedError,
     StateTransitionError,
 )
+from backend.app.services.x_client import XApiDispatchError, XApiRateLimitError
 
 router = APIRouter(
     prefix="/candidates",
@@ -150,6 +151,10 @@ def send_candidate_dm(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except SendBlockedError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except XApiRateLimitError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except XApiDispatchError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/{candidate_id}/reject")

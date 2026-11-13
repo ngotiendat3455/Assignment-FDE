@@ -47,15 +47,26 @@ class Settings:
 
     # Dispatch & Safety
     DISPATCH_MODE: str = os.getenv("DISPATCH_MODE", "SANDBOX").upper()
+    LIVE_X_DRY_RUN: bool = os.getenv("LIVE_X_DRY_RUN", "False").lower() in ("true", "1", "yes")
     _allowed_test_handles: str = os.getenv("ALLOWED_TEST_HANDLES", "linhtran_robo,minh_quant,test_builder_sea")
 
     @property
     def ALLOWED_TEST_HANDLES(self) -> List[str]:
         return [h.strip().lower().lstrip("@") for h in self._allowed_test_handles.split(",") if h.strip()]
 
-    # LLM API Keys
+    # LLM API Keys & Models
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+    GEMINI_FALLBACK_MODELS: List[str] = [
+        m.strip()
+        for m in os.getenv(
+            "GEMINI_FALLBACK_MODELS",
+            "gemini-3.1-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite",
+        ).split(",")
+        if m.strip()
+    ]
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
     # X API v2 Keys
     X_BEARER_TOKEN: str = os.getenv("X_BEARER_TOKEN", "")
