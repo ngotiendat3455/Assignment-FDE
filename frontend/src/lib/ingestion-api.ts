@@ -26,16 +26,33 @@ export function normalizeHandleClient(raw: string): string {
   return cleaned.replace(/^@+/, "").trim().toLowerCase();
 }
 
-async function handleApiResponse<T>(res: Response): Promise<T> {
-  if (res.status === 401 && typeof window !== "undefined") {
-    window.location.href = "/login";
-    throw new Error("Unauthorized (401)");
+export class ApiRequestError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
   }
+}
+
+async function handleApiResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const errData = (await res.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(
-      errData.detail || `API Error: ${res.status} ${res.statusText}`
-    );
+    const detail =
+      errData.detail || `API Error: ${res.status} ${res.statusText}`;
+
+    // Only treat 401 as an expired app session when it is NOT an upstream X API credential error.
+    if (
+      res.status === 401 &&
+      !detail.startsWith("[X API") &&
+      typeof window !== "undefined"
+    ) {
+      window.location.href = "/login";
+      throw new ApiRequestError(401, "Unauthorized (401)");
+    }
+
+    throw new ApiRequestError(res.status, detail);
   }
   return (await res.json()) as T;
 }

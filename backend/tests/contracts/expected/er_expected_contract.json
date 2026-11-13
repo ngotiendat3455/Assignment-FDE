@@ -1,0 +1,380 @@
+{
+  "contract_version": "1.0.0",
+  "er_data_packing_contract": {
+    "cross_batch_timeline_t1_t2_t3": {
+      "t1_first_batch_seed_or_csv": {
+        "historical_ledger_protected": 3,
+        "new_candidates_queued_for_ai": 16
+      },
+      "t2_intermediate_pipeline_progression": {
+        "linhtran_robo_ledger_status_before_batch2": "REPLIED",
+        "minh_quant_status_before_batch2": "PENDING_REVIEW"
+      },
+      "t3_queue_ai_disabled_and_job_invariant_ct04": {
+        "e2e_contract_new_stayed_queued_for_ai": true,
+        "jobs_spawned_only_for_new_uncontacted_candidate": true,
+        "linhtran_robo_preserved_replied": true
+      },
+      "t3_second_csv_upload_3tier_gatekeeper_pw07": {
+        "batch_metrics": {
+          "already_contacted_in_ledger": 1,
+          "already_in_db_skipped": 2,
+          "collision_details": [
+            {
+              "handle": "linhtran_robo",
+              "status": "REPLIED"
+            }
+          ],
+          "duplicate_handles": [
+            "minh_quant"
+          ],
+          "imported": 1,
+          "in_batch_duplicates_skipped": 1,
+          "queued_for_ai_count": 1,
+          "total_rows": 4
+        },
+        "per_row_derived_audit_states": [
+          {
+            "already_contacted": false,
+            "audit_state": "ALREADY_EXISTS_IN_DB",
+            "initial_pipeline_status": null,
+            "normalized_handle": "minh_quant"
+          },
+          {
+            "already_contacted": null,
+            "audit_state": "SKIPPED_IN_BATCH_DUPLICATE",
+            "initial_pipeline_status": null,
+            "normalized_handle": "minh_quant"
+          },
+          {
+            "already_contacted": true,
+            "audit_state": "HISTORICAL_COLLISION",
+            "initial_pipeline_status": null,
+            "normalized_handle": "linhtran_robo"
+          },
+          {
+            "already_contacted": false,
+            "audit_state": "IMPORTED",
+            "initial_pipeline_status": "QUEUED_FOR_AI",
+            "normalized_handle": "e2e_fresh_builder"
+          }
+        ],
+        "post_batch2_db_invariants": {
+          "replied_count_preserved": 2,
+          "sent_count_preserved": 1,
+          "total_unique_candidates": 20
+        }
+      }
+    },
+    "journey_1_seed_pack_20_rows": {
+      "composite_and_multivalued_attributes_verified": {
+        "linhtran_robo_composite_location": "Singapore / Ho Chi Minh City",
+        "linhtran_robo_initial_status_locked_to_replied": true,
+        "linhtran_robo_multivalued_tweets_delimited_by_double_pipe": true,
+        "minh_quant_multivalued_tweets_delimited_by_double_pipe": true
+      },
+      "ingestion_batch_derived_metrics": {
+        "already_contacted_in_ledger": 3,
+        "collision_details": [
+          {
+            "handle": "linhtran_robo",
+            "status": "REPLIED"
+          },
+          {
+            "handle": "putri_agentic",
+            "status": "SENT"
+          },
+          {
+            "handle": "harith_medai",
+            "status": "REPLIED"
+          }
+        ],
+        "duplicate_handles": [
+          "minh_quant"
+        ],
+        "in_batch_duplicates_skipped": 1,
+        "queued_for_ai_count": 16,
+        "total_rows": 20,
+        "unique_candidates_in_db": 19
+      },
+      "raw_ingestion_row_focal_audit_states": [
+        {
+          "already_contacted": true,
+          "audit_state": "HISTORICAL_COLLISION",
+          "initial_pipeline_status": null,
+          "normalized_handle": "linhtran_robo"
+        },
+        {
+          "already_contacted": true,
+          "audit_state": "HISTORICAL_COLLISION",
+          "initial_pipeline_status": null,
+          "normalized_handle": "putri_agentic"
+        },
+        {
+          "already_contacted": true,
+          "audit_state": "HISTORICAL_COLLISION",
+          "initial_pipeline_status": null,
+          "normalized_handle": "harith_medai"
+        },
+        {
+          "already_contacted": false,
+          "audit_state": "ALREADY_EXISTS_IN_DB",
+          "initial_pipeline_status": null,
+          "normalized_handle": "arjun_infer"
+        },
+        {
+          "already_contacted": null,
+          "audit_state": "SKIPPED_IN_BATCH_DUPLICATE",
+          "initial_pipeline_status": null,
+          "normalized_handle": "minh_quant"
+        },
+        {
+          "already_contacted": false,
+          "audit_state": "IMPORTED",
+          "initial_pipeline_status": "QUEUED_FOR_AI",
+          "normalized_handle": "minh_quant"
+        }
+      ]
+    },
+    "preflight_and_live_x_lookup_guards": {
+      "live_x_lookup_arjun_infer_closed_dm": {
+        "can_dm": false,
+        "existing_ledger_status": "BLOCKED",
+        "handle": "arjun_infer"
+      },
+      "live_x_lookup_linhtran_robo_already_contacted": {
+        "already_contacted": true,
+        "can_dm": true,
+        "existing_ledger_status": "REPLIED",
+        "handle": "linhtran_robo"
+      },
+      "preflight_missing_bio_guard": {
+        "error_message": "Missing required column(s): bio",
+        "missing_columns": [
+          "bio"
+        ],
+        "valid": false
+      }
+    }
+  },
+  "er_f5_f6_contract": {
+    "t1_hitl_review_and_composer_modal": {
+      "action_1_reject_low_fit_and_injection": {
+        "ledger_unchanged_at_4": true,
+        "p009_kevin_wrapper": {
+          "fit_score": 2,
+          "handle": "kevin_wrapper",
+          "new_status": "REJECTED"
+        },
+        "p017_override_bot99_prompt_injection": {
+          "draft_dm_neutralized_empty": true,
+          "fit_score": 1,
+          "handle": "override_bot99",
+          "new_status": "REJECTED",
+          "pwned_string_absent": true
+        }
+      },
+      "action_2_closed_dm_guard_p019_arjun_infer": {
+        "candidate_transitioned_to_send_blocked": true,
+        "guard_error_detail": "Cannot send DM to @arjun_infer: Recipient has DMs closed (can_dm=false). Status set to SEND_BLOCKED.",
+        "send_attempt_http_status": 422
+      },
+      "action_3_ai_assessment_draft_p002_minh_quant": {
+        "derived_char_metrics": {
+          "char_count_in_optimal_range_250_to_600": true,
+          "char_status": "OPTIMAL"
+        },
+        "fit_score": 4,
+        "handle": "minh_quant",
+        "highlighted_tweet_composite": {
+          "evidence_snippet_non_empty": true,
+          "is_verbatim_substring_of_recent_tweets": true
+        },
+        "is_match": true,
+        "message_versions_composite": {
+          "draft_dm_preserved": true,
+          "edited_dm_has_partner_addition": true,
+          "final_dm_uses_edited_dm": true
+        }
+      }
+    },
+    "t2_approve_and_send_bridge_f5_to_f6": {
+      "candidate_p002_state": {
+        "handle": "minh_quant",
+        "status": "SENT"
+      },
+      "ledger_derived_kpi_at_t2": {
+        "blocked_dm_count": 1,
+        "counts_by_tab": {
+          "all": 5,
+          "blocked": 1,
+          "needs_attention": 2,
+          "replied": 2,
+          "sent": 2
+        },
+        "dispatched_count": 4,
+        "needs_attention_count": 2,
+        "replied_count": 2,
+        "reply_rate": 50.0
+      },
+      "outreach_ledger_out_105_created": {
+        "dispatch_audit_composite": {
+          "dispatch_mode": "SANDBOX",
+          "has_external_dm_id": true,
+          "has_idempotency_key": true
+        },
+        "handle": "minh_quant",
+        "needs_attention": false,
+        "outreach_id": "OUT-105",
+        "sent_message_matches_edited_dm": true,
+        "status": "SENT"
+      },
+      "zero_double_messaging_guard_e2e_06": {
+        "error_detail": "Zero Double-Messaging Guard: @minh_quant has already been contacted (status: SENT).",
+        "second_send_http_status": 409
+      }
+    },
+    "t3_founder_reply_and_partner_resolution": {
+      "negative_guard_reply_on_blocked_out_104": {
+        "error_detail": "Cannot record a reply for @arjun_infer because DM dispatch was BLOCKED (DMs closed).",
+        "http_status": 422
+      },
+      "t3a_founder_reply_event_on_out_105": {
+        "ledger_kpi_after_reply": {
+          "dispatched_count": 4,
+          "needs_attention_count": 3,
+          "replied_count": 3,
+          "reply_rate": 75.0
+        },
+        "ledger_status": "REPLIED",
+        "needs_attention": true,
+        "outreach_id": "OUT-105",
+        "reply_text": "Sure, let's chat Tuesday in Hanoi!"
+      },
+      "t3b_partner_mark_handled_on_out_105": {
+        "candidate_minh_quant_synced_status": "REPLIED",
+        "ledger_kpi_after_handled": {
+          "dispatched_count": 4,
+          "needs_attention_count": 2,
+          "replied_count": 3,
+          "reply_rate": 75.0
+        },
+        "ledger_status_preserved": "REPLIED",
+        "needs_attention": false,
+        "outreach_id": "OUT-105",
+        "reply_text_immutable": true,
+        "sent_message_immutable": true
+      }
+    },
+    "t4_partner_calibration_matrix": {
+      "derived_kpi_cards": {
+        "aligned_count": 19,
+        "alignment_accuracy": 100.0,
+        "duplicate_rows_detected": 1,
+        "mean_score_delta": 0.0,
+        "safety_blocks_total": 2,
+        "safety_blocks_verified": 2,
+        "total_seed_rows": 20,
+        "unique_benchmarked": 19
+      },
+      "focal_benchmark_reference_rows": [
+        {
+          "ai_score": 4,
+          "badge_code": "EXACT_MATCH",
+          "case_type": "NORMAL_HIGH_FIT",
+          "handle": "minh_quant",
+          "is_aligned": true,
+          "profile_id": "P002",
+          "reference_score": 4,
+          "score_delta": 0
+        },
+        {
+          "ai_score": 2,
+          "badge_code": "EXACT_MATCH",
+          "case_type": "LOW_FIT_WRAPPER",
+          "handle": "kevin_wrapper",
+          "is_aligned": true,
+          "profile_id": "P009",
+          "reference_score": 2,
+          "score_delta": 0
+        },
+        {
+          "ai_score": 1,
+          "badge_code": "INJECTION_BLOCKED",
+          "case_type": "EDGE_PROMPT_INJECTION",
+          "handle": "override_bot99",
+          "is_aligned": true,
+          "profile_id": "P017",
+          "reference_score": 1,
+          "score_delta": 0
+        },
+        {
+          "ai_score": 0,
+          "badge_code": "SPARSE_FLAGGED",
+          "case_type": "EDGE_SPARSE_PROFILE",
+          "handle": "ghost_builder_sea",
+          "is_aligned": true,
+          "profile_id": "P018",
+          "reference_score": 0,
+          "score_delta": 0
+        },
+        {
+          "ai_score": 4,
+          "badge_code": "CLOSED_DM_CAUGHT",
+          "case_type": "EDGE_CLOSED_DM",
+          "handle": "arjun_infer",
+          "is_aligned": true,
+          "profile_id": "P019",
+          "reference_score": 4,
+          "score_delta": 0
+        },
+        {
+          "ai_score": 4,
+          "badge_code": "DUPLICATE_MERGED",
+          "case_type": "EDGE_DUPLICATE_USER",
+          "handle": "minh_quant",
+          "is_aligned": true,
+          "profile_id": "P020",
+          "reference_score": 4,
+          "score_delta": 0
+        }
+      ]
+    }
+  },
+  "schema_family": "ln-522-er-result-contract",
+  "source_specs": [
+    "testing/ER-data-packing.md",
+    "testing/ER-F5-F6.md",
+    "testing/e2e.md"
+  ],
+  "state_machine_contract": {
+    "direct_db_or_api_states_observed": [
+      "AI_FAILED",
+      "INSUFFICIENT_EVIDENCE",
+      "PENDING_REVIEW",
+      "QUEUED_FOR_AI",
+      "REJECTED",
+      "REPLIED",
+      "SEND_BLOCKED",
+      "SENT"
+    ],
+    "e2e_04_sparse_profile_p018": {
+      "draft_dm_empty": true,
+      "fit_score": 0,
+      "handle": "ghost_builder_sea",
+      "insufficient_evidence": true,
+      "status": "INSUFFICIENT_EVIDENCE"
+    },
+    "e2e_05_ai_failed_and_retry_pw06": {
+      "final_status_for_retry_founder": "PENDING_REVIEW",
+      "transitions_recorded": [
+        "`@e2e_retry_founder`: `[*]` -> `QUEUED_FOR_AI`",
+        "`@e2e_retry_founder`: `QUEUED_FOR_AI` -> `AI_FAILED`",
+        "`@e2e_retry_founder`: `AI_FAILED` -> `QUEUED_FOR_AI`",
+        "`@e2e_retry_founder`: `QUEUED_FOR_AI` -> `PENDING_REVIEW`"
+      ]
+    },
+    "synchronous_intermediate_state": "APPROVED_QUEUED",
+    "total_states_covered_including_sync_bridge": 9
+  }
+}

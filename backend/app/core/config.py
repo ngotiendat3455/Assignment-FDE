@@ -68,7 +68,8 @@ class Settings:
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-    # X API v2 Keys
+    # X API v2 Base URL & Keys (override X_API_BASE_URL for $0 local dev simulator)
+    X_API_BASE_URL: str = os.getenv("X_API_BASE_URL", "https://api.twitter.com/2")
     X_BEARER_TOKEN: str = os.getenv("X_BEARER_TOKEN", "")
     X_API_KEY: str = os.getenv("X_API_KEY", "")
     X_API_SECRET: str = os.getenv("X_API_SECRET", "")

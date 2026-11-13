@@ -56,6 +56,7 @@ import {
   markLedgerHandled,
   recordLedgerReply,
 } from "@/lib/ledger-api";
+import { fetchStateMachineSummary } from "@/lib/candidates-api";
 
 export interface LedgerDashboardClientProps {
   defaultTab?: "ledger" | "calibration";
@@ -94,6 +95,7 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
 
   const [calibrationData, setCalibrationData] =
     useState<CalibrationMatrixResponse | null>(null);
+  const [reviewQueueCount, setReviewQueueCount] = useState<number>(0);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [serverError, setServerError] = useState<boolean>(false);
@@ -109,21 +111,23 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
   const [drawerEntry, setDrawerEntry] = useState<LedgerEntryItem | null>(null);
   const [handlingId, setHandlingId] = useState<number | null>(null);
 
-  const loadAllData = useCallback(async () => {
+  const loadLedgerData = useCallback(async () => {
     setIsLoading(true);
     setServerError(false);
     try {
-      const [ledgerRes, calRes] = await Promise.all([
+      const [ledgerRes, summaryRes] = await Promise.all([
         fetchLedgerEntries({
           filter_tab: filterTab,
           search: searchQuery,
         }),
-        fetchCalibrationMatrix(),
+        fetchStateMachineSummary().catch(() => null),
       ]);
       setLedgerItems(ledgerRes.items);
       setLedgerKpi(ledgerRes.kpi);
       setFilterCounts(ledgerRes.counts);
-      setCalibrationData(calRes);
+      if (summaryRes) {
+        setReviewQueueCount(summaryRes.state_counts.PENDING_REVIEW ?? 0);
+      }
     } catch {
       setServerError(true);
     } finally {
@@ -131,12 +135,35 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
     }
   }, [filterTab, searchQuery]);
 
+  const loadCalibrationData = useCallback(async () => {
+    try {
+      const calRes = await fetchCalibrationMatrix();
+      setCalibrationData(calRes);
+    } catch {
+      setServerError(true);
+    }
+  }, []);
+
+  const loadAllData = useCallback(async () => {
+    if (activeMainTab === "calibration") {
+      await Promise.all([loadLedgerData(), loadCalibrationData()]);
+    } else {
+      await loadLedgerData();
+    }
+  }, [activeMainTab, loadLedgerData, loadCalibrationData]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      void loadAllData();
+      void loadLedgerData();
     }, 120);
     return () => clearTimeout(timer);
-  }, [loadAllData]);
+  }, [loadLedgerData]);
+
+  useEffect(() => {
+    if (activeMainTab === "calibration") {
+      void loadCalibrationData();
+    }
+  }, [activeMainTab, loadCalibrationData]);
 
   const openRecordReplyModal = (entry: LedgerEntryItem) => {
     setReplyModalEntry(entry);
@@ -261,6 +288,7 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
     <AppShell
       title={t("ledger.page_title")}
       subtitle={t("ledger.page_subtitle")}
+      reviewQueueCount={reviewQueueCount}
       needsAttentionCount={ledgerKpi.needs_attention_count}
     >
       <div className="space-y-6">

@@ -20,7 +20,46 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("genai_fund.x_client")
 
-X_API_BASE = "https://api.twitter.com/2"
+DEFAULT_X_API_BASE = "https://api.twitter.com/2"
+
+
+def get_x_api_base() -> str:
+    """Return active X API v2 base URL (real api.twitter.com/2 or local dev simulator)."""
+    raw = (getattr(settings, "X_API_BASE_URL", "") or DEFAULT_X_API_BASE).strip()
+    return (raw or DEFAULT_X_API_BASE).rstrip("/")
+
+
+def is_local_x_simulator() -> bool:
+    """True when X_API_BASE_URL points to a local HTTP simulator rather than api.twitter.com/x.com."""
+    base = get_x_api_base().lower()
+    return "127.0.0.1" in base or "localhost" in base or "0.0.0.0" in base
+
+
+def extract_x_api_error_detail(resp: httpx.Response) -> str:
+    """Parse human-readable problem detail from an X API v2 JSON/text response."""
+    try:
+        payload = resp.json()
+    except Exception:
+        payload = None
+
+    if isinstance(payload, dict):
+        title = str(payload.get("title") or "").strip()
+        detail = str(payload.get("detail") or payload.get("error") or "").strip()
+        if not detail and isinstance(payload.get("errors"), list) and payload["errors"]:
+            first = payload["errors"][0]
+            if isinstance(first, dict):
+                detail = str(first.get("detail") or first.get("message") or first.get("title") or "").strip()
+                if not title:
+                    title = str(first.get("title") or "").strip()
+        if title and detail and title.lower() not in detail.lower():
+            return f"{title} — {detail}"
+        if detail:
+            return detail
+        if title:
+            return title
+
+    raw_text = (resp.text or "").strip()
+    return raw_text[:240] if raw_text else f"HTTP {resp.status_code}"
 
 
 class XApiRateLimitError(RuntimeError):
@@ -111,7 +150,7 @@ def build_oauth1_header(
 def resolve_x_user_id(handle: str, timeout: float = 8.0) -> Optional[str]:
     """Resolve numeric X user ID from handle via X API v2 Bearer or OAuth 1.0a."""
     clean_handle = handle.strip().lstrip("@")
-    url = f"{X_API_BASE}/users/by/username/{clean_handle}"
+    url = f"{get_x_api_base()}/users/by/username/{clean_handle}"
 
     headers: Dict[str, str] = {}
     if has_x_bearer_token():
@@ -165,7 +204,7 @@ def send_x_dm(
             f"Unable to resolve numeric X participant_id for @{handle}."
         )
 
-    url = f"{X_API_BASE}/dm_conversations/with/{participant_id}/messages"
+    url = f"{get_x_api_base()}/dm_conversations/with/{participant_id}/messages"
     auth_header = build_oauth1_header(
         method="POST",
         url=url,

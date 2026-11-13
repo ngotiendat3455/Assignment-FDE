@@ -336,18 +336,12 @@ def get_calibration_matrix(db: Session) -> Dict[str, Any]:
                     temp_cand.location = location
                     temp_cand.segment = segment
 
-                eval_res = evaluate_candidate_profile(temp_cand)
+                # Read-only benchmark: use deterministic Tri-Guard rubric for profiles not yet evaluated
+                # in SQLite so GET /api/ledger/calibration responds instantly with 0 LLM token spend.
+                eval_res = evaluate_candidate_profile(temp_cand, allow_external_llm=False)
                 ai_score = int(eval_res.fit_score)
                 ai_is_match = bool(eval_res.is_match)
                 ai_reason = eval_res.fit_reason
-
-                if db_cand:
-                    db_cand.fit_score = ai_score
-                    db_cand.is_match = ai_is_match
-                    db_cand.fit_reason = eval_res.fit_reason
-                    db_cand.evidence_snippet = eval_res.evidence_snippet
-                    if not db_cand.draft_dm and eval_res.draft_dm:
-                        db_cand.draft_dm = eval_res.draft_dm
 
             delta = abs(ai_score - ref_score)
             is_exact_match = delta == 0 and (ai_is_match == ref_is_match)
@@ -394,8 +388,6 @@ def get_calibration_matrix(db: Session) -> Dict[str, Any]:
                 "partner_note": partner_note,
                 "can_dm": can_dm,
             })
-
-    db.commit()
 
     alignment_accuracy = (
         round((aligned_count / unique_benchmarked) * 100, 1)

@@ -15,6 +15,7 @@ from backend.app.core.config import settings
 def hermetic_offline_env(monkeypatch):
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "")
     monkeypatch.setattr(settings, "OPENAI_API_KEY", "")
+    monkeypatch.setattr(settings, "X_API_BASE_URL", "https://api.twitter.com/2")
     monkeypatch.setattr(settings, "X_BEARER_TOKEN", "")
     monkeypatch.setattr(settings, "X_API_KEY", "")
     monkeypatch.setattr(settings, "X_API_SECRET", "")

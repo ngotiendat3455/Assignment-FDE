@@ -14,6 +14,7 @@ from backend.app.schemas.candidate import (
     LiveXLookupResponse,
 )
 from backend.app.services.ingestion import (
+    XApiLookupError,
     ingest_seed_pack,
     preflight_csv_check,
     parse_csv_content,
@@ -84,12 +85,14 @@ def lookup_handle_on_x(
     handle: str = Query(..., description="X handle or profile URL"),
     db: Session = Depends(get_db),
 ) -> LiveXLookupResponse:
-    """Lookup live or seed X profile for Tab 3."""
+    """Lookup X profile via configured X API v2 base URL (real X or local simulator)."""
     try:
         result = lookup_x_handle(db, handle)
         return LiveXLookupResponse(**result)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except XApiLookupError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @router.post("/single", response_model=IngestionAuditReport)

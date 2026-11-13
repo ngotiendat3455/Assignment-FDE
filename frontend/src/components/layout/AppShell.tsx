@@ -17,8 +17,8 @@ export interface AppShellProps {
 export const AppShell: React.FC<AppShellProps> = ({
   title,
   subtitle,
-  reviewQueueCount = 17,
-  needsAttentionCount = 3,
+  reviewQueueCount = 0,
+  needsAttentionCount = 0,
   children,
 }) => {
   return (

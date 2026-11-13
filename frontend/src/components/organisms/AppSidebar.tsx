@@ -29,8 +29,8 @@ export interface AppSidebarProps {
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
-  reviewQueueCount = 17,
-  needsAttentionCount = 3,
+  reviewQueueCount = 0,
+  needsAttentionCount = 0,
   className = "",
 }) => {
   const { t } = useI18n();

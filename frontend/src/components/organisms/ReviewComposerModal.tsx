@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { CandidateItem } from "@/types/candidate";
 import { useI18n } from "@/context/i18n";
-import { Modal, ModalBody } from "@/components/organisms/Modal";
+import { Modal, ModalBody, ModalFooter } from "@/components/organisms/Modal";
 import { ScorePill } from "@/components/atoms/ScorePill";
 import { Badge } from "@/components/atoms/Badge";
 import { Button } from "@/components/atoms/Button";
@@ -417,43 +417,43 @@ export const ReviewComposerModal: React.FC<ReviewComposerModalProps> = ({
               </div>
             </div>
 
-            {/* Action Bar inside right column */}
-            <div className="pt-4 border-t border-border flex items-center justify-between gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReject}
-                loading={isRejecting}
-                disabled={isTerminal || candidate.status === "REJECTED"}
-                data-testid="modal-reject-btn"
-                className="text-rose-700 border-rose-200 hover:bg-rose-50"
-              >
-                <Trash2 className="w-3.5 h-3.5 mr-1" />
-                {t("review_modal.btn_reject")}
-              </Button>
-
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={onClose}>
-                  {t("actions.cancel")}
-                </Button>
-
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleApproveSend}
-                  loading={isSending}
-                  disabled={isSendDisabled}
-                  data-testid="approve-send-btn"
-                  className="bg-emerald-600 hover:bg-emerald-700 font-semibold px-4"
-                >
-                  <Send className="w-3.5 h-3.5 mr-1.5" />
-                  {t("review_modal.btn_approve_send")}
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </ModalBody>
+
+      <ModalFooter className="!justify-between bg-white">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleReject}
+          loading={isRejecting}
+          disabled={isTerminal || candidate.status === "REJECTED"}
+          data-testid="modal-reject-btn"
+          className="text-rose-700 border-rose-200 hover:bg-rose-50"
+        >
+          <Trash2 className="w-3.5 h-3.5 mr-1" />
+          {t("review_modal.btn_reject")}
+        </Button>
+
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            {t("actions.cancel")}
+          </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleApproveSend}
+            loading={isSending}
+            disabled={isSendDisabled}
+            data-testid="approve-send-btn"
+            className="bg-emerald-600 hover:bg-emerald-700 font-semibold px-4"
+          >
+            <Send className="w-3.5 h-3.5 mr-1.5" />
+            {t("review_modal.btn_approve_send")}
+          </Button>
+        </div>
+      </ModalFooter>
     </Modal>
   );
 };

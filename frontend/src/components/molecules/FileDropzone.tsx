@@ -7,6 +7,7 @@ import { useI18n } from "@/context/i18n";
 
 export interface FileDropzoneProps {
   onFileSelect: (file: File) => void;
+  onClear?: () => void;
   acceptedFileTypes?: string;
   maxSizeMB?: number;
   className?: string;
@@ -14,6 +15,7 @@ export interface FileDropzoneProps {
 
 export const FileDropzone: React.FC<FileDropzoneProps> = ({
   onFileSelect,
+  onClear,
   acceptedFileTypes = ".csv",
   maxSizeMB = 5,
   className = "",
@@ -63,6 +65,7 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({
     setSelectedFile(null);
     setErrorMessage(null);
     if (inputRef.current) inputRef.current.value = "";
+    onClear?.();
   };
 
   return (

@@ -12,6 +12,20 @@ from backend.app.core.config import settings
 from backend.app.models.candidate import Candidate, CandidateStatus
 from backend.app.models.ledger import OutreachLedger, OutreachStatus
 from backend.app.models.queue import JobQueue, JobStatus
+from backend.app.services.x_client import (
+    extract_x_api_error_detail,
+    get_x_api_base,
+    is_local_x_simulator,
+)
+
+
+class XApiLookupError(RuntimeError):
+    """Raised when live/simulator X API v2 handle lookup fails or is unconfigured."""
+
+    def __init__(self, status_code: int, detail: str):
+        super().__init__(detail)
+        self.status_code = status_code
+        self.detail = detail
 
 
 def normalize_handle(raw_handle: Optional[str]) -> str:
@@ -435,133 +449,144 @@ def ingest_seed_pack(db: Session, default_segment: Optional[str] = None) -> Dict
     return report
 
 
+def _map_x_lookup_http_error(resp: httpx.Response, handle: str) -> XApiLookupError:
+    """Convert an upstream X API v2 error response into a structured XApiLookupError."""
+    detail = extract_x_api_error_detail(resp)
+    status = resp.status_code
+    if status == 401:
+        return XApiLookupError(
+            401,
+            f"[X API 401 Unauthorized] Invalid or missing X_BEARER_TOKEN: {detail}",
+        )
+    if status == 402:
+        return XApiLookupError(
+            402,
+            f"[X API 402 Payment Required] {detail}. Top up X API credits or set X_API_BASE_URL=http://127.0.0.1:8099/2 for local $0 testing.",
+        )
+    if status == 403:
+        return XApiLookupError(
+            403,
+            f"[X API 403 Forbidden] Access denied for @{handle}: {detail}",
+        )
+    if status == 404:
+        return XApiLookupError(
+            404,
+            f"[X API 404 Not Found] Handle @{handle} was not found: {detail}",
+        )
+    if status == 429:
+        retry_after = resp.headers.get("retry-after")
+        retry_note = f" (Retry-After: {retry_after}s)" if retry_after else ""
+        return XApiLookupError(
+            429,
+            f"[X API 429 Too Many Requests] {detail}{retry_note}",
+        )
+    if status >= 500:
+        return XApiLookupError(
+            502,
+            f"[X API {status} Upstream Error] {detail}",
+        )
+    return XApiLookupError(status, f"[X API {status}] {detail}")
+
+
 def lookup_x_handle(db: Session, raw_handle: str) -> Dict[str, Any]:
     """
-    Dual-Source Handle Lookup for Tab 3 (Live Sourcing Journey).
-    1. Attempts Live X API v2 if X_BEARER_TOKEN is configured.
-    2. Gracefully falls back to SQLite DB or candidates_seed.csv or realistic profile preview
-       so evaluators can test without a $100/month X API subscription.
+    HTTP Handle Lookup for Tab 3 (Live Sourcing Journey).
+    Calls configured X API v2 endpoint (`X_API_BASE_URL`, defaulting to
+    https://api.twitter.com/2 or pointing to the local $0 dev simulator).
+    Fails explicitly with `XApiLookupError` when unconfigured or on HTTP error;
+    never falls back to synthetic or seed data.
     """
     handle = normalize_handle(raw_handle)
     if not handle:
         raise ValueError("Please provide a valid X handle.")
 
-    # Check if already contacted in outreach_ledger
+    # Check if already contacted in outreach_ledger (double-messaging guard)
     existing_ledger = db.query(OutreachLedger).filter(OutreachLedger.handle == handle).first()
     already_contacted = existing_ledger is not None and existing_ledger.status in (
         OutreachStatus.SENT.value,
         OutreachStatus.REPLIED.value,
     )
     ledger_status = existing_ledger.status if existing_ledger else None
+    existing_cand = db.query(Candidate).filter(Candidate.handle == handle).first()
 
-    # 1. Try Live X API v2 if Bearer Token is configured
-    bearer_token = settings.X_BEARER_TOKEN.strip()
-    if bearer_token and not bearer_token.startswith("your_"):
-        try:
-            headers = {"Authorization": f"Bearer {bearer_token}"}
-            with httpx.Client(timeout=6.0) as client:
-                user_resp = client.get(
-                    f"https://api.twitter.com/2/users/by/username/{handle}",
-                    params={"user.fields": "id,name,username,description,location"},
+    bearer_token = (settings.X_BEARER_TOKEN or "").strip()
+    if not bearer_token or bearer_token.startswith("your_"):
+        raise XApiLookupError(
+            503,
+            "X_BEARER_TOKEN is not configured. Set X_BEARER_TOKEN in backend/.env, or run the local X API simulator (`python -m backend.scripts.x_simulator`) with X_API_BASE_URL=http://127.0.0.1:8099/2.",
+        )
+
+    base_url = get_x_api_base()
+    headers = {"Authorization": f"Bearer {bearer_token}"}
+
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            user_resp = client.get(
+                f"{base_url}/users/by/username/{handle}",
+                params={"user.fields": "id,name,username,description,location"},
+                headers=headers,
+            )
+            if user_resp.status_code != 200:
+                raise _map_x_lookup_http_error(user_resp, handle)
+
+            payload = user_resp.json()
+            user_data = payload.get("data")
+            if not user_data:
+                err_msg = extract_x_api_error_detail(user_resp)
+                raise XApiLookupError(
+                    404,
+                    f"[X API 404 Not Found] Handle @{handle} returned no user data: {err_msg}",
+                )
+
+            uid = user_data.get("id")
+            tweets_list: List[str] = []
+            if uid:
+                t_resp = client.get(
+                    f"{base_url}/users/{uid}/tweets",
+                    params={"max_results": 5, "tweet.fields": "created_at,text"},
                     headers=headers,
                 )
-                if user_resp.status_code == 200:
-                    user_data = user_resp.json().get("data", {})
-                    uid = user_data.get("id")
-                    tweets_list: List[str] = []
-                    if uid:
-                        t_resp = client.get(
-                            f"https://api.twitter.com/2/users/{uid}/tweets",
-                            params={"max_results": 5, "tweet.fields": "created_at,text"},
-                            headers=headers,
-                        )
-                        if t_resp.status_code == 200:
-                            for t_obj in t_resp.json().get("data", []):
-                                tweets_list.append(t_obj.get("text", ""))
+                if t_resp.status_code != 200:
+                    raise _map_x_lookup_http_error(t_resp, handle)
+                for t_obj in t_resp.json().get("data", []):
+                    text = (t_obj.get("text") or "").strip()
+                    if text:
+                        tweets_list.append(text)
+    except httpx.RequestError as exc:
+        raise XApiLookupError(
+            503,
+            f"Unable to reach X API endpoint ({base_url}): {exc}",
+        ) from exc
 
-                    if not tweets_list:
-                        tweets_list = ["No recent public tweets found via X API v2."]
+    if not tweets_list:
+        tweets_list = ["No recent public tweets found via X API v2."]
 
-                    return {
-                        "handle": handle,
-                        "name": user_data.get("name", handle),
-                        "location": user_data.get("location", "Southeast Asia"),
-                        "bio": user_data.get("description", "Builder on X"),
-                        "recent_tweets": tweets_list,
-                        "raw_tweets_text": " || ".join(tweets_list),
-                        "can_dm": True,
-                        "segment": "SEG-02: LLM Inference & AI Infra",
-                        "x_user_id": uid,
-                        "source_mode": "LIVE_X_API",
-                        "api_connected": True,
-                        "already_contacted": already_contacted,
-                        "existing_ledger_status": ledger_status,
-                    }
-        except Exception:
-            pass  # Fall through to Seed Pack / DB fallback
+    if "can_dm" in user_data:
+        can_dm = bool(user_data.get("can_dm"))
+    elif existing_cand is not None:
+        can_dm = existing_cand.can_dm
+    else:
+        can_dm = True
 
-    # 2. Check existing SQLite database
-    existing_cand = db.query(Candidate).filter(Candidate.handle == handle).first()
-    if existing_cand and existing_cand.bio != "Historical contact imported from seed log":
-        tweets_split = [t.strip() for t in existing_cand.recent_tweets.split("||") if t.strip()]
-        return {
-            "handle": existing_cand.handle,
-            "name": existing_cand.name,
-            "location": existing_cand.location or "Southeast Asia",
-            "bio": existing_cand.bio,
-            "recent_tweets": tweets_split or [existing_cand.recent_tweets],
-            "raw_tweets_text": existing_cand.recent_tweets,
-            "can_dm": existing_cand.can_dm,
-            "segment": existing_cand.segment or "SEG-01: SEA Embodied AI & Robotics",
-            "x_user_id": existing_cand.x_user_id,
-            "source_mode": "SEED_PACK_FALLBACK",
-            "api_connected": bool(bearer_token),
-            "already_contacted": already_contacted,
-            "existing_ledger_status": ledger_status,
-        }
+    default_segment = (
+        existing_cand.segment
+        if existing_cand and existing_cand.segment
+        else "SEG-02: LLM Inference & AI Infra"
+    )
+    source_mode = "X_API_SIMULATOR" if is_local_x_simulator() else "LIVE_X_API"
 
-    # 3. Check candidates_seed.csv on disk
-    project_root = Path(__file__).resolve().parent.parent.parent.parent
-    seed_csv = project_root / "genai-outreach-pack" / "candidates_seed.csv"
-    if seed_csv.exists():
-        with open(seed_csv, mode="r", encoding="utf-8") as f:
-            for item in parse_csv_content(f.read()):
-                if item["handle"] == handle:
-                    tweets_split = [t.strip() for t in item["recent_tweets"].split("||") if t.strip()]
-                    return {
-                        "handle": item["handle"],
-                        "name": item["name"],
-                        "location": item.get("location") or "Southeast Asia",
-                        "bio": item["bio"],
-                        "recent_tweets": tweets_split or [item["recent_tweets"]],
-                        "raw_tweets_text": item["recent_tweets"],
-                        "can_dm": item.get("can_dm", True),
-                        "segment": item.get("segment") or "SEG-01: SEA Embodied AI & Robotics",
-                        "x_user_id": item.get("x_user_id"),
-                        "source_mode": "SEED_PACK_FALLBACK",
-                        "api_connected": bool(bearer_token),
-                        "already_contacted": already_contacted,
-                        "existing_ledger_status": ledger_status,
-                    }
-
-    # 4. Synthetic live preview for any custom handle typed by user
-    display_name = handle.replace("_", " ").replace(".", " ").title()
-    synth_tweets = [
-        f"[2026-11-10] Building low-latency inference and robotics automation workflows in Southeast Asia (@{handle}).",
-        f"[2026-11-04] Benchmarking quantized edge models on local GPU clusters in Singapore & Vietnam.",
-    ]
     return {
         "handle": handle,
-        "name": display_name,
-        "location": "Singapore / Southeast Asia",
-        "bio": f"Founder & AI Engineer @{handle}. Building frontier AI infrastructure and autonomous systems in SEA.",
-        "recent_tweets": synth_tweets,
-        "raw_tweets_text": " || ".join(synth_tweets),
-        "can_dm": True,
-        "segment": "SEG-02: LLM Inference & AI Infra",
-        "x_user_id": f"sim_{handle}",
-        "source_mode": "SYNTHETIC_PREVIEW",
-        "api_connected": bool(bearer_token),
+        "name": user_data.get("name") or handle,
+        "location": user_data.get("location") or "Southeast Asia",
+        "bio": user_data.get("description") or "Builder on X",
+        "recent_tweets": tweets_list,
+        "raw_tweets_text": " || ".join(tweets_list),
+        "can_dm": can_dm,
+        "segment": default_segment,
+        "x_user_id": uid,
+        "source_mode": source_mode,
+        "api_connected": True,
         "already_contacted": already_contacted,
         "existing_ledger_status": ledger_status,
     }

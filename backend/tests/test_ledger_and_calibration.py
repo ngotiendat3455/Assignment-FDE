@@ -167,3 +167,20 @@ def test_partner_calibration_matrix_accuracy(db_session_and_client):
     assert by_pid["P019"]["badge_code"] == "CLOSED_DM_CAUGHT"
     assert by_pid["P020"]["badge_code"] == "DUPLICATE_MERGED"
 
+
+def test_calibration_never_calls_external_llm_on_get(db_session_and_client, monkeypatch):
+    """GET /api/ledger/calibration must respond instantly without burning external LLM tokens."""
+    from backend.app.core.config import settings
+
+    _, client = db_session_and_client
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "AIzaFakeKeyMustNotBeCalled")
+
+    def _forbid_llm(*args, **kwargs):
+        raise AssertionError("GET /api/ledger/calibration must not call _call_external_llm!")
+
+    monkeypatch.setattr("backend.app.services.ai_evaluator._call_external_llm", _forbid_llm)
+
+    resp = client.get("/api/ledger/calibration")
+    assert resp.status_code == 200
+    assert resp.json()["kpi"]["unique_benchmarked"] == 19
+

@@ -24,6 +24,11 @@ cd "${E2E_REPO_ROOT}/frontend"
 npx playwright test 2>&1 | tee -a "${E2E_LOG_FILE}"
 
 echo "" | tee -a "${E2E_LOG_FILE}"
+echo "[Tier 3] Building & Validating E/R Result Contract vs Expected..." | tee -a "${E2E_LOG_FILE}"
+cd "${E2E_REPO_ROOT}"
+"${E2E_PYTHON}" -m backend.scripts.build_er_result_contract 2>&1 | tee -a "${E2E_LOG_FILE}"
+
+echo "" | tee -a "${E2E_LOG_FILE}"
 echo "[PASS] Quality Gate completed at $(date -Iseconds)" | tee -a "${E2E_LOG_FILE}"
 
 cat > "${E2E_SUMMARY_FILE}" <<EOF

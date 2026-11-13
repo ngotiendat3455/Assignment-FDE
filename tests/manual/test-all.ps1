@@ -60,6 +60,11 @@ try {
         npx.cmd playwright test
     }
 
+    Set-Location $RepoRoot
+    Invoke-NativeStep "[Tier 3] Building & Validating E/R Result Contract vs Expected..." {
+        python -m backend.scripts.build_er_result_contract
+    }
+
     $FinishedAt = (Get-Date).ToString("o")
     Write-GateLog ""
     Write-GateLog "[PASS] Quality Gate completed at $FinishedAt"

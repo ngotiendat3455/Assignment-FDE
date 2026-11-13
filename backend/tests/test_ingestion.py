@@ -1,14 +1,17 @@
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from backend.app.core.config import settings
 from backend.app.core.database import Base, get_db
 from backend.app.main import app
 from backend.app.models.candidate import Candidate, CandidateStatus
 from backend.app.models.ledger import OutreachLedger, OutreachStatus
 from backend.app.services.ingestion import (
+    XApiLookupError,
     normalize_handle,
     parse_csv_content,
     preflight_csv_check,
@@ -16,6 +19,7 @@ from backend.app.services.ingestion import (
     ingest_seed_pack,
     lookup_x_handle,
 )
+from backend.scripts.x_simulator import simulator_app
 
 
 @pytest.fixture
@@ -168,12 +172,52 @@ def test_ingest_seed_pack_full_audit(db_session):
     assert "harith_medai" in collision_handles
 
 
-def test_lookup_x_handle_fallback(db_session):
-    """Verify X handle lookup returns seed pack profile or synthetic fallback when X token is unset."""
+def _patch_httpx_to_simulator(monkeypatch):
+    """Route httpx.Client traffic in ingestion service directly to Local X Simulator."""
+    sim_client = TestClient(simulator_app)
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        path_qs = request.url.raw_path.decode("ascii")
+        resp = sim_client.request(
+            method=request.method,
+            url=path_qs,
+            headers=dict(request.headers),
+            content=request.content,
+        )
+        return httpx.Response(
+            status_code=resp.status_code,
+            headers=dict(resp.headers),
+            content=resp.content,
+        )
+
+    real_client = httpx.Client
+    transport = httpx.MockTransport(_handler)
+
+    def _sim_client(*args, **kwargs):
+        kwargs["transport"] = transport
+        return real_client(*args, **kwargs)
+
+    monkeypatch.setattr(settings, "X_API_BASE_URL", "http://127.0.0.1:8099/2")
+    monkeypatch.setattr("backend.app.services.ingestion.httpx.Client", _sim_client)
+
+
+def test_lookup_x_handle_errors_and_simulator(db_session, monkeypatch):
+    """Verify silent fallbacks are gone: missing key -> 503, HTTP errors -> exact status, simulator -> valid response."""
+    # 1. Missing X_BEARER_TOKEN fails explicitly with 503 (no synthetic/seed fallback)
+    monkeypatch.setattr(settings, "X_BEARER_TOKEN", "")
+    with pytest.raises(XApiLookupError) as exc_unconfigured:
+        lookup_x_handle(db_session, "@minh_quant")
+    assert exc_unconfigured.value.status_code == 503
+
+    # 2. Wire to Local X API v2 Simulator via ASGI transport ($0 HTTP simulation)
+    _patch_httpx_to_simulator(monkeypatch)
+    monkeypatch.setattr(settings, "X_BEARER_TOKEN", "sim_test_bearer_token")
+
     res_seed = lookup_x_handle(db_session, "@minh_quant")
     assert res_seed["handle"] == "minh_quant"
-    assert res_seed["source_mode"] == "SEED_PACK_FALLBACK"
+    assert res_seed["source_mode"] == "X_API_SIMULATOR"
     assert res_seed["can_dm"] is True
+    assert res_seed["x_user_id"] == "1000000002"
 
     res_closed = lookup_x_handle(db_session, "https://x.com/arjun_infer")
     assert res_closed["handle"] == "arjun_infer"
@@ -181,10 +225,28 @@ def test_lookup_x_handle_fallback(db_session):
 
     res_custom = lookup_x_handle(db_session, "@new_sea_builder")
     assert res_custom["handle"] == "new_sea_builder"
-    assert res_custom["source_mode"] == "SYNTHETIC_PREVIEW"
+    assert res_custom["source_mode"] == "X_API_SIMULATOR"
+    assert res_custom["x_user_id"].isdigit()
+
+    # 3. Real HTTP error status propagation (401, 402, 403, 404, 429)
+    for bad_handle, expected_status in [
+        ("@sim_401", 401),
+        ("@credits_depleted", 402),
+        ("@forbidden_handle", 403),
+        ("@missing_user", 404),
+        ("@rate_limit", 429),
+    ]:
+        with pytest.raises(XApiLookupError) as exc_info:
+            lookup_x_handle(db_session, bad_handle)
+        assert exc_info.value.status_code == expected_status
+
+    monkeypatch.setattr(settings, "X_BEARER_TOKEN", "bad_token")
+    with pytest.raises(XApiLookupError) as exc_bad_tok:
+        lookup_x_handle(db_session, "@minh_quant")
+    assert exc_bad_tok.value.status_code == 401
 
 
-def test_ingestion_api_endpoints(db_session):
+def test_ingestion_api_endpoints(db_session, monkeypatch):
     """Verify FastAPI ingestion endpoints end-to-end using TestClient (including Auth Guard)."""
     def override_get_db():
         try:
@@ -219,10 +281,21 @@ def test_ingestion_api_endpoints(db_session):
     assert pre_resp.status_code == 200
     assert pre_resp.json()["valid"] is True
 
-    # 3. Live X Lookup endpoint
+    # 3. Live X Lookup endpoint: unconfigured -> 503; via simulator -> 200; 402 -> 402
+    unconf_resp = client.get("/api/ingestion/x-lookup", params={"handle": "@minh_quant"})
+    assert unconf_resp.status_code == 503
+
+    _patch_httpx_to_simulator(monkeypatch)
+    monkeypatch.setattr(settings, "X_BEARER_TOKEN", "sim_test_bearer_token")
+
     lookup_resp = client.get("/api/ingestion/x-lookup", params={"handle": "@minh_quant"})
     assert lookup_resp.status_code == 200
     assert lookup_resp.json()["handle"] == "minh_quant"
+    assert lookup_resp.json()["source_mode"] == "X_API_SIMULATOR"
+
+    quota_resp = client.get("/api/ingestion/x-lookup", params={"handle": "@credits_depleted"})
+    assert quota_resp.status_code == 402
+    assert "credits depleted" in quota_resp.json()["detail"].lower()
 
     # 4. Single Candidate Ingest endpoint
     single_resp = client.post(

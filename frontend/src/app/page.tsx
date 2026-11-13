@@ -375,63 +375,43 @@ export default function HitlReviewWorkspacePage() {
       needsAttentionCount={summary?.ledger_summary.needs_attention_count ?? 0}
     >
       <div className="space-y-6">
-        {/* Collapsible KPI Summary Cards */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-end">
-            <button
-              type="button"
-              onClick={() => setShowKpis((prev) => !prev)}
-              data-testid="toggle-kpis-btn"
-              aria-expanded={showKpis}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors shadow-xs cursor-pointer"
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>{showKpis ? t("workspace.hide_metrics") : t("workspace.show_metrics")}</span>
-              {showKpis ? (
-                <ChevronUp className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronDown className="w-3.5 h-3.5" />
-              )}
-            </button>
+        {/* Collapsible KPI Summary Cards (toggled from toolbar below) */}
+        {showKpis && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={Send}
+              label={t("kpi.dispatched")}
+              value={String(summary?.ledger_summary.total_dispatched ?? counts.sent)}
+              subtext={t("kpi.dispatched_sub")}
+              variant="primary"
+              testId="kpi-dispatched"
+            />
+            <StatCard
+              icon={MessageSquare}
+              label={t("kpi.replied")}
+              value={String(summary?.ledger_summary.total_replied ?? 0)}
+              subtext={t("kpi.replied_sub")}
+              variant="positive"
+              testId="kpi-replied"
+            />
+            <StatCard
+              icon={AlertCircle}
+              label={t("kpi.urgent")}
+              value={String(summary?.ledger_summary.needs_attention_count ?? 0)}
+              subtext={t("kpi.urgent_sub")}
+              variant="urgent"
+              testId="kpi-urgent"
+            />
+            <StatCard
+              icon={ShieldCheck}
+              label={t("kpi.blocked")}
+              value={String(summary?.ledger_summary.total_blocked ?? counts.blocked)}
+              subtext={t("kpi.blocked_sub")}
+              variant="default"
+              testId="kpi-blocked"
+            />
           </div>
-
-          {showKpis && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard
-                icon={Send}
-                label={t("kpi.dispatched")}
-                value={String(summary?.ledger_summary.total_dispatched ?? counts.sent)}
-                subtext={t("kpi.dispatched_sub")}
-                variant="primary"
-                testId="kpi-dispatched"
-              />
-              <StatCard
-                icon={MessageSquare}
-                label={t("kpi.replied")}
-                value={String(summary?.ledger_summary.total_replied ?? 0)}
-                subtext={t("kpi.replied_sub")}
-                variant="positive"
-                testId="kpi-replied"
-              />
-              <StatCard
-                icon={AlertCircle}
-                label={t("kpi.urgent")}
-                value={String(summary?.ledger_summary.needs_attention_count ?? 0)}
-                subtext={t("kpi.urgent_sub")}
-                variant="urgent"
-                testId="kpi-urgent"
-              />
-              <StatCard
-                icon={ShieldCheck}
-                label={t("kpi.blocked")}
-                value={String(summary?.ledger_summary.total_blocked ?? counts.blocked)}
-                subtext={t("kpi.blocked_sub")}
-                variant="default"
-                testId="kpi-blocked"
-              />
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Search Bar & Action Controls */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-border shadow-xs">
@@ -450,7 +430,24 @@ export default function HitlReviewWorkspacePage() {
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowKpis((prev) => !prev)}
+              data-testid="toggle-kpis-btn"
+              aria-expanded={showKpis}
+              className="text-xs shrink-0"
+            >
+              <BarChart3 className="w-3.5 h-3.5 mr-1.5" />
+              <span>{showKpis ? t("workspace.hide_metrics") : t("workspace.show_metrics")}</span>
+              {showKpis ? (
+                <ChevronUp className="w-3.5 h-3.5 ml-1" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 ml-1" />
+              )}
+            </Button>
+
             <Button
               variant="outline"
               size="sm"

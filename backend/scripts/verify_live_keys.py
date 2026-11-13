@@ -36,8 +36,9 @@ from backend.app.services.ai_evaluator import (
     _enforce_post_guards,
     evaluate_candidate_profile,
 )
-from backend.app.services.ingestion import lookup_x_handle, normalize_handle
+from backend.app.services.ingestion import XApiLookupError, lookup_x_handle, normalize_handle
 from backend.app.services.x_client import (
+    get_x_api_base,
     has_x_bearer_token,
     has_x_oauth_credentials,
     send_x_dm,
@@ -195,12 +196,14 @@ def run_llm_gate(full_benchmark: bool = False, pacing_sec: float = 0.0) -> Dict[
 
 
 def run_x_lookup_gate(handle: str = "OpenAI") -> Dict[str, Any]:
-    """Gate L2: Verify Live X API v2 Bearer Token user + recent tweets lookup."""
+    """Gate L2: Verify Live or Simulator X API v2 Bearer Token user + recent tweets lookup."""
+    base_url = get_x_api_base()
     if not has_x_bearer_token():
         return {
             "gate": "L2_LIVE_X_LOOKUP",
             "status": "SKIPPED_NO_KEY",
             "handle": handle,
+            "x_api_base_url": base_url,
             "details": "X_BEARER_TOKEN is not configured in environment.",
         }
 
@@ -209,23 +212,42 @@ def run_x_lookup_gate(handle: str = "OpenAI") -> Dict[str, Any]:
     Base.metadata.create_all(bind=mem_engine)
     MemSession = sessionmaker(bind=mem_engine)
     db = MemSession()
+    t0 = time.perf_counter()
     try:
-        t0 = time.perf_counter()
         profile = lookup_x_handle(db, handle)
+    except XApiLookupError as exc:
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
+        return {
+            "gate": "L2_LIVE_X_LOOKUP",
+            "status": "FAILED",
+            "handle": normalize_handle(handle),
+            "x_api_base_url": base_url,
+            "http_status": exc.status_code,
+            "latency_ms": elapsed_ms,
+            "details": exc.detail,
+        }
     finally:
         db.close()
 
-    live_ok = profile.get("source_mode") == "LIVE_X_API" and bool(profile.get("x_user_id"))
+    elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
+    source_mode = profile.get("source_mode")
+    if source_mode == "LIVE_X_API" and profile.get("x_user_id"):
+        status = "PASSED"
+    elif source_mode == "X_API_SIMULATOR" and profile.get("x_user_id"):
+        status = "PASSED_SIMULATOR"
+    else:
+        status = "FAILED"
+
     return {
         "gate": "L2_LIVE_X_LOOKUP",
-        "status": "PASSED" if live_ok else "FAILED",
+        "status": status,
         "handle": profile.get("handle"),
-        "source_mode": profile.get("source_mode"),
+        "source_mode": source_mode,
+        "x_api_base_url": base_url,
         "x_user_id": profile.get("x_user_id"),
         "tweets_fetched": len(profile.get("recent_tweets") or []),
         "latency_ms": elapsed_ms,
-        "details": None if live_ok else "Fell back instead of live X API v2 response (check token validity/quota).",
+        "details": None if status != "FAILED" else "Unexpected X lookup response without x_user_id.",
     }
 
 
@@ -288,6 +310,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("GENAI FUND – LIVE API KEY DIAGNOSTIC & TRI-GUARD VERIFICATION")
     print(f"• GEMINI_API_KEY : {_mask_key(settings.GEMINI_API_KEY)}")
     print(f"• OPENAI_API_KEY : {_mask_key(settings.OPENAI_API_KEY)}")
+    print(f"• X_API_BASE_URL : {get_x_api_base()}")
     print(f"• X_BEARER_TOKEN : {_mask_key(settings.X_BEARER_TOKEN)}")
     print(f"• X_OAUTH_4KEYS  : {'configured' if has_x_oauth_credentials() else '<unset>'}")
     print("=" * 72)

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Download,
   FileSpreadsheet,
@@ -21,34 +21,24 @@ import {
 import { CsvPreflightResponse, IngestionAuditReport } from "@/types/ingestion";
 import { useI18n } from "@/context/i18n";
 
+const REQUIRED_CSV_COLUMNS = ["handle", "name", "bio", "recent_tweets"] as const;
+
 export function CsvUploadTab() {
   const { t } = useI18n();
   const { toast } = useToast();
 
-  const [csvContent, setCsvContent] = useState<string>(SAMPLE_CSV_TEMPLATE);
+  const [csvContent, setCsvContent] = useState<string>("");
   const [preflight, setPreflight] = useState<CsvPreflightResponse | null>(null);
   const [dedupEnabled, setDedupEnabled] = useState<boolean>(true);
   const [queueAiEnabled, setQueueAiEnabled] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const [report, setReport] = useState<IngestionAuditReport | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    runCsvPreflight(csvContent)
-      .then((res) => {
-        if (active) {
-          setPreflight(res);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setPreflight(null);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [csvContent]);
+  const handleClearCsv = () => {
+    setCsvContent("");
+    setPreflight(null);
+    setReport(null);
+  };
 
   const handleFileSelect = (file: File) => {
     const reader = new FileReader();
@@ -108,7 +98,7 @@ export function CsvUploadTab() {
     return (
       <IngestionAuditCard
         report={report}
-        onReset={() => setReport(null)}
+        onReset={handleClearCsv}
         resetLabel={t("ingestion.btn_reset_csv")}
       />
     );
@@ -142,30 +132,90 @@ export function CsvUploadTab() {
       </div>
 
       <div className="mt-5">
-        <FileDropzone onFileSelect={handleFileSelect} />
+        <FileDropzone
+          onFileSelect={handleFileSelect}
+          onClear={handleClearCsv}
+        />
       </div>
 
       {preflight && (
-        <div className="mt-6">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="mt-6 space-y-4">
+          <div
+            data-testid="csv-column-status"
+            className="rounded-xl border border-border bg-accent/60 p-4"
+          >
+            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-bold tracking-wider text-foreground uppercase">
+                {t("ingestion.csv_columns_status")}
+              </span>
+              {preflight.valid ? (
+                <Badge variant="positive" icon={CheckCircle2}>
+                  {preflight.total_rows} {t("table.records")} •{" "}
+                  {t("ingestion.preflight_valid_badge")}
+                </Badge>
+              ) : (
+                <Badge
+                  variant="destructive"
+                  icon={AlertTriangle}
+                  data-testid="preflight-error-banner"
+                >
+                  {preflight.error_message ||
+                    t("ingestion.preflight_missing_badge")}
+                </Badge>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {REQUIRED_CSV_COLUMNS.map((col) => {
+                const isMissing = preflight.missing_columns.includes(col);
+                return (
+                  <span
+                    key={col}
+                    data-testid={`col-status-${col}`}
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-mono text-xs font-medium ${
+                      isMissing
+                        ? "border-red-200 bg-red-50 text-red-700"
+                        : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
+                    {isMissing ? (
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    )}
+                    <span>{col}</span>
+                    <span className="font-sans text-[11px] font-semibold">
+                      ({isMissing
+                        ? t("ingestion.col_status_missing")
+                        : t("ingestion.col_status_found")})
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
+
+            {preflight.detected_columns.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="font-medium">
+                  {t("ingestion.detected_headers_label")} (
+                  {preflight.detected_columns.length}):
+                </span>
+                {preflight.detected_columns.map((hdr) => (
+                  <span
+                    key={hdr}
+                    className="rounded border border-border bg-white px-2 py-0.5 font-mono text-[11px] text-foreground"
+                  >
+                    {hdr}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-bold tracking-wider text-foreground uppercase">
               {t("ingestion.preflight_title")}
             </span>
-            {preflight.valid ? (
-              <Badge variant="positive" icon={CheckCircle2}>
-                {preflight.total_rows} {t("table.records")} •{" "}
-                {t("ingestion.preflight_valid_badge")}
-              </Badge>
-            ) : (
-              <Badge
-                variant="destructive"
-                icon={AlertTriangle}
-                data-testid="preflight-error-banner"
-              >
-                {preflight.error_message ||
-                  t("ingestion.preflight_missing_badge")}
-              </Badge>
-            )}
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-border bg-white">

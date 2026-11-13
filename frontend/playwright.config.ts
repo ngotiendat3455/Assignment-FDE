@@ -33,6 +33,13 @@ export default defineConfig({
   ],
   webServer: [
     {
+      command: "python -m backend.scripts.x_simulator --host 127.0.0.1 --port 8099",
+      cwd: repoRoot,
+      url: "http://127.0.0.1:8099/health",
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+    {
       command: "python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8001",
       cwd: repoRoot,
       url: "http://127.0.0.1:8001/api/health",
@@ -50,7 +57,8 @@ export default defineConfig({
         CORS_ORIGINS: "http://localhost:3100,http://127.0.0.1:3100",
         GEMINI_API_KEY: "",
         OPENAI_API_KEY: "",
-        X_BEARER_TOKEN: "",
+        X_API_BASE_URL: "http://127.0.0.1:8099/2",
+        X_BEARER_TOKEN: "sim_e2e_bearer_token",
       },
     },
     {

@@ -177,6 +177,8 @@ def _diff_snapshots(prev: Optional[Dict[str, Any]], curr: Optional[Dict[str, Any
         )
     else:
         parts.append(f"Ledger: `{curr['ledger_total']}` (attention `{curr['ledger_needs_attention']}`)")
+    if prev.get("jobs_total") != curr.get("jobs_total"):
+        parts.append(f"Jobs: `{prev.get('jobs_total', 0)} -> {curr.get('jobs_total', 0)}`")
 
     return {"transitions": transitions, "summary": " | ".join(parts)}
 
@@ -569,7 +571,12 @@ def _summarize_semantic_event(
         facts.append(f"List Candidates: total=`{res_json.get('total')}`")
     elif path == "/api/ledger" and isinstance(res_json, dict):
         is_noisy_read = True
-        facts.append(f"List Ledger: total=`{res_json.get('total')}`, counts=`{res_json.get('counts')}`")
+        lkpi = res_json.get("kpi") or {}
+        facts.append(
+            f"List Ledger: total=`{res_json.get('total')}`, counts=`{res_json.get('counts')}`, "
+            f"kpi=`dispatched={lkpi.get('dispatched_count')}, replied={lkpi.get('replied_count')}, "
+            f"reply_rate={lkpi.get('reply_rate')}%, attention={lkpi.get('needs_attention_count')}`"
+        )
     elif path == "/api/ledger/calibration" and isinstance(res_json, dict):
         is_noisy_read = True
         kpi = res_json.get("kpi", {})

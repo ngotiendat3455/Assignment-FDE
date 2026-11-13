@@ -532,6 +532,7 @@ def _call_external_llm(candidate: Candidate) -> Optional[AIEvaluationResult]:
 def evaluate_candidate_profile(
     candidate: Candidate,
     simulate_failure: bool = False,
+    allow_external_llm: bool = True,
 ) -> AIEvaluationResult:
     """
     Main entrypoint for Queue 1 (Tri-Guard AI Evaluation Engine).
@@ -549,8 +550,8 @@ def evaluate_candidate_profile(
         raw_result = _evaluate_deterministically(candidate)
         return _enforce_post_guards(raw_result, candidate)
 
-    # Layer 2: Try live LLM if API key is configured, otherwise deterministic rubric engine
-    llm_result = _call_external_llm(candidate)
+    # Layer 2: Try live LLM if allowed & API key is configured, otherwise deterministic rubric engine
+    llm_result = _call_external_llm(candidate) if allow_external_llm else None
     if llm_result is None:
         llm_result = _evaluate_deterministically(candidate)
 

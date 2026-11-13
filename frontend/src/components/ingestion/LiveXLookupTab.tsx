@@ -16,7 +16,11 @@ import { Badge } from "@/components/atoms/Badge";
 import { Input } from "@/components/atoms/Input";
 import { useToast } from "@/components/molecules/ToastNotification";
 import { IngestionAuditCard } from "@/components/ingestion/IngestionAuditCard";
-import { lookupLiveXHandle, ingestSingleCandidate } from "@/lib/ingestion-api";
+import {
+  ApiRequestError,
+  lookupLiveXHandle,
+  ingestSingleCandidate,
+} from "@/lib/ingestion-api";
 import { LiveXLookupResponse, IngestionAuditReport } from "@/types/ingestion";
 import { useI18n } from "@/context/i18n";
 
@@ -34,18 +38,30 @@ export function LiveXLookupTab() {
     "SEG-02: LLM Inference & AI Infra"
   );
   const [report, setReport] = useState<IngestionAuditReport | null>(null);
+  const [lookupError, setLookupError] = useState<{
+    status?: number;
+    message: string;
+  } | null>(null);
 
   const handleLookup = async (targetHandle?: string) => {
     const raw = (targetHandle ?? query).trim();
     if (!raw) return;
     setLookingUp(true);
     setReport(null);
+    setLookupError(null);
     try {
       const res = await lookupLiveXHandle(raw);
       setProfile(res);
       setSegment(res.segment);
-    } catch {
-      toast(t("errors.500_desc"), "error");
+    } catch (err) {
+      setProfile(null);
+      const status = err instanceof ApiRequestError ? err.status : undefined;
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : t("errors.500_desc");
+      setLookupError({ status, message });
+      toast(message, "error");
     } finally {
       setLookingUp(false);
     }
@@ -106,12 +122,46 @@ export function LiveXLookupTab() {
           </p>
         </div>
 
-        <Badge variant={profile?.api_connected ? "positive" : "primary"}>
-          {profile?.api_connected
-            ? t("ingestion.api_status_live")
-            : t("ingestion.api_status_fallback")}
+        <Badge
+          variant={
+            lookupError
+              ? "destructive"
+              : profile?.source_mode === "LIVE_X_API"
+                ? "positive"
+                : "primary"
+          }
+        >
+          {lookupError
+            ? `HTTP ${lookupError.status ?? "ERROR"}`
+            : profile?.source_mode === "LIVE_X_API"
+              ? t("ingestion.api_status_live")
+              : profile?.source_mode === "X_API_SIMULATOR"
+                ? t("ingestion.api_status_simulator")
+                : t("ingestion.api_status_http_ready")}
         </Badge>
       </div>
+
+      {lookupError && (
+        <div
+          data-testid="live-lookup-error"
+          className="mt-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900"
+        >
+          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2 font-semibold">
+              <span>{t("ingestion.lookup_error_title")}</span>
+              {lookupError.status && (
+                <span className="rounded bg-red-100 px-2 py-0.5 font-mono text-xs text-red-800">
+                  HTTP {lookupError.status}
+                </span>
+              )}
+            </div>
+            <p className="text-xs leading-relaxed text-red-800">
+              {lookupError.message}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <div className="flex-1">
