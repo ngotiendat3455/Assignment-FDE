@@ -71,6 +71,7 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({
         ref={inputRef}
         type="file"
         accept={acceptedFileTypes}
+        data-testid="csv-file-input"
         className="hidden"
         onChange={(e) => {
           if (e.target.files && e.target.files.length > 0) {

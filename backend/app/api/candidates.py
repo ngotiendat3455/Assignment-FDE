@@ -141,6 +141,7 @@ def send_candidate_dm(
             candidate_id=candidate_id,
             custom_message=payload.custom_message,
             idempotency_key=payload.idempotency_key,
+            dispatch_mode=(payload.dispatch_mode or "SANDBOX").upper(),
             sent_by_user_id=current_user.id,
         )
     except LookupError as exc:

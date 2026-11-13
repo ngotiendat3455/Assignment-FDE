@@ -126,6 +126,7 @@ export function SeedPackTab() {
           loading={loading}
           icon={Zap}
           onClick={handleLoadSeed}
+          data-testid="seed-ingest-btn"
         >
           {loading
             ? t("ingestion.btn_loading")

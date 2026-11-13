@@ -57,9 +57,13 @@ export async function POST(request: Request) {
       user: data.user,
     });
 
+    const isHttps =
+      request.url.startsWith("https://") ||
+      request.headers.get("x-forwarded-proto") === "https";
+
     response.cookies.set("session_token", data.access_token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps,
       sameSite: "lax",
       path: "/",
       maxAge: SEVEN_DAYS_SECONDS,

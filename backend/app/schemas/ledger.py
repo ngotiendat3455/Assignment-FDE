@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class SendOutreachRequest(BaseModel):
     custom_message: Optional[str] = Field(None, description="Optional edited message overriding the AI draft")
     idempotency_key: Optional[str] = Field(None, description="Client idempotency key to prevent double clicks")
+    dispatch_mode: Optional[str] = Field("SANDBOX", description="Dispatch mode: SANDBOX or LIVE_X")
 
 
 class RecordReplyRequest(BaseModel):

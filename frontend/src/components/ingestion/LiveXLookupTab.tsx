@@ -121,6 +121,7 @@ export function LiveXLookupTab() {
             onChange={(e) => setQuery(e.target.value)}
             onClear={() => setQuery("")}
             placeholder={t("ingestion.live_input_placeholder")}
+            data-testid="live-lookup-input"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 handleLookup();
@@ -133,6 +134,7 @@ export function LiveXLookupTab() {
           loading={lookingUp}
           icon={Search}
           onClick={() => handleLookup()}
+          data-testid="live-lookup-submit"
         >
           {lookingUp
             ? t("ingestion.btn_looking_up")
@@ -201,7 +203,7 @@ export function LiveXLookupTab() {
           <div className="mt-4 space-y-4">
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase">
-                Bio:
+                {t("ingestion.bio_label")}
               </p>
               <p className="mt-1 rounded-lg border border-border bg-white p-3 text-sm text-foreground">
                 {profile.bio}
@@ -258,6 +260,7 @@ export function LiveXLookupTab() {
               disabled={profile.already_contacted}
               icon={Zap}
               onClick={handlePushSingle}
+              data-testid="live-ingest-btn"
             >
               {t("ingestion.btn_push_single")}
             </Button>

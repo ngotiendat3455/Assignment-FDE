@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import { X } from "lucide-react";
+import { useI18n } from "@/context/i18n";
 
 export interface DrawerProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const Drawer: React.FC<DrawerProps> = ({
   width = "lg",
   children,
 }) => {
+  const { t } = useI18n();
   useEffect(() => {
     if (!isOpen) return;
 
@@ -70,6 +72,8 @@ export const Drawer: React.FC<DrawerProps> = ({
             <button
               type="button"
               onClick={onClose}
+              data-testid="drawer-close-btn"
+              aria-label={t("actions.close")}
               className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <X className="w-4 h-4" />

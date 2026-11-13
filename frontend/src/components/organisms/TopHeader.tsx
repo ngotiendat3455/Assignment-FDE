@@ -73,6 +73,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         <div className="relative">
           <button
             type="button"
+            data-testid="user-menu-btn"
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-muted transition-colors focus:outline-none"
           >
@@ -110,6 +111,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                 <div className="flex items-center gap-1 bg-muted rounded p-0.5 font-medium">
                   <button
                     type="button"
+                    data-testid="lang-en-btn"
                     onClick={() => setLocale("en")}
                     className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
                       locale === "en" ? "bg-white text-primary shadow-xs font-bold" : "text-muted-foreground"
@@ -119,6 +121,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                   </button>
                   <button
                     type="button"
+                    data-testid="lang-vi-btn"
                     onClick={() => setLocale("vi")}
                     className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
                       locale === "vi" ? "bg-white text-primary shadow-xs font-bold" : "text-muted-foreground"
@@ -132,6 +135,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               {/* Logout Option */}
               <button
                 type="button"
+                data-testid="logout-btn"
                 onClick={handleLogout}
                 className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-destructive hover:bg-red-50 transition-colors text-left"
               >

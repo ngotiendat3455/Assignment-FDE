@@ -1,0 +1,26 @@
+{
+  "detected_columns": [
+    "handle",
+    "name",
+    "recent_tweets"
+  ],
+  "error_message": "Missing required column(s): bio",
+  "missing_columns": [
+    "bio"
+  ],
+  "preview_rows": [
+    {
+      "bio": "(missing)",
+      "can_dm": true,
+      "handle": "@minh_quant",
+      "is_valid": false,
+      "line_number": 1,
+      "location": "Southeast Asia",
+      "name": "Minh Nguyen",
+      "recent_tweets": "Built AWQ kernel",
+      "validation_note": "Missing: bio"
+    }
+  ],
+  "total_rows": 1,
+  "valid": false
+}

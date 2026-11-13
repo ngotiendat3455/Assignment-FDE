@@ -82,6 +82,7 @@ class CsvIngestRequest(BaseModel):
     csv_content: str = Field(..., description="Raw CSV file content")
     default_segment: Optional[str] = "SEA AI & Robotics Ecosystem"
     skip_ledger_collisions: bool = True
+    queue_ai_enabled: bool = True
 
 
 class CollisionDetail(BaseModel):

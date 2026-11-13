@@ -51,6 +51,7 @@ type FilterTabKey =
   | "MATCHES"
   | "PENDING_REVIEW"
   | "SPARSE"
+  | "AI_FAILED"
   | "BLOCKED"
   | "SENT"
   | "REJECTED";
@@ -89,10 +90,10 @@ export default function HitlReviewWorkspacePage() {
       setHasConnectionError(false);
       const [candidatesData, summaryData] = await Promise.all([
         fetchCandidates(),
-        fetchStateMachineSummary().catch(() => null),
+        fetchStateMachineSummary(),
       ]);
       setCandidates(candidatesData.items || []);
-      if (summaryData) setSummary(summaryData);
+      setSummary(summaryData);
     } catch {
       setHasConnectionError(true);
       error(t("errors.500_desc"));
@@ -157,6 +158,8 @@ export default function HitlReviewWorkspacePage() {
             item.status === "INSUFFICIENT_EVIDENCE" ||
             Boolean(item.insufficient_evidence)
           );
+        case "AI_FAILED":
+          return item.status === "AI_FAILED";
         case "BLOCKED":
           return !item.can_dm || item.status === "SEND_BLOCKED";
         case "SENT":
@@ -231,10 +234,10 @@ export default function HitlReviewWorkspacePage() {
 
   const handleModalReject = async (candidateId: number) => {
     try {
-      const res = await rejectCandidate(candidateId);
+      const rejected = await rejectCandidate(candidateId);
       success(
         t("workspace.toast_reject_success", {
-          handle: res.candidate.handle,
+          handle: rejected.handle,
         })
       );
       await loadWorkspaceData();
@@ -340,6 +343,7 @@ export default function HitlReviewWorkspacePage() {
           c.status === "INSUFFICIENT_EVIDENCE" ||
           Boolean(c.insufficient_evidence)
       ).length,
+      ai_failed: candidates.filter((c) => c.status === "AI_FAILED").length,
       blocked: candidates.filter(
         (c) => !c.can_dm || c.status === "SEND_BLOCKED"
       ).length,
@@ -363,8 +367,8 @@ export default function HitlReviewWorkspacePage() {
     <AppShell
       title={t("workspace.title")}
       subtitle={t("workspace.subtitle")}
-      reviewQueueCount={summary?.PENDING_REVIEW ?? counts.pending}
-      needsAttentionCount={summary?.needs_attention_count ?? 0}
+      reviewQueueCount={summary?.state_counts.PENDING_REVIEW ?? counts.pending}
+      needsAttentionCount={summary?.ledger_summary.needs_attention_count ?? 0}
     >
       <div className="space-y-6">
         {/* Top KPI Metric Cards */}
@@ -372,30 +376,34 @@ export default function HitlReviewWorkspacePage() {
           <StatCard
             icon={Send}
             label={t("kpi.dispatched")}
-            value={summary?.SENT ? String(summary.SENT + (summary.REPLIED || 0)) : String(counts.sent)}
+            value={String(summary?.ledger_summary.total_dispatched ?? counts.sent)}
             subtext={t("kpi.dispatched_sub")}
             variant="primary"
+            testId="kpi-dispatched"
           />
           <StatCard
             icon={MessageSquare}
             label={t("kpi.replied")}
-            value={summary?.REPLIED !== undefined ? String(summary.REPLIED) : "1"}
+            value={String(summary?.ledger_summary.total_replied ?? 0)}
             subtext={t("kpi.replied_sub")}
             variant="positive"
+            testId="kpi-replied"
           />
           <StatCard
             icon={AlertCircle}
             label={t("kpi.urgent")}
-            value={summary?.needs_attention_count !== undefined ? String(summary.needs_attention_count) : "0"}
+            value={String(summary?.ledger_summary.needs_attention_count ?? 0)}
             subtext={t("kpi.urgent_sub")}
             variant="urgent"
+            testId="kpi-urgent"
           />
           <StatCard
             icon={ShieldCheck}
             label={t("kpi.blocked")}
-            value={summary?.total_in_ledger ? String(summary.total_in_ledger) : String(counts.blocked)}
+            value={String(summary?.ledger_summary.total_blocked ?? counts.blocked)}
             subtext={t("kpi.blocked_sub")}
             variant="default"
+            testId="kpi-blocked"
           />
         </div>
 
@@ -405,6 +413,7 @@ export default function HitlReviewWorkspacePage() {
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
+              data-testid="workspace-search-input"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -421,6 +430,7 @@ export default function HitlReviewWorkspacePage() {
               size="sm"
               onClick={handleProcessQueue}
               loading={isProcessingQueue}
+              data-testid="process-queue-btn"
               className="text-xs shrink-0"
             >
               <RotateCw className="w-3.5 h-3.5 mr-1.5" />
@@ -432,6 +442,7 @@ export default function HitlReviewWorkspacePage() {
               size="sm"
               onClick={loadWorkspaceData}
               loading={isLoading}
+              data-testid="refresh-workspace-btn"
               className="text-xs shrink-0"
             >
               <RotateCw className="w-3.5 h-3.5 mr-1.5" />
@@ -443,6 +454,7 @@ export default function HitlReviewWorkspacePage() {
         {/* Filter Pills (Wireframe 1) */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs select-none scrollbar-none">
           <button
+            data-testid="filter-pill-ALL"
             onClick={() => {
               setActiveFilterTab("ALL");
               setCurrentPage(1);
@@ -457,6 +469,7 @@ export default function HitlReviewWorkspacePage() {
           </button>
 
           <button
+            data-testid="filter-pill-MATCHES"
             onClick={() => {
               setActiveFilterTab("MATCHES");
               setCurrentPage(1);
@@ -472,6 +485,7 @@ export default function HitlReviewWorkspacePage() {
           </button>
 
           <button
+            data-testid="filter-pill-PENDING_REVIEW"
             onClick={() => {
               setActiveFilterTab("PENDING_REVIEW");
               setCurrentPage(1);
@@ -487,6 +501,7 @@ export default function HitlReviewWorkspacePage() {
           </button>
 
           <button
+            data-testid="filter-pill-SPARSE"
             onClick={() => {
               setActiveFilterTab("SPARSE");
               setCurrentPage(1);
@@ -502,6 +517,23 @@ export default function HitlReviewWorkspacePage() {
           </button>
 
           <button
+            data-testid="filter-pill-AI_FAILED"
+            onClick={() => {
+              setActiveFilterTab("AI_FAILED");
+              setCurrentPage(1);
+            }}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-all shrink-0 flex items-center gap-1.5 ${
+              activeFilterTab === "AI_FAILED"
+                ? "bg-rose-700 text-white shadow-xs"
+                : "bg-white text-muted-foreground border border-border hover:bg-muted/40"
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-rose-600" />
+            {t("workspace.tab_ai_failed")} ({counts.ai_failed})
+          </button>
+
+          <button
+            data-testid="filter-pill-BLOCKED"
             onClick={() => {
               setActiveFilterTab("BLOCKED");
               setCurrentPage(1);
@@ -517,6 +549,7 @@ export default function HitlReviewWorkspacePage() {
           </button>
 
           <button
+            data-testid="filter-pill-SENT"
             onClick={() => {
               setActiveFilterTab("SENT");
               setCurrentPage(1);
@@ -532,6 +565,7 @@ export default function HitlReviewWorkspacePage() {
           </button>
 
           <button
+            data-testid="filter-pill-REJECTED"
             onClick={() => {
               setActiveFilterTab("REJECTED");
               setCurrentPage(1);
@@ -574,7 +608,7 @@ export default function HitlReviewWorkspacePage() {
                   const isTerminal = c.status === "SENT" || c.status === "REPLIED";
 
                   return (
-                    <TableRow key={c.id}>
+                    <TableRow key={c.id} data-testid={`candidate-row-${c.handle}`}>
                       {/* Index */}
                       <TableCell className="text-center font-mono text-xs text-muted-foreground">
                         {serialNumber}
@@ -626,7 +660,12 @@ export default function HitlReviewWorkspacePage() {
                       </TableCell>
 
                       {/* Lifecycle Status */}
-                      <TableCell>{renderStatusBadge(c)}</TableCell>
+                      <TableCell
+                        data-testid={`candidate-status-${c.handle}`}
+                        data-status={c.status}
+                      >
+                        {renderStatusBadge(c)}
+                      </TableCell>
 
                       {/* Fast Action Buttons */}
                       <TableCell className="text-right">
@@ -637,6 +676,7 @@ export default function HitlReviewWorkspacePage() {
                               size="sm"
                               variant="outline"
                               onClick={() => handleRetryAi(c)}
+                              data-testid={`retry-btn-${c.handle}`}
                               className="text-amber-700 border-amber-300 hover:bg-amber-50 h-7 text-xs"
                             >
                               <RotateCw className="w-3 h-3 mr-1" />
@@ -650,6 +690,7 @@ export default function HitlReviewWorkspacePage() {
                               size="sm"
                               variant="outline"
                               onClick={() => handleOpenDrawer(c)}
+                              data-testid={`crm-btn-${c.handle}`}
                               className="text-blue-700 border-blue-300 hover:bg-blue-50 h-7 text-xs"
                             >
                               <MessageSquare className="w-3 h-3 mr-1 text-blue-600" />
@@ -662,6 +703,7 @@ export default function HitlReviewWorkspacePage() {
                             size="sm"
                             variant="primary"
                             onClick={() => handleOpenReviewModal(c)}
+                            data-testid={`review-btn-${c.handle}`}
                             className="bg-primary hover:bg-primary/90 h-7 text-xs font-medium"
                           >
                             <Eye className="w-3 h-3 mr-1" />
@@ -672,6 +714,7 @@ export default function HitlReviewWorkspacePage() {
                           <button
                             onClick={() => handleQuickReject(c)}
                             disabled={isTerminal || c.status === "REJECTED"}
+                            data-testid={`reject-btn-${c.handle}`}
                             title={t("actions.reject")}
                             className="p-1.5 rounded-md text-muted-foreground hover:text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-muted-foreground transition-colors cursor-pointer"
                           >

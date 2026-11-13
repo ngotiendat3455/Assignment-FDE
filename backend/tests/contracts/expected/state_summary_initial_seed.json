@@ -1,0 +1,20 @@
+{
+  "ledger_summary": {
+    "needs_attention_count": 2,
+    "total_blocked": 1,
+    "total_dispatched": 3,
+    "total_replied": 2
+  },
+  "state_counts": {
+    "AI_FAILED": 0,
+    "APPROVED_QUEUED": 0,
+    "INSUFFICIENT_EVIDENCE": 1,
+    "PENDING_REVIEW": 15,
+    "QUEUED_FOR_AI": 0,
+    "REJECTED": 0,
+    "REPLIED": 2,
+    "SEND_BLOCKED": 0,
+    "SENT": 1
+  },
+  "total_candidates": 19
+}

@@ -1,0 +1,15 @@
+# E2E & Manual Testing Artifacts (Feature 08)
+tests/manual/results/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.next-e2e/
+outreach_e2e.db*
+backend/outreach_e2e.db*
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+

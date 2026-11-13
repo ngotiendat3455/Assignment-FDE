@@ -9,6 +9,7 @@ export interface TabItem {
   icon?: LucideIcon;
   count?: number;
   urgent?: boolean;
+  testId?: string;
 }
 
 export interface TabsProps {
@@ -37,6 +38,7 @@ export const Tabs: React.FC<TabsProps> = ({
             <button
               key={tab.key}
               type="button"
+              data-testid={tab.testId || `tab-${tab.key}`}
               onClick={() => onChange(tab.key)}
               className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all select-none ${
                 isActive
@@ -78,6 +80,7 @@ export const Tabs: React.FC<TabsProps> = ({
           <button
             key={tab.key}
             type="button"
+            data-testid={tab.testId || `tab-${tab.key}`}
             onClick={() => onChange(tab.key)}
             className={`relative flex items-center gap-2 py-3 text-sm font-medium transition-colors select-none ${
               isActive

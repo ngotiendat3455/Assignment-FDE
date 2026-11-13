@@ -35,7 +35,10 @@ export const EvidenceMark: React.FC<EvidenceMarkProps> = ({
   return (
     <span className={className}>
       {before}
-      <mark className="bg-amber-100 text-amber-950 font-medium px-1 py-0.5 rounded-xs border-b-2 border-amber-400 select-all">
+      <mark
+        data-testid="evidence-highlight"
+        className="bg-amber-100 text-amber-950 font-medium px-1 py-0.5 rounded-xs border-b-2 border-amber-400 select-all"
+      >
         {matched}
       </mark>
       {after}

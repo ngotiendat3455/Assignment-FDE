@@ -1,0 +1,6 @@
+handle,name,location,bio,recent_tweets,can_dm,segment
+@e2e_fresh_builder,Huy Pham,"Ho Chi Minh City, Vietnam","Founder @EdgeVisonVN | Real-time ONNX/TensorRT defect detection on factory lines.","[2026-11-11] Scaled our vision inspection SDK across 6 Binh Duong electronics lines with <12ms latency.",true,SEG-01: SEA Embodied AI & Robotics
+@minh_quant,Minh Nguyen,"Hanoi, Vietnam","Founder @TensorEdgeVN. Ultra-fast C++/CUDA/ARM LLM inference engine.","[2026-11-08] Just open-sourced our AWQ-W4A8 speculative decoding kernel.",true,SEG-02: LLM Inference & AI Infra
+@minh_quant,Minh Nguyen Duplicate,"Hanoi, Vietnam","Duplicate row inside CSV batch.","[2026-11-08] Duplicate row inside CSV batch.",true,SEG-02: LLM Inference & AI Infra
+@linhtran_robo,Linh Tran,"Singapore","Co-founder & CTO @MerlionBots | Bimanual warehouse robotics.","[2026-11-08] Tuas pilot week 3 complete!",true,SEG-01: SEA Embodied AI & Robotics
+

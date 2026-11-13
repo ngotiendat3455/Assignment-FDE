@@ -70,8 +70,10 @@ def upload_csv_batch(
             parsed_rows,
             source_label="CSV_UPLOAD",
             default_segment=payload.default_segment,
+            skip_ledger_collisions=payload.skip_ledger_collisions,
         )
-        background_tasks.add_task(process_pending_jobs, db, "AI_EVALUATE")
+        if payload.queue_ai_enabled:
+            background_tasks.add_task(process_pending_jobs, db, "AI_EVALUATE")
         return IngestionAuditReport(**report)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

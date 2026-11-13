@@ -278,6 +278,7 @@ export const ReviewComposerModal: React.FC<ReviewComposerModalProps> = ({
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span>{t("review_modal.dispatch_mode")}</span>
                   <select
+                    data-testid="dispatch-mode-select"
                     value={dispatchMode}
                     onChange={(e) =>
                       setDispatchMode(e.target.value as "SANDBOX" | "LIVE_X")
@@ -340,6 +341,7 @@ export const ReviewComposerModal: React.FC<ReviewComposerModalProps> = ({
                     variant="outline"
                     onClick={handleRetry}
                     loading={isRetrying}
+                    data-testid="modal-retry-ai-btn"
                     className="shrink-0 bg-white"
                   >
                     <RotateCw className="w-3.5 h-3.5 mr-1" />
@@ -378,6 +380,7 @@ export const ReviewComposerModal: React.FC<ReviewComposerModalProps> = ({
                 </div>
 
                 <Textarea
+                  data-testid="dm-composer-textarea"
                   value={dmText}
                   onChange={(e) => setDmText(e.target.value)}
                   placeholder={t("review_modal.dm_placeholder")}
@@ -422,6 +425,7 @@ export const ReviewComposerModal: React.FC<ReviewComposerModalProps> = ({
                 onClick={handleReject}
                 loading={isRejecting}
                 disabled={isTerminal || candidate.status === "REJECTED"}
+                data-testid="modal-reject-btn"
                 className="text-rose-700 border-rose-200 hover:bg-rose-50"
               >
                 <Trash2 className="w-3.5 h-3.5 mr-1" />
@@ -439,6 +443,7 @@ export const ReviewComposerModal: React.FC<ReviewComposerModalProps> = ({
                   onClick={handleApproveSend}
                   loading={isSending}
                   disabled={isSendDisabled}
+                  data-testid="approve-send-btn"
                   className="bg-emerald-600 hover:bg-emerald-700 font-semibold px-4"
                 >
                   <Send className="w-3.5 h-3.5 mr-1.5" />

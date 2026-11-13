@@ -1,0 +1,11 @@
+{
+  "aligned_count": 19,
+  "alignment_accuracy": 100.0,
+  "duplicate_rows_detected": 1,
+  "mean_score_delta": 0.0,
+  "safety_blocks_total": 2,
+  "safety_blocks_verified": 2,
+  "total_seed_rows": 20,
+  "unique_benchmarked": 19
+}
+

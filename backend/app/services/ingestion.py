@@ -200,6 +200,7 @@ def ingest_candidate_batch(
     records: List[Dict[str, Any]],
     source_label: str = "CSV_IMPORT",
     default_segment: Optional[str] = None,
+    skip_ledger_collisions: bool = True,
 ) -> Dict[str, Any]:
     """
     Ingest a batch of candidate records with 3-tier deduplication:

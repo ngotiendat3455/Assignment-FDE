@@ -33,6 +33,7 @@ export function IngestionAuditCard({
 
   return (
     <div
+      data-testid="ingestion-audit-card"
       className={`rounded-2xl border border-positive/30 bg-white p-6 sm:p-8 shadow-xs animate-in fade-in-50 duration-200 ${className}`}
     >
       {/* Header Banner */}
@@ -79,7 +80,7 @@ export function IngestionAuditCard({
         <div className="rounded-xl border border-border bg-accent p-4">
           <div className="flex items-center gap-2 text-positive">
             <CheckCircle2 className="h-5 w-5 shrink-0" />
-            <span className="font-mono text-3xl font-bold">
+            <span data-testid="audit-queued-count" className="font-mono text-3xl font-bold">
               {report.queued_for_ai_count}
             </span>
           </div>
@@ -87,7 +88,7 @@ export function IngestionAuditCard({
             {t("ingestion.audit_queued")}
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Active in autonomous scoring pipeline
+            {t("ingestion.audit_queued_desc")}
           </p>
         </div>
 
@@ -95,7 +96,7 @@ export function IngestionAuditCard({
         <div className="rounded-xl border border-border bg-accent p-4">
           <div className="flex items-center gap-2 text-warning">
             <CopyCheck className="h-5 w-5 shrink-0" />
-            <span className="font-mono text-3xl font-bold">
+            <span data-testid="audit-duplicates-count" className="font-mono text-3xl font-bold">
               {report.in_batch_duplicates_skipped}
             </span>
           </div>
@@ -115,7 +116,7 @@ export function IngestionAuditCard({
             </div>
           ) : (
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Zero intra-batch collisions
+              {t("ingestion.audit_zero_duplicates")}
             </p>
           )}
         </div>
@@ -124,7 +125,7 @@ export function IngestionAuditCard({
         <div className="rounded-xl border border-border bg-accent p-4">
           <div className="flex items-center gap-2 text-primary">
             <ShieldAlert className="h-5 w-5 shrink-0" />
-            <span className="font-mono text-3xl font-bold">
+            <span data-testid="audit-collisions-count" className="font-mono text-3xl font-bold">
               {report.already_contacted_in_ledger}
             </span>
           </div>

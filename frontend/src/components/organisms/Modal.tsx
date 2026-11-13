@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import { X } from "lucide-react";
+import { useI18n } from "@/context/i18n";
 
 export interface ModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const Modal: React.FC<ModalProps> = ({
   maxWidth = "3xl",
   children,
 }) => {
+  const { t } = useI18n();
   useEffect(() => {
     if (!isOpen) return;
 
@@ -80,8 +82,10 @@ export const Modal: React.FC<ModalProps> = ({
           <button
             type="button"
             onClick={onClose}
+            data-testid="modal-close-btn"
+            aria-label={t("actions.close")}
             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title="Đóng (Esc)"
+            title={`${t("actions.close")} (Esc)`}
           >
             <X className="w-4 h-4" />
           </button>

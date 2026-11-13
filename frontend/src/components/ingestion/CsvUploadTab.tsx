@@ -90,7 +90,10 @@ export function CsvUploadTab() {
     }
     setLoading(true);
     try {
-      const res = await ingestCsvBatch(csvContent);
+      const res = await ingestCsvBatch(csvContent, undefined, {
+        skipLedgerCollisions: dedupEnabled,
+        queueAiEnabled: queueAiEnabled,
+      });
       setReport(res);
       toast(t("ingestion.toast_csv_success"), "success");
     } catch {
@@ -154,7 +157,11 @@ export function CsvUploadTab() {
                 {t("ingestion.preflight_valid_badge")}
               </Badge>
             ) : (
-              <Badge variant="destructive" icon={AlertTriangle}>
+              <Badge
+                variant="destructive"
+                icon={AlertTriangle}
+                data-testid="preflight-error-banner"
+              >
                 {preflight.error_message ||
                   t("ingestion.preflight_missing_badge")}
               </Badge>
@@ -244,6 +251,7 @@ export function CsvUploadTab() {
           loading={loading}
           icon={Upload}
           onClick={handleProcessCsv}
+          data-testid="csv-upload-btn"
         >
           {loading
             ? t("ingestion.btn_loading")

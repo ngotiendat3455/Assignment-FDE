@@ -11,6 +11,7 @@ export interface StatCardProps {
   subtext?: string;
   variant?: "default" | "urgent" | "positive" | "primary";
   className?: string;
+  testId?: string;
 }
 
 export const StatCard: React.FC<StatCardProps> = ({
@@ -20,6 +21,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   subtext,
   variant = "default",
   className = "",
+  testId,
 }) => {
   const { t } = useI18n();
   const isUrgent = variant === "urgent";
@@ -40,6 +42,7 @@ export const StatCard: React.FC<StatCardProps> = ({
 
   return (
     <div
+      data-testid={testId}
       className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${
         variantStyles[variant]
       } ${className}`}

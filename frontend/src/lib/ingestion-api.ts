@@ -66,7 +66,11 @@ export async function runCsvPreflight(
 
 export async function ingestCsvBatch(
   csvContent: string,
-  defaultSegment?: string
+  defaultSegment?: string,
+  options?: {
+    skipLedgerCollisions?: boolean;
+    queueAiEnabled?: boolean;
+  }
 ): Promise<IngestionAuditReport> {
   const res = await fetch(`${API_BASE_URL}/ingestion/csv`, {
     method: "POST",
@@ -75,6 +79,8 @@ export async function ingestCsvBatch(
     body: JSON.stringify({
       csv_content: csvContent,
       default_segment: defaultSegment || null,
+      skip_ledger_collisions: options?.skipLedgerCollisions ?? true,
+      queue_ai_enabled: options?.queueAiEnabled ?? true,
     }),
   });
   return handleApiResponse<IngestionAuditReport>(res);

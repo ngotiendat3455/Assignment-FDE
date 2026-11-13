@@ -215,6 +215,7 @@ export default function LoginPage() {
             size="lg"
             loading={loading}
             icon={LogIn}
+            data-testid="login-submit"
             className="w-full"
           >
             {loading ? t("auth.btn_signing_in") : t("auth.btn_sign_in")}

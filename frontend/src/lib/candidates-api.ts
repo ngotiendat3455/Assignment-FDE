@@ -86,14 +86,14 @@ export async function sendCandidateDm(
 export async function rejectCandidate(
   candidateId: number,
   reason?: string
-): Promise<{ candidate: CandidateItem }> {
+): Promise<CandidateItem> {
   const res = await fetch(`${API_BASE_URL}/candidates/${candidateId}/reject`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ reason: reason || "Manual reject by partner" }),
   });
-  return handleApiResponse<{ candidate: CandidateItem }>(res);
+  return handleApiResponse<CandidateItem>(res);
 }
 
 export async function retryCandidateEvaluation(

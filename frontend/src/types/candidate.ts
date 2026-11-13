@@ -47,17 +47,24 @@ export interface CandidateListResponse {
 }
 
 export interface StateMachineSummary {
-  QUEUED_FOR_AI: number;
-  PENDING_REVIEW: number;
-  INSUFFICIENT_EVIDENCE: number;
-  AI_FAILED: number;
-  REJECTED: number;
-  APPROVED_QUEUED: number;
-  SEND_BLOCKED: number;
-  SENT: number;
-  REPLIED: number;
-  total_in_ledger: number;
-  needs_attention_count: number;
+  total_candidates: number;
+  state_counts: {
+    QUEUED_FOR_AI: number;
+    PENDING_REVIEW: number;
+    INSUFFICIENT_EVIDENCE: number;
+    AI_FAILED: number;
+    REJECTED: number;
+    APPROVED_QUEUED: number;
+    SEND_BLOCKED: number;
+    SENT: number;
+    REPLIED: number;
+  };
+  ledger_summary: {
+    total_dispatched: number;
+    total_replied: number;
+    total_blocked: number;
+    needs_attention_count: number;
+  };
 }
 
 export interface SendCandidatePayload {

@@ -1,15 +1,25 @@
-# Current Active Feature: Feature 06 – Outreach Ledger, Inbox Tracker & Calibration Matrix
+# Current Active Feature: Feature 08 – Contract-Based Testing & Full-Stack Playwright E2E Quality Gate
 *(Sprint Status & Active Tracking)*
 
 ---
 
 ## 1. Active Feature Info
-- **Active Task:** WBS Task 6 (Immutable Outreach Ledger, Founder Reply Simulator/Tracker, Conversation Audit Drawer & Partner Calibration Matrix): [`06-outreach-ledger-and-dashboard.md`](file:///d:/AssignmentFDE/context/features/06-outreach-ledger-and-dashboard.md)
-  - ✅ **Sub-task 6.1 (Backend Ledger & Calibration Service & Router – `backend/app/services/ledger_service.py` & `backend/app/api/ledger.py`):** Implemented `GET /api/ledger` (with `filter_tab`, `search`, KPI summary metrics, and auto-seeding of `OUT-101`..`OUT-104` baseline), `POST /api/ledger/{id}/reply` (simulate/record founder reply -> `REPLIED` + `needs_attention=True`), `POST /api/ledger/{id}/handled` (resolve attention flag -> `needs_attention=False`), and `GET /api/ledger/calibration` (benchmarking AI Scorer against `candidates_seed.csv` & `fund_reference_scores.csv`).
-  - ✅ **Sub-task 6.2 (Automated Pytest Suite – `backend/tests/test_ledger_and_calibration.py`):** Wrote 4 comprehensive tests covering `OUT-101`..`OUT-104` seed history baseline, filter pills (`needs_attention`, `sent`, `blocked`), founder reply simulation -> `needs_attention=True`, mark handled -> `needs_attention=False`, closed DM reply rejection (`422`), and calibration matrix accuracy (`100%` across 19 unique profiles) -> **29/29 total backend tests PASSED**.
-  - ✅ **Sub-task 6.3 (Frontend Ledger & Calibration Types, Client API & Symmetrical i18n – `frontend/src/types/ledger.ts`, `frontend/src/lib/ledger-api.ts`, `en.json`, `vi.json`):** Defined strict TypeScript contracts (`no-explicit-any`), zero-fake-fallback API client functions (`fetchLedgerEntries`, `recordLedgerReply`, `markLedgerHandled`, `fetchCalibrationMatrix`), and 100% symmetrical English/Vietnamese translation keys under `ledger.*` and `calibration.*`.
-  - ✅ **Sub-task 6.4 (Frontend Outreach Ledger, Record Reply Modal, Audit Drawer & Calibration Matrix Pages – `frontend/src/components/ledger/LedgerDashboardClient.tsx`, `frontend/src/app/ledger/page.tsx`, `frontend/src/app/calibration/page.tsx`, `frontend/src/app/dashboard/page.tsx`):** Built Tab 1 (Outreach Ledger & Inbox with 4 KPI StatCards, Filter Pills, Search, Record Reply Modal, and Conversation Detail & Immutable Audit Trail Drawer) and Tab 2 (Partner Calibration Matrix comparing AI scores against Fund Reference scores).
-  - ✅ **Sub-task 6.5 (End-to-End Verification & Sprint Log Finalization):** Verified `python -m pytest backend/tests/ -v` (**29/29 PASSED**) and `npm run build` in `frontend/`.
+- **Active Task:** WBS Task 8 (Contract-Based Testing Layer + Isolated Full-Stack Playwright E2E Suite + `tests/manual/` Quality Gate Runner): [`08-contract-and-playwright-e2e.md`](file:///d:/AssignmentFDE/context/features/08-contract-and-playwright-e2e.md)
+  - ✅ **Sub-task 8.1 (Contract Remediation, Isolated E2E Env Support, Cookie Fix & Selective `data-testid`):**
+    - Fixed **BUG-01** (`StateMachineSummary` nested contract + `page.tsx` Fail-Fast + dynamic counts on `ingestion/page.tsx`).
+    - Fixed **BUG-02** (`dispatch_mode` in `SendOutreachRequest` + `candidates.py`).
+    - Fixed **BUG-03** (`skip_ledger_collisions` & `queue_ai_enabled` flags in `CsvUploadTab.tsx`, `ingestion-api.ts`, `schemas/candidate.py`, `api/ingestion.py`).
+    - Fixed **Contract Mismatch caught by PW-03** (`rejectCandidate` in `candidates-api.ts` & `handleModalReject` in `page.tsx` updated from `{ candidate }` to flat `CandidateItem` returned by `POST /api/candidates/{id}/reject`).
+    - Added isolated E2E env hooks (`ENV_FILE` / `CORS_ORIGINS` in backend `config.py`/`main.py`, `NEXT_DIST_DIR` in `next.config.ts`, protocol-aware `secure` cookie + `BACKEND_INTERNAL_URL` in `login/route.ts`).
+    - Added `AI_FAILED` filter pill, selective `data-testid` attributes, and cleaned remaining hardcoded strings in Modal/Drawer/Ingestion cards.
+  - ✅ **Sub-task 8.2 (Tier 1 Contract-Based Testing – `backend/tests/contracts/`):**
+    - Created `test_api_contracts.py` + `expected/*.json` golden references + unified `difflib` diff output to `tests/manual/results/contract-diff-*.txt`.
+  - ✅ **Sub-task 8.3 (Tier 2 Playwright Infrastructure & 3 Data Presets):**
+    - Created `backend/tests/e2e_seed.py` (`CLEAN_EMPTY` / `SEED_PACK_EVALUATED`), `frontend/e2e/fixtures/csv/`, `@playwright/test` + `playwright.config.ts` (`3100`/`8001` + `outreach_e2e.db`), POMs & `db-reset.ts`.
+  - ✅ **Sub-task 8.4 (9 Risk-Ranked Playwright E2E Specs `PW-01` → `PW-09`):**
+    - Implemented and verified `PW-01`..`PW-09` with 3-Layer Assertions & zero-console-error guard (**9/9 PASSED** across two consecutive runs).
+  - ✅ **Sub-task 8.5 (`tests/manual/` Quality Gate Runner & Final Verification):**
+    - Created `tests/manual/` (`config.sh`, `README.md`, `test-all.ps1`, `test-all.sh`), updated `.gitignore` + `frontend/.gitignore`, ran Quality Gate + full `pytest` + `next build`.
 - **Completed Foundation Tasks:**
   - ✅ **Task 0:** [`00-base-layout-design-system.md`](file:///d:/AssignmentFDE/context/features/00-base-layout-design-system.md) (Atomic Design System, Pure Tailwind v4 `@theme`, English-First i18n, Paginated Table & AppShell)
   - ✅ **Task 1:** [`01-data-pack-and-ingestion.md`](file:///d:/AssignmentFDE/context/features/01-data-pack-and-ingestion.md) (Full-Stack Triple-Tab Ingestion Hub, Pre-flight CSV Check, Live X Lookup & 3-Tier Deduplication)
@@ -18,8 +28,9 @@
   - ✅ **Task 4:** [`04-dual-queue-and-ai-send-engine.md`](file:///d:/AssignmentFDE/context/features/04-dual-queue-and-ai-send-engine.md) (SQLite Dual Queue Worker, Tri-Guard AI Evaluator, Token Bucket Limiter & Dual-Mode Safe Send Dispatcher)
   - ✅ **Task 5:** [`05-hitl-review-and-composer-ui.md`](file:///d:/AssignmentFDE/context/features/05-hitl-review-and-composer-ui.md) (Table-First Review Workspace, Search/Filter Triage, Grounded Evidence Highlighting & Review/Composer Modal)
   - ✅ **Task 6:** [`06-outreach-ledger-and-dashboard.md`](file:///d:/AssignmentFDE/context/features/06-outreach-ledger-and-dashboard.md) (Immutable Outreach Ledger, Founder Reply Simulator/Tracker, Audit Trail Drawer & Partner Calibration Matrix)
-- **Next Spec Reference:** [`07-testing-and-deployment.md`](file:///d:/AssignmentFDE/context/features/07-testing-and-deployment.md)
-- **Current Status:** `COMPLETED (Feature 06)`
+  - ✅ **Task 8:** [`08-contract-and-playwright-e2e.md`](file:///d:/AssignmentFDE/context/features/08-contract-and-playwright-e2e.md) (Contract-Based Testing + Isolated Playwright E2E Quality Gate)
+- **Next Spec Reference:** [`07-verification-and-handover.md`](file:///d:/AssignmentFDE/context/features/07-verification-and-handover.md)
+- **Current Status:** `COMPLETED (Feature 08)`
 
 ---
 
@@ -142,9 +153,19 @@
       - Built Tab 1 (Outreach Ledger & Inbox with 4 KPI StatCards, Filter Pills, Search, Record Reply Modal with 1-click sample reply, and Conversation Detail & Immutable Audit Trail Drawer).
       - Built Tab 2 (Partner Calibration Matrix comparing AI scores vs. Fund Reference scores across `P001`..`P020`).
       - Added 100% symmetrical English & Vietnamese translations under `ledger.*` and `calibration.*` in `en.json` and `vi.json`.
+15. ✅ **Full Implementation of Feature 08 ([`08-contract-and-playwright-e2e.md`](file:///d:/AssignmentFDE/context/features/08-contract-and-playwright-e2e.md)):**
+    - **Contract Remediation & Selective `data-testid` Standard:** Fixed **BUG-01** (`StateMachineSummary` nested contract + fail-fast), **BUG-02** (`dispatch_mode` forwarding), **BUG-03** (`skip_ledger_collisions` & `queue_ai_enabled`), and the `rejectCandidate` flat `CandidateItem` response mismatch surfaced by `PW-03`; added selective `data-testid` attributes, `AI_FAILED` filter pill, isolated E2E env hooks, and i18n parity fixes.
+    - **Tier 1 Contract-Based Testing ([`backend/tests/contracts/test_api_contracts.py`](file:///d:/AssignmentFDE/backend/tests/contracts/test_api_contracts.py)):** 6 contract & golden JSON diff checks against `backend/tests/contracts/expected/` (`state_summary_initial_seed.json`, `preflight_missing_bio.json`, `calibration_kpi.json`) -> **6/6 PASSED**.
+    - **Tier 2 Isolated Playwright E2E Infrastructure (`frontend/e2e/` & `backend/tests/e2e_seed.py`):** Dedicated `localhost:3100` (`.next-e2e`) + `127.0.0.1:8001` (`outreach_e2e.db`, dev `outreach.db` untouched) with deterministic resets (`CLEAN_EMPTY`, `SEED_PACK_EVALUATED`) and Page Object Models (`LoginPage`, `IngestionPage`, `WorkspacePage`, `LedgerPage`).
+    - **9 Risk-Ranked Playwright E2E Specs (`PW-01`..`PW-09`):** Covered auth/RBAC/Error500View, 5-state Happy Path + 409 double-send lock, Prompt Injection Shield + Reject, Closed DM Guard (`422 -> SEND_BLOCKED`), Sparse Profile Anti-Hallucination (`INSUFFICIENT_EVIDENCE`), `AI_FAILED` Fault Isolation & Retry, Cross-batch CSV Dedup/Pre-flight/Live Lookup, Ledger Audit Trail + Calibration Matrix (`100%`), and Bilingual EN/VI switching with zero console/page errors (**9/9 PASSED** twice consecutively).
+    - **Quality Gate Runner (`tests/manual/`):** Created `config.sh`, `README.md`, `test-all.ps1`, `test-all.sh`, and configured `.gitignore` for generated results/traces/reports.
+    - **Final Verification (after final code/test edit):**
+      - `powershell -ExecutionPolicy Bypass -File tests/manual/test-all.ps1` -> **Tier 1 `6/6 PASSED` + Tier 2 `9/9 PASSED` (`exit code 0`)**.
+      - `python -m pytest backend/tests/ -v` -> **35/35 PASSED in 5.68s**.
+      - `cd frontend && npm.cmd run build` -> **15/15 static pages + Middleware (`32.3 kB`), 0 TypeScript/ESLint errors**.
 
 ---
 
-## 3. Next Immediate Steps (Feature 07: E2E Testing & Turnkey Deployment)
-1. **Implement Feature 07 (`07-testing-and-deployment.md`):**
-   - Finalize end-to-end verification, turnkey startup scripts, and deployment readiness.
+## 3. Next Immediate Steps (Feature 07: Verification & Handover)
+1. **Finalize Feature 07 ([`07-verification-and-handover.md`](file:///d:/AssignmentFDE/context/features/07-verification-and-handover.md)):**
+   - Complete final README / turnkey verification, startup docs, and handover checklist.

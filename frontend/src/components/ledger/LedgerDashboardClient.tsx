@@ -441,6 +441,8 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
                   ledgerItems.map((entry) => (
                     <TableRow
                       key={entry.id}
+                      data-testid={`ledger-row-${entry.outreach_id}`}
+                      data-status={entry.status}
                       className={`cursor-pointer ${
                         entry.needs_attention ? "bg-red-50/30" : ""
                       }`}
@@ -466,7 +468,7 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
                           @{entry.handle}
                         </div>
                         {entry.needs_attention && (
-                          <div className="mt-1.5">
+                          <div className="mt-1.5" data-testid={`needs-attention-badge-${entry.outreach_id}`}>
                             <Badge variant="urgent" size="sm">
                               {t("ledger.badge_needs_attention")}
                             </Badge>
@@ -542,6 +544,7 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
                               variant="primary"
                               size="sm"
                               icon={MessageSquarePlus}
+                              data-testid={`reply-btn-${entry.outreach_id}`}
                               onClick={() => openRecordReplyModal(entry)}
                             >
                               {t("ledger.btn_simulate_reply")}
@@ -564,6 +567,7 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
                                 size="sm"
                                 icon={CheckCircle2}
                                 loading={handlingId === entry.id}
+                                data-testid={`handled-btn-${entry.outreach_id}`}
                                 onClick={() => void handleMarkHandled(entry)}
                               >
                                 {t("ledger.btn_mark_handled")}
@@ -586,6 +590,7 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
                             variant="ghost"
                             size="sm"
                             icon={Eye}
+                            data-testid={`audit-btn-${entry.outreach_id}`}
                             onClick={() => setDrawerEntry(entry)}
                           >
                             {t("ledger.btn_audit_trail")}
@@ -633,6 +638,7 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
                 })}
                 icon={CheckCircle2}
                 variant="positive"
+                testId="alignment-accuracy-kpi"
               />
               <StatCard
                 label={t("calibration.kpi_benchmarked")}
@@ -791,6 +797,7 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
 
               <Textarea
                 rows={4}
+                data-testid="reply-modal-textarea"
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 placeholder={t("ledger.modal_reply_placeholder")}
@@ -825,6 +832,7 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
                 icon={MessageSquareReply}
                 loading={isSavingReply}
                 disabled={!replyText.trim()}
+                data-testid="reply-modal-save-btn"
                 onClick={() => void handleSaveReply()}
               >
                 {isSavingReply

@@ -3,11 +3,13 @@ from pathlib import Path
 from typing import List
 from dotenv import load_dotenv
 
-# Search for .env in current directory or backend directory
-env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+# Search for ENV_FILE override first (e.g. .env.e2e), then backend/.env or root .env
+_override_env = os.getenv("ENV_FILE")
+env_path = Path(_override_env) if _override_env else Path(__file__).resolve().parent.parent.parent / ".env"
 if not env_path.exists():
     env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
 
 
 class Settings:
@@ -15,10 +17,18 @@ class Settings:
     VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api"
 
-    # Server
+    # Server & CORS
     PORT: int = int(os.getenv("PORT", "8000"))
     HOST: str = os.getenv("HOST", "0.0.0.0")
     DEBUG: bool = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
+    _cors_origins: str = os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3100,http://127.0.0.1:3100",
+    )
+
+    @property
+    def CORS_ORIGINS(self) -> List[str]:
+        return [o.strip() for o in self._cors_origins.split(",") if o.strip()]
 
     # Security (7-day default session = 10080 minutes for zero-friction evaluation)
     SECRET_KEY: str = os.getenv("SECRET_KEY", "genai-fund-fde-secret-key-change-in-production-2026")
@@ -27,6 +37,13 @@ class Settings:
 
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./outreach.db")
+
+    # Request/Response Contract Tracing (E2E & Contract Test Debugging)
+    TRACE_REQUESTS: bool = os.getenv("TRACE_REQUESTS", "False").lower() in ("true", "1", "yes")
+    TRACE_OUTPUT_DIR: str = os.getenv(
+        "TRACE_OUTPUT_DIR",
+        str(Path(__file__).resolve().parent.parent.parent.parent / "tests" / "manual" / "results" / "traces"),
+    )
 
     # Dispatch & Safety
     DISPATCH_MODE: str = os.getenv("DISPATCH_MODE", "SANDBOX").upper()
