@@ -258,3 +258,38 @@ def test_case2_live_production_forbids_silent_fallbacks(
         }
         mock_real_dm.assert_called_once()
 
+
+def test_container_x_simulator_dns_resolution_across_profiles(monkeypatch):
+    """
+    Verify Docker Compose (`x-simulator:8099`) & AWS ECS Cloud Map (`x-simulator.genai-fde-dev.local:8099`)
+    hostnames resolve cleanly across all 3 RUNTIME_PROFILE environments.
+    """
+    monkeypatch.setattr(settings, "X_SIMULATOR_BASE_URL", "http://x-simulator.genai-fde-dev.local:8099/2")
+    monkeypatch.setattr(settings, "X_API_BASE_URL", "https://api.twitter.com/2")
+    monkeypatch.setattr(settings, "X_BEARER_TOKEN", "")
+
+    # dev -> OFFLINE_MOCK routes lookup to container X_SIMULATOR_BASE_URL
+    monkeypatch.setattr(settings, "RUNTIME_PROFILE", "OFFLINE_MOCK")
+    plan_dev = RuntimeGateway.resolve_x_lookup_plan()
+    assert plan_dev.source_mode == "X_API_SIMULATOR"
+    assert plan_dev.base_url == "http://x-simulator.genai-fde-dev.local:8099/2"
+    assert plan_dev.bearer_token == "sim_dev_bearer_token"
+    assert plan_dev.external_network_call is False
+
+    # staging -> HYBRID_AUTO recognizes Docker x-simulator service hostname as simulator
+    monkeypatch.setattr(settings, "RUNTIME_PROFILE", "HYBRID_AUTO")
+    monkeypatch.setattr(settings, "X_API_BASE_URL", "http://x-simulator:8099/2")
+    monkeypatch.setattr(settings, "X_BEARER_TOKEN", "sim_staging_token")
+    plan_staging = RuntimeGateway.resolve_x_lookup_plan()
+    assert plan_staging.source_mode == "X_API_SIMULATOR"
+    assert plan_staging.external_network_call is False
+
+    # prod -> LIVE_PRODUCTION strictly rejects internal x-simulator hostnames
+    monkeypatch.setattr(settings, "RUNTIME_PROFILE", "LIVE_PRODUCTION")
+    monkeypatch.setattr(settings, "X_API_BASE_URL", "http://x-simulator.genai-fde-dev.local:8099/2")
+    monkeypatch.setattr(settings, "X_BEARER_TOKEN", "real_token")
+    plan_prod = RuntimeGateway.resolve_x_lookup_plan()
+    assert plan_prod.strict_error is not None
+    assert "[LIVE_PRODUCTION]" in plan_prod.strict_error
+
+

@@ -2,10 +2,11 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 from backend.app.core.config import settings
 
-# SQLite connection string
+# SQLite (dev/staging) or PostgreSQL RDS (prod) connection string
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {},
+    pool_pre_ping=True,
     echo=False
 )
 

@@ -4,9 +4,7 @@ import {
   LedgerFilterTab,
   LedgerListResponse,
 } from "@/types/ledger";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
+import { getApiBaseUrl } from "@/lib/api-config";
 
 async function handleApiResponse<T>(res: Response): Promise<T> {
   if (res.status === 401 && typeof window !== "undefined") {
@@ -34,7 +32,7 @@ export async function fetchLedgerEntries(params?: {
     query.set("search", params.search.trim());
   }
 
-  const url = `${API_BASE_URL}/ledger${query.toString() ? `?${query.toString()}` : ""}`;
+  const url = `${getApiBaseUrl()}/ledger${query.toString() ? `?${query.toString()}` : ""}`;
   const res = await fetch(url, {
     method: "GET",
     credentials: "include",
@@ -48,7 +46,7 @@ export async function recordLedgerReply(
   replyText: string,
   needsAttention: boolean = true
 ): Promise<{ action: string; ledger: LedgerEntryItem }> {
-  const res = await fetch(`${API_BASE_URL}/ledger/${ledgerId}/reply`, {
+  const res = await fetch(`${getApiBaseUrl()}/ledger/${ledgerId}/reply`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -63,7 +61,7 @@ export async function recordLedgerReply(
 export async function markLedgerHandled(
   ledgerId: number
 ): Promise<{ action: string; ledger: LedgerEntryItem }> {
-  const res = await fetch(`${API_BASE_URL}/ledger/${ledgerId}/handled`, {
+  const res = await fetch(`${getApiBaseUrl()}/ledger/${ledgerId}/handled`, {
     method: "POST",
     credentials: "include",
   });
@@ -71,7 +69,7 @@ export async function markLedgerHandled(
 }
 
 export async function fetchCalibrationMatrix(): Promise<CalibrationMatrixResponse> {
-  const res = await fetch(`${API_BASE_URL}/ledger/calibration`, {
+  const res = await fetch(`${getApiBaseUrl()}/ledger/calibration`, {
     method: "GET",
     credentials: "include",
     headers: { Accept: "application/json" },

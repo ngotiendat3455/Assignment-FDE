@@ -1,0 +1,16 @@
+# Remote Terraform State Template (copy to backend.tf or pass via `terraform init -backend-config=...`)
+# Example usage per environment:
+#   terraform init -backend-config="key=genai-fde/dev/terraform.tfstate"
+#   terraform init -backend-config="key=genai-fde/staging/terraform.tfstate"
+#   terraform init -backend-config="key=genai-fde/prod/terraform.tfstate"
+
+terraform {
+  backend "s3" {
+    bucket         = "genai-fund-terraform-state"
+    key            = "genai-fde/ENV_PLACEHOLDER/terraform.tfstate"
+    region         = "ap-southeast-1"
+    dynamodb_table = "genai-fund-terraform-locks"
+    encrypt        = true
+  }
+}
+

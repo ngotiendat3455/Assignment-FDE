@@ -37,6 +37,12 @@ class Settings:
 
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./outreach.db")
+    # Only auto-seed historical OUT-101..104 rows on GET /api/ledger when explicitly enabled
+    AUTO_SEED_LEDGER_BASELINE: bool = os.getenv("AUTO_SEED_LEDGER_BASELINE", "False").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
 
     # Request/Response Contract Tracing (E2E & Contract Test Debugging)
     TRACE_REQUESTS: bool = os.getenv("TRACE_REQUESTS", "False").lower() in ("true", "1", "yes")

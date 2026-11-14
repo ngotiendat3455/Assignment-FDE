@@ -4,9 +4,7 @@ import {
   LiveXLookupResponse,
   SingleCandidatePayload,
 } from "@/types/ingestion";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
+import { getApiBaseUrl } from "@/lib/api-config";
 
 export const SAMPLE_CSV_TEMPLATE = `handle,name,location,bio,recent_tweets,can_dm,segment
 @minh_quant,Minh Nguyen,"Hanoi, Vietnam","Founder @TensorEdgeVN. Building ultra-fast C++/CUDA/ARM LLM inference engine.","[2026-11-08] Just open-sourced our AWQ-W4A8 speculative decoding kernel for L40S GPUs.",true,SEG-02: LLM Inference & AI Infra
@@ -60,7 +58,7 @@ async function handleApiResponse<T>(res: Response): Promise<T> {
 export async function triggerSeedPackIngest(
   segment?: string
 ): Promise<IngestionAuditReport> {
-  const res = await fetch(`${API_BASE_URL}/ingestion/seed`, {
+  const res = await fetch(`${getApiBaseUrl()}/ingestion/seed`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -72,7 +70,7 @@ export async function triggerSeedPackIngest(
 export async function runCsvPreflight(
   csvContent: string
 ): Promise<CsvPreflightResponse> {
-  const res = await fetch(`${API_BASE_URL}/ingestion/preflight`, {
+  const res = await fetch(`${getApiBaseUrl()}/ingestion/preflight`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -89,7 +87,7 @@ export async function ingestCsvBatch(
     queueAiEnabled?: boolean;
   }
 ): Promise<IngestionAuditReport> {
-  const res = await fetch(`${API_BASE_URL}/ingestion/csv`, {
+  const res = await fetch(`${getApiBaseUrl()}/ingestion/csv`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -108,7 +106,7 @@ export async function lookupLiveXHandle(
 ): Promise<LiveXLookupResponse> {
   const norm = normalizeHandleClient(rawHandle);
   const res = await fetch(
-    `${API_BASE_URL}/ingestion/x-lookup?handle=${encodeURIComponent(norm)}`,
+    `${getApiBaseUrl()}/ingestion/x-lookup?handle=${encodeURIComponent(norm)}`,
     {
       method: "GET",
       credentials: "include",
@@ -120,7 +118,7 @@ export async function lookupLiveXHandle(
 export async function ingestSingleCandidate(
   payload: SingleCandidatePayload
 ): Promise<IngestionAuditReport> {
-  const res = await fetch(`${API_BASE_URL}/ingestion/single`, {
+  const res = await fetch(`${getApiBaseUrl()}/ingestion/single`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",

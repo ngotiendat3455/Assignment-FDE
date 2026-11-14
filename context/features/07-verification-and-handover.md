@@ -228,16 +228,17 @@ Thực hiện kiểm thử thủ công theo trình tự từ A $\rightarrow$ F t
 
 *(Ghi chú Phương án thay thế AWS SAM: Nếu sau này muốn đưa chi phí `dev` về gần `$0` theo mô hình Serverless, tạo `infra/sam/template.yaml` đóng gói Frontend + Backend bằng `AWS Lambda Web Adapter` sau `HTTP API Gateway v2`, **với điều kiện** chuyển `BackgroundTasks` sang `SQS -> Worker Lambda` và thay SQLite bằng `Aurora Serverless v2` / `DynamoDB`.)*
 
-#### B. Ma trận Phân chia Môi trường (`dev` / `staging` / `prod`)
+#### B. Ma trận Phân chia Môi trường (`dev` / `staging` / `prod` ↔ `3 RUNTIME_PROFILE`)
 
 | Thành phần / Chính sách | `dev` (Development) | `staging` (Pre-Prod / Demo) | `prod` (Production) |
 | :--- | :--- | :--- | :--- |
+| **`RUNTIME_PROFILE` (`RuntimeGateway`)** | **`OFFLINE_MOCK`** *($0 deterministic rubric + internal simulator)* | **`HYBRID_AUTO`** *(Linh hoạt: có AI key gọi thật, X simulator hoặc `LIVE_X_DRY_RUN`; bắt buộc check `/api/system/runtime` trước cutover)* | **`LIVE_PRODUCTION`** *(Strict zero-fallback: lỗi key/OAuth → `AI_FAILED` / `503` ngay)* |
 | **Domain URL** | `https://dev.scout.genaifund.ai` | `https://staging.scout.genaifund.ai` | `https://scout.genaifund.ai` |
 | **Terraform Vars** | `environments/dev.tfvars` | `environments/staging.tfvars` | `environments/prod.tfvars` |
-| **ECS Fargate Sizing** | FE: `0.25 vCPU / 512MB`<br>BE: `0.25 vCPU / 512MB` (Spot `1` task) | FE: `0.25 vCPU / 512MB`<br>BE: `0.5 vCPU / 1GB` (`1` task) | FE: `0.5 vCPU / 1GB` (`2` tasks)<br>BE: `0.5–1 vCPU / 2GB` (`2` tasks, AutoScale) |
-| **Database** | SQLite WAL trên Amazon EFS | SQLite WAL trên Amazon EFS (Daily Backup) | **Amazon RDS PostgreSQL** (`db.t4g.micro/small` + Automated Snapshots) |
-| **`DISPATCH_MODE` mặc định** | **`SANDBOX` (Cứng)** – Cấm gửi DM thật | **`SANDBOX` mặc định** (chỉ mở `LIVE_X` nếu test whitelist nội bộ) | **`SANDBOX` hoặc `LIVE_X`** (bắt buộc giữ `ALLOWED_TEST_HANDLES` trong giai đoạn pilot, sau đó mở controlled whitelist) |
-| **AI Keys & X Keys** | Sandbox hoặc Dev quota nhỏ | **Live Keys thật** (test quota & calibration) | **Live Keys thật** (Separate Billing Tier + CloudWatch Cost Alarm) |
+| **ECS Fargate Sizing** | FE: `0.25 vCPU / 512MB`<br>BE: `0.25 vCPU / 512MB` + `x-simulator` *(Service Discovery `.local:8099`)* | FE: `0.25 vCPU / 512MB`<br>BE: `0.5 vCPU / 1GB` *(tuỳ chọn `x-simulator` hoặc Live X)* | FE: `0.5 vCPU / 1GB` (`2` tasks)<br>BE: `0.5–1 vCPU / 2GB` (`2` tasks, AutoScale) |
+| **Database** | SQLite WAL trên Amazon EFS | SQLite WAL trên Amazon EFS (Daily Backup) | **Amazon RDS PostgreSQL 16** (`db.t4g.small` Multi-AZ + Automated Snapshots) |
+| **`DISPATCH_MODE` mặc định** | **`SANDBOX` (Cứng)** – Cấm gửi DM thật | **`SANDBOX` mặc định** *(có thể bật `LIVE_X` + `LIVE_X_DRY_RUN=true` với whitelist nội bộ)* | **`LIVE_X`** (giữ `ALLOWED_TEST_HANDLES` trong giai đoạn pilot, sau đó mở controlled whitelist) |
+| **AI Keys & X Keys** | Không cần key thật (`RuntimeGateway` khóa `$0` + `http://x-simulator.<env>.local:8099/2`) | **Live Gemini/OpenAI Key** + tuỳ chọn `x-simulator` hoặc `X_BEARER_TOKEN` thật | **Live Keys thật** trong AWS Secrets Manager + CloudWatch Alarm |
 | **Cookie & Security** | `Secure=true` (ALB HTTPS), JWT `10080m` (7d) | `Secure=true` (ALB HTTPS), JWT `1440m` (24h) | `Secure=true`, `HttpOnly`, `SameSite=Lax`, JWT `480m` (8h), WAF Rate Limit |
 | **Ước tính chi phí AWS/tháng** | ~\$18 – \$25 *(Fargate Spot + Shared ALB/NAT-less Public ECS hoặc NAT Instance)* | ~\$28 – \$40 | ~\$70 – \$120 *(Multi-task + RDS + Secrets + NAT/ALB)* |
 
@@ -279,19 +280,19 @@ infra/
 - [x] **Sub-task 7.2 — Live X & Live AI Verification Suite + `LIVE_X` Client Completion (Ready for Live Keys):**
   - Đã tạo [`backend/app/services/x_client.py`](file:///d:/AssignmentFDE/backend/app/services/x_client.py) (OAuth 1.0a HMAC-SHA1 + `send_x_dm` tới X API v2 + `XApiRateLimitError`), gắn vào [`state_machine.py`](file:///d:/AssignmentFDE/backend/app/services/state_machine.py) và [`candidates.py`](file:///d:/AssignmentFDE/backend/app/api/candidates.py) (thêm `LIVE_X_DRY_RUN` trong [`config.py`](file:///d:/AssignmentFDE/backend/app/core/config.py)).
   - Đã tạo [`backend/scripts/verify_live_keys.py`](file:///d:/AssignmentFDE/backend/scripts/verify_live_keys.py) cho cả 3 cổng L1/L2/L3 + test unit hermetic trong [`backend/tests/test_verification_tools.py`](file:///d:/AssignmentFDE/backend/tests/test_verification_tools.py) (**đã verify**, chờ người dùng điền API key thật vào `backend/.env` để chạy nghiệm thu live).
-- [ ] **Sub-task 7.3 — Docker Packaging & Docker Compose:**
-  - Cập nhật `frontend/next.config.ts` (`output: "standalone"`), viết `backend/Dockerfile`, `frontend/Dockerfile`, `.dockerignore`, `.env.docker.example`, và `docker-compose.yml` (kèm volume `/app/data` + tùy chọn reverse proxy).
-  - Verify `docker compose build` & `docker compose up -d` đạt trạng thái `healthy` cả 2 services.
+- [x] **Sub-task 7.3 — Docker Packaging & Docker Compose:**
+  - Cập nhật [`frontend/next.config.ts`](file:///d:/AssignmentFDE/frontend/next.config.ts) (`output: "standalone"`), [`frontend/src/lib/api-config.ts`](file:///d:/AssignmentFDE/frontend/src/lib/api-config.ts) (`NEXT_PUBLIC_API_BASE_URL=auto`), sửa cookie `logout` HTTPS detection, thêm `/healthz`, viết [`backend/Dockerfile`](file:///d:/AssignmentFDE/backend/Dockerfile), [`frontend/Dockerfile`](file:///d:/AssignmentFDE/frontend/Dockerfile), `.dockerignore`, [`.env.docker.example`](file:///d:/AssignmentFDE/.env.docker.example), [`infra/nginx/nginx.conf`](file:///d:/AssignmentFDE/infra/nginx/nginx.conf), và [`docker-compose.yml`](file:///d:/AssignmentFDE/docker-compose.yml) (kèm `x-simulator` + named volume `/app/data` + profile `prod-sim`).
+  - Đã verify cấu hình `docker compose config --quiet` (default & `--profile prod-sim`); phần live `docker compose up --build -d` chờ Docker Desktop daemon được bật trên máy host.
 - [x] **Sub-task 7.4 — Manual QA Checklist Creation & Offline/Reset Pre-Check (`tests/manual/MANUAL_QA_CHECKLIST.md`):**
-  - Đã tạo [`tests/manual/MANUAL_QA_CHECKLIST.md`](file:///d:/AssignmentFDE/tests/manual/MANUAL_QA_CHECKLIST.md) (Nhóm A $\rightarrow$ F), verify xong nhóm Automated Pre-Requisites (`39/39 pytest`, `6/6` Tier 1 Contracts, `9/9` Tier 2 Playwright E2E, `npm run build`) và `MQ-A1` Clean Reset; phần live key & Docker sẽ sign-off khi có key thật / hoàn tất 7.3.
-- [ ] **Sub-task 7.5 — AWS IaC Design & Implementation (`infra/terraform/` + CI/CD Blueprint):**
-  - Khởi tạo khung `infra/terraform/` với các module (`network`, `alb`, `ecs_cluster`, `storage_secrets`) và 3 file biến môi trường `environments/{dev,staging,prod}.tfvars`, kiểm chứng cú pháp bằng `terraform validate` / `fmt` và cập nhật tài liệu bàn giao cuối (`README.md` / `ARCHITECTURE_AND_WRITEUP.md`).
+  - Đã tạo [`tests/manual/MANUAL_QA_CHECKLIST.md`](file:///d:/AssignmentFDE/tests/manual/MANUAL_QA_CHECKLIST.md) (Nhóm A $\rightarrow$ F), verify xong nhóm Automated Pre-Requisites (`pytest`, `6/6` Tier 1 Contracts, `9/9` Tier 2 Playwright E2E, `npm run build`) và `MQ-A1` Clean Reset; phần live key & Docker daemon runtime sẽ sign-off khi có key thật / bật Docker Desktop.
+- [x] **Sub-task 7.5 — AWS IaC Design & Implementation (`infra/terraform/` + CI/CD Blueprint):**
+  - Đã khởi tạo đầy đủ [`infra/terraform/`](file:///d:/AssignmentFDE/infra/terraform/) (`versions.tf`, `backend.tf.example`, `main.tf`, `variables.tf`, `outputs.tf`, 4 modules `network/`, `alb/`, `storage_secrets/`, `ecs_cluster/`, và 3 file [`environments/{dev,staging,prod}.tfvars`](file:///d:/AssignmentFDE/infra/terraform/environments/prod.tfvars) ánh xạ 1-1 với `OFFLINE_MOCK` / `HYBRID_AUTO` / `LIVE_PRODUCTION`), kèm [`.github/workflows/ci-cd.yml`](file:///d:/AssignmentFDE/.github/workflows/ci-cd.yml) & [`infra/README.md`](file:///d:/AssignmentFDE/infra/README.md). Kiểm chứng tĩnh toàn bộ 19 file HCL/4 modules/3 env passes; `terraform init/validate/apply` chạy trong CI hoặc khi máy cài `terraform` CLI + AWS credentials.
 
 ---
 
 ## 8. Tiêu chí Nghiệm thu Tổng thể (Acceptance Criteria)
-- [ ] Lệnh `python -m backend.reset_clean_users --yes` đưa DB về `0` candidates / `0` ledger / `0` jobs nhưng vẫn đăng nhập `/login` thành công bằng `partner@genaifund.ai`.
-- [ ] Khi cung cấp `GEMINI_API_KEY`/`OPENAI_API_KEY` và `X_BEARER_TOKEN` thật, script `verify_live_keys.py` vượt qua cả L1 (Live LLM + Tri-Guard), L2 (Live X Lookup), và giữ nguyên 100% chốt chặn L3 (`ALLOWED_TEST_HANDLES`).
+- [x] Lệnh `python -m backend.reset_clean_users --yes` đưa DB về `0` candidates / `0` ledger / `0` jobs nhưng vẫn đăng nhập `/login` thành công bằng `partner@genaifund.ai`.
+- [ ] Khi cung cấp `GEMINI_API_KEY`/`OPENAI_API_KEY` và `X_BEARER_TOKEN` thật, script `verify_live_keys.py` vượt qua cả L1 (Live LLM + Tri-Guard), L2 (Live X Lookup), và giữ nguyên 100% chốt chặn L3 (`ALLOWED_TEST_HANDLES`). *(Chờ dán API key thật vào `backend/.env`)*
 - [ ] Toàn bộ Checklist Manual QA (Nhóm A $\rightarrow$ F) được thực thi và ký nhận (Sign-off).
-- [ ] `docker compose up --build -d` chạy ổn định cả FE & BE qua browser, dữ liệu bền vững sau `docker compose restart`.
-- [ ] Thiết kế AWS Terraform (`dev` / `staging` / `prod`) hoàn chỉnh, phân tách rõ ràng secrets, database (`EFS SQLite` vs `RDS Postgres`), và khóa an toàn `DISPATCH_MODE` theo từng môi trường.
+- [ ] `docker compose up --build -d` chạy ổn định cả FE & BE qua browser, dữ liệu bền vững sau `docker compose restart`. *(Đã verify `docker compose config`, chờ bật Docker Desktop daemon để chạy runtime)*
+- [x] Thiết kế AWS Terraform (`dev` / `staging` / `prod`) hoàn chỉnh, phân tách rõ ràng secrets, database (`EFS SQLite` vs `RDS Postgres`), và khóa an toàn `RUNTIME_PROFILE` / `DISPATCH_MODE` theo từng môi trường.

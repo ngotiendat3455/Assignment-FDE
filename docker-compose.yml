@@ -1,0 +1,118 @@
+services:
+  x-simulator:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: genai-x-simulator
+    command: ["python", "-m", "backend.scripts.x_simulator", "--host", "0.0.0.0", "--port", "8099"]
+    expose:
+      - "8099"
+    networks:
+      - genai-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8099/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: genai-backend
+    ports:
+      - "8000:8000"
+    environment:
+      RUNTIME_PROFILE: ${RUNTIME_PROFILE:-OFFLINE_MOCK}
+      PORT: "8000"
+      HOST: "0.0.0.0"
+      DEBUG: ${DEBUG:-False}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/outreach.db}
+      AUTO_SEED_LEDGER_BASELINE: ${AUTO_SEED_LEDGER_BASELINE:-False}
+      SECRET_KEY: ${SECRET_KEY:-genai-fund-docker-secret-key-2026}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost,http://127.0.0.1}
+      DISPATCH_MODE: ${DISPATCH_MODE:-SANDBOX}
+      LIVE_X_DRY_RUN: ${LIVE_X_DRY_RUN:-False}
+      ALLOWED_TEST_HANDLES: ${ALLOWED_TEST_HANDLES:-linhtran_robo,minh_quant,test_builder_sea}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
+      GEMINI_FALLBACK_MODELS: ${GEMINI_FALLBACK_MODELS:-gemini-3.1-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      X_API_BASE_URL: ${X_API_BASE_URL:-https://api.twitter.com/2}
+      X_SIMULATOR_BASE_URL: ${X_SIMULATOR_BASE_URL:-http://x-simulator:8099/2}
+      X_BEARER_TOKEN: ${X_BEARER_TOKEN:-}
+      X_API_KEY: ${X_API_KEY:-}
+      X_API_SECRET: ${X_API_SECRET:-}
+      X_ACCESS_TOKEN: ${X_ACCESS_TOKEN:-}
+      X_ACCESS_TOKEN_SECRET: ${X_ACCESS_TOKEN_SECRET:-}
+    volumes:
+      - genai_sqlite_data:/app/data
+    networks:
+      - genai-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-auto}
+    container_name: genai-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8000/api}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-auto}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - genai-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+
+  # Production-like same-origin reverse proxy matching AWS ALB routing rules:
+  # Run with: docker compose --profile prod-sim up --build -d
+  proxy:
+    image: nginx:1.27-alpine
+    container_name: genai-nginx-proxy
+    profiles:
+      - prod-sim
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - genai-net
+    restart: unless-stopped
+
+volumes:
+  genai_sqlite_data:
+
+networks:
+  genai-net:
+    driver: bridge
+

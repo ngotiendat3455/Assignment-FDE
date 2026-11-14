@@ -1,209 +1,432 @@
 # GenAI Fund – Autonomous Scouting & Personalized Outreach System
 
-Hướng dẫn từng bước (**Step-by-Step Guide**) để cài đặt môi trường, dán các API Key thật (Gemini/OpenAI & X API v2), reset dữ liệu sạch chỉ giữ User, chạy kiểm chứng tự động và thực hiện **Manual QA** trên giao diện.
+Hệ thống tìm kiếm, chấm điểm AI (**Tri-Guard**), cá nhân hóa **DM X/Twitter** có **Human-in-the-Loop (HITL)** và **Outreach Ledger** chống gửi trùng lặp, điều phối tập trung qua **3 `RUNTIME_PROFILE`** trên cùng một codebase cho **Local Dev**, **Docker Compose**, và **AWS ECS Fargate (Terraform)**.
 
-> Tài liệu kiến trúc & lộ trình triển khai Docker / AWS tiếp theo: [`context/features/07-verification-and-handover.md`](context/features/07-verification-and-handover.md)
-
----
-
-## 1. Hướng đi Tổng thể (Workflow Approach)
-
-Hệ thống được thiết kế theo kiến trúc **2 tầng tách biệt + Chế độ Kép (Sandbox $0 ↔ Live API)**:
-1. **Backend (`FastAPI` + `SQLite WAL` + Dual Queue):** Chạy tại `http://127.0.0.1:8000`, đảm nhiệm Ingestion khử trùng lặp 3 tầng, chấm điểm AI Tri-Guard chống Prompt Injection/Sparse, máy trạng thái 9 bước, và chốt chặn chống gửi trùng lặp `OutreachLedger`.
-2. **Frontend (`Next.js 15 App Router` + BFF Cookie):** Chạy tại `http://localhost:3000`, quản lý phiên đăng nhập `HttpOnly` cookie qua `/api/auth/login`, song ngữ `EN / VI` và giao diện HITL Candidate Review.
-3. **Chiến lược Kiểm chứng trước khi đóng gói Docker/AWS:**
-   - **Bước A:** Giữ bộ test tự động chạy offline (`$0`, không cần key).
-   - **Bước B (Giai đoạn hiện tại):** Dán API key thật vào `backend/.env` $\rightarrow$ chạy diagnostic script `verify_live_keys.py` $\rightarrow$ chạy `reset_clean_users.py` để làm sạch DB $\rightarrow$ mở web check tay theo [`tests/manual/MANUAL_QA_CHECKLIST.md`](tests/manual/MANUAL_QA_CHECKLIST.md).
-   - **Bước C (Kế tiếp):** Đóng gói Docker Compose (Sub-task 7.3) & Deploy AWS Terraform `dev`/`staging`/`prod` (Sub-task 7.5).
+> Tài liệu chi tiết:
+> - Kế hoạch & Kiểm chứng bàn giao: [`context/features/07-verification-and-handover.md`](context/features/07-verification-and-handover.md)
+> - Runbook Hạ tầng Docker & Terraform chi tiết: [`infra/README.md`](infra/README.md)
+> - Checklist Manual QA: [`tests/manual/MANUAL_QA_CHECKLIST.md`](tests/manual/MANUAL_QA_CHECKLIST.md)
 
 ---
 
-## 2. Cài đặt Dependencies (Chạy 1 lần đầu)
+## 1. Kiến trúc & Ánh xạ 3 `RUNTIME_PROFILE` (`RuntimeGateway`)
 
-Mở PowerShell tại thư mục gốc `d:\AssignmentFDE`:
+Hệ thống gồm **Backend (`FastAPI` + SQLite WAL / PostgreSQL)** và **Frontend (`Next.js 15 App Router` + BFF `HttpOnly` Cookie)**. Mọi quyết định gọi **AI (Gemini/OpenAI vs `$0` Rubric)** và **X API v2 (Real vs Simulator / Sandbox)** đều đi qua **1 cổng duy nhất** [`backend/app/core/runtime_gateway.py`](backend/app/core/runtime_gateway.py):
+
+| `RUNTIME_PROFILE` | Bản chất vận hành | 1. AI Chấm điểm & Soạn DM | 2. Tra cứu X (`x-lookup`) | 3. Gửi DM (`/send`) | Ánh xạ môi trường chuẩn |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`OFFLINE_MOCK`** | **`$0` Khóa cứng nội bộ** *(mặc định Dev & QA)* | Khóa `DETERMINISTIC_RUBRIC` (`tri-guard-local-v1`), **0 gọi mạng ngoài** kể cả khi máy có lưu `GEMINI_API_KEY`. | Tự động trỏ **X Simulator** (`127.0.0.1:8099` khi chạy local, `x-simulator:8099` trong Docker/ECS) + token `sim_dev_bearer_token`. | Khóa `SANDBOX` / `LIVE_X_DRY_RUN` (sinh `sim_dm_...`, không bao giờ gọi OAuth 1.0a ra ngoài). | • **Local Dev / E2E**<br>• **Docker mặc định**<br>• **AWS `dev`** |
+| **`HYBRID_AUTO`** | **Linh hoạt từng phần** *(tiền kiểm Pre-Prod)* | Có `GEMINI_API_KEY` / `OPENAI_API_KEY` thật $\rightarrow$ gọi Live LLM; để trống $\rightarrow$ fallback `$0` Rubric. | Tự động chạy theo `X_API_BASE_URL` & `X_BEARER_TOKEN` đang cấu hình trong env. | Chạy theo `DISPATCH_MODE` (`SANDBOX` mặc định, hoặc `LIVE_X` + `LIVE_X_DRY_RUN=True` khi test whitelist). | • **Local test lẻ từng key**<br>• **Docker staging-sim**<br>• **AWS `staging`** |
+| **`LIVE_PRODUCTION`** | **Strict Live — Cấm fallback ngầm** | Bắt buộc Live Gemini/OpenAI. Thiếu key hoặc lỗi mạng $\rightarrow$ đẩy ứng viên vào **`AI_FAILED`** (không bao giờ fallback về điểm `$0`). | Bắt buộc `https://api.twitter.com/2` + `X_BEARER_TOKEN` thật (trỏ localhost/simulator hoặc dùng `sim_*` $\rightarrow$ chặn **`HTTP 503`**). | Khi `DISPATCH_MODE=LIVE_X`: kiểm tra **`ALLOWED_TEST_HANDLES`** + bắt buộc đủ **4 khóa OAuth 1.0a** + `LIVE_X_DRY_RUN=False` (thiếu $\rightarrow$ **`HTTP 503`**, cấm tạo `sim_dm_...` giả). | • **Local nghiệm thu Live**<br>• **Docker `--profile prod-sim`**<br>• **AWS `prod`** |
+
+**Giám sát nguồn gốc thực thi:**
+- Mọi response từ `/api/queue/evaluate/{id}`, `/api/queue/process`, `/api/ingestion/x-lookup`, `/api/candidates/{id}/send` đều đính kèm **`execution_meta`** (`profile`, `ai_engine` / `source_mode` / `dispatch_execution`, `external_network_call`).
+- Kiểm tra nhanh trạng thái tập trung qua **`GET /api/system/runtime`** (xem thêm `live_production_readiness.ready` & `missing_requirements`) hoặc `/api/health`.
+
+---
+
+## 2. Cách chạy Local Trực tiếp (Không Docker)
+
+### 2.1. Cài đặt Dependencies (Chạy 1 lần đầu)
+
+Tại thư mục gốc `d:\AssignmentFDE`:
 
 ```powershell
-# 1. Cài dependencies Backend (Python 3.10+)
+# 1. Backend (Python 3.10+)
 pip install -r backend/requirements.txt
 
-# 2. Cài dependencies Frontend (Node.js 20+)
+# 2. Frontend (Node.js 20+)
 cd frontend
 npm.cmd install
 cd ..
-```
 
----
-
-## 3. Cấu hình API Keys để Test Thật (`backend/.env`)
-
-Nếu chưa có file `backend/.env`, copy từ file mẫu [`backend/.env.example`](backend/.env.example):
-
-```powershell
+# 3. Tạo file cấu hình Backend (nếu chưa có)
 Copy-Item backend/.env.example backend/.env
 ```
 
-Mở `backend/.env` và dán các key tương ứng với phần bạn muốn kiểm thử thật:
+> **Lưu ý quan trọng:** FastAPI đọc `backend/.env` lúc khởi động (`uvicorn --reload` chỉ watch file `.py`, **không** tự nạp lại `.env`). Sau khi sửa `backend/.env`, luôn `Ctrl+C` và bật lại `uvicorn`.
 
-| Nhóm Kiểm thử | Biến môi trường cần dán trong `backend/.env` | Lưu ý & Hành vi thực tế |
-| :--- | :--- | :--- |
-| **1. Live AI Chấm điểm & Soạn DM** *(chọn 1 trong 2)* | `GEMINI_API_KEY=<key_cua_ban>`<br>*(hoặc)* `OPENAI_API_KEY=<key_cua_ban>` | - Nếu điền cả 2, backend ưu tiên `GEMINI_API_KEY` (`gemini-3.5-flash` + fallback list).<br>- Nếu để trống cả 2, hệ thống tự chạy bằng bộ chấm điểm deterministic `$0`. |
-| **2. Live X Lookup & Local Simulator ($0)** *(Tab `X Lookup` trên UI)* | - **Dùng X thật:** `X_API_BASE_URL=https://api.twitter.com/2` + `X_BEARER_TOKEN=<bearer_thật>`<br>- **Dùng Simulator `$0` ở Dev:** `X_API_BASE_URL=http://127.0.0.1:8099/2` **VÀ** `X_BEARER_TOKEN=sim_dev_bearer_token` | - Hệ thống **KHÔNG còn silent fallback**: thiếu key trả `HTTP 503`; X trả `401`/`402`/`403`/`404`/`429` (VD: hết credit `$0` báo `402 credits depleted`) sẽ hiện nguyên mã lỗi thật lên UI & API.<br>- **Quan trọng:** Khi dùng Simulator phải có **cả `X_API_BASE_URL` lẫn `X_BEARER_TOKEN`** trong `backend/.env` (thiếu `X_API_BASE_URL` sẽ gửi token giả lên X thật và dính `401`).<br>- **Bắt buộc restart `uvicorn`** sau khi sửa `backend/.env` (`uvicorn --reload` chỉ watch file `.py`, không tự nạp lại `.env`). |
-| **3. Live X DM Dispatch** *(Tùy chọn gửi DM thật)* | `DISPATCH_MODE=LIVE_X`<br>`LIVE_X_DRY_RUN=False`<br>`ALLOWED_TEST_HANDLES=<handle_test_cua_ban>`<br>`X_API_KEY=...`<br>`X_API_SECRET=...`<br>`X_ACCESS_TOKEN=...`<br>`X_ACCESS_TOKEN_SECRET=...` | - **An toàn tuyệt đối:** Backend **chỉ gửi DM thật** nếu handle nằm đúng trong `ALLOWED_TEST_HANDLES`. Mọi handle ngoài danh sách đều bị chặn (`422 SEND_BLOCKED`).<br>- App trên X Developer Portal cần quyền **Read and write and Direct message**.<br>- Nếu chỉ muốn test UI mà **không** gửi DM thật ra ngoài, giữ nguyên `DISPATCH_MODE=SANDBOX`. |
+### 2.2. Cấu hình `backend/.env` cho từng `RUNTIME_PROFILE`
 
-*(Các biến cơ bản giữ nguyên mặc định: `PORT=8000`, `DATABASE_URL=sqlite:///./outreach.db`, `SECRET_KEY=...`)*
+Mở `backend/.env` và chọn **1 trong 3 cấu hình**:
 
-### Cổng Điều phối Trung tâm `RuntimeGateway` (`RUNTIME_PROFILE`)
+<details>
+<summary><strong>A. Chạy Local với <code>RUNTIME_PROFILE=OFFLINE_MOCK</code> ($0 Dev & QA, không cần key)</strong></summary>
 
-Toàn bộ quyết định gọi **AI (Gemini/OpenAI vs `$0` Rubric)** và **X API v2 (Real vs Local Simulator / Sandbox)** tại `/backend` được gom về **1 cổng duy nhất** [`backend/app/core/runtime_gateway.py`](backend/app/core/runtime_gateway.py) thông qua biến `RUNTIME_PROFILE` trong `backend/.env`:
+```dotenv
+RUNTIME_PROFILE=OFFLINE_MOCK
+DISPATCH_MODE=SANDBOX
+X_SIMULATOR_BASE_URL=http://127.0.0.1:8099/2
+# GEMINI_API_KEY / OPENAI_API_KEY / X_BEARER_TOKEN để trống (RuntimeGateway tự bỏ qua)
+```
 
-| `RUNTIME_PROFILE` | 1. Chấm điểm & Soạn DM (AI) | 2. Tra cứu X (`GET /api/ingestion/x-lookup`) | 3. Gửi DM (`POST /api/candidates/{id}/send`) |
-| :--- | :--- | :--- | :--- |
-| **`OFFLINE_MOCK`** *(Trường hợp 1: `$0` Offline / Mock X)* | Khóa cứng `DETERMINISTIC_RUBRIC` (`tri-guard-local-v1`, `0` gọi mạng ngoài kể cả khi máy có lưu `GEMINI_API_KEY`). | Tự động trỏ về **Mock X Simulator** (`http://127.0.0.1:8099/2`) và tự cấp `sim_dev_bearer_token`. | Không bao giờ gọi OAuth 1.0a ra ngoài (`SANDBOX_SIMULATED` / `LIVE_X_DRY_RUN`). |
-| **`LIVE_PRODUCTION`** *(Trường hợp 2: Live Gemini + Live X API, cấm fallback ngầm)* | Bắt buộc có `GEMINI_API_KEY` hoặc `OPENAI_API_KEY` thật. **Cấm tự fallback về điểm giả `$0`** — nếu thiếu key hoặc lỗi mạng sẽ đẩy thẳng sang `AI_FAILED`. | Bắt buộc gọi `https://api.twitter.com/2` kèm `X_BEARER_TOKEN` thật (nếu trỏ localhost hoặc dùng token `sim_*` sẽ chặn `HTTP 503`). | Khi gửi `LIVE_X`: kiểm tra `ALLOWED_TEST_HANDLES` **và bắt buộc đủ 4 khóa OAuth 1.0a** (`LIVE_X_DRY_RUN=False`). Thiếu khóa chặn ngay `HTTP 503` (cấm sinh `sim_dm_...` giả). |
-| **`HYBRID_AUTO`** *(Mặc định tương thích)* | Có `GEMINI_API_KEY` thì gọi thật, để trống chạy `$0`. | Chạy theo `X_API_BASE_URL` & `X_BEARER_TOKEN` trong `.env`. | Chạy theo `DISPATCH_MODE` & cấu hình OAuth trong `.env`. |
+</details>
 
-- **Đóng dấu nguồn gốc (`execution_meta`):** Mọi response từ `/api/queue/evaluate/{id}`, `/api/queue/process`, `/api/ingestion/x-lookup`, `/api/candidates/{id}/send` đều đính kèm trường `execution_meta` ghi rõ `profile`, `ai_engine` / `source_mode` / `dispatch_execution` và `external_network_call: true | false`.
-- **Tra cứu trạng thái tập trung:** Mở `GET http://127.0.0.1:8000/api/system/runtime` (hoặc `/api/health`, `/api/queue/status`) để xem bảng tổng kết chế độ đang chạy và danh sách biến còn thiếu nếu muốn lên `LIVE_PRODUCTION`.
+<details>
+<summary><strong>B. Chạy Local với <code>RUNTIME_PROFILE=HYBRID_AUTO</code> (Ví dụ: Bật Live AI trước, giữ X Simulator/Sandbox)</strong></summary>
+
+```dotenv
+RUNTIME_PROFILE=HYBRID_AUTO
+
+# 1. Bật Live AI thật (chọn Gemini hoặc OpenAI; bỏ trống nếu muốn test $0 Rubric)
+GEMINI_API_KEY=<key_gemini_cua_ban>
+# OPENAI_API_KEY=<key_openai_cua_ban>
+
+# 2. X Lookup: dùng Simulator (:8099) hoặc X API thật
+X_API_BASE_URL=http://127.0.0.1:8099/2
+X_BEARER_TOKEN=sim_dev_bearer_token
+
+# 3. DM Dispatch: giữ SANDBOX (hoặc LIVE_X + LIVE_X_DRY_RUN=True để test an toàn)
+DISPATCH_MODE=SANDBOX
+LIVE_X_DRY_RUN=True
+ALLOWED_TEST_HANDLES=linhtran_robo,minh_quant,test_builder_sea
+```
+
+</details>
+
+<details>
+<summary><strong>C. Chạy Local với <code>RUNTIME_PROFILE=LIVE_PRODUCTION</code> (Nghiệm thu 100% Live API, cấm fallback)</strong></summary>
+
+```dotenv
+RUNTIME_PROFILE=LIVE_PRODUCTION
+
+# 1. Bắt buộc Live LLM
+GEMINI_API_KEY=<key_gemini_cua_ban>
+
+# 2. Bắt buộc Live X API v2
+X_API_BASE_URL=https://api.twitter.com/2
+X_BEARER_TOKEN=<x_bearer_token_that>
+
+# 3. Gửi DM: dùng SANDBOX nếu chưa muốn gửi thật, hoặc bật LIVE_X kèm đủ 4 khóa OAuth 1.0a
+DISPATCH_MODE=LIVE_X
+LIVE_X_DRY_RUN=False
+ALLOWED_TEST_HANDLES=<handle_test_cho_phep>
+X_API_KEY=<x_api_key>
+X_API_SECRET=<x_api_secret>
+X_ACCESS_TOKEN=<x_access_token>
+X_ACCESS_TOKEN_SECRET=<x_access_token_secret>
+```
+
+</details>
+
+### 2.3. Khởi động các Terminal Local
+
+```powershell
+# Terminal 0 (Bật khi dùng OFFLINE_MOCK hoặc HYBRID_AUTO trỏ simulator :8099):
+# Lưu ý: x_simulator.py tự chạy uvicorn bên trong nên KHÔNG gõ chữ `uvicorn` ở Cách 1
+python -m backend.scripts.x_simulator --host 127.0.0.1 --port 8099
+# (Hoặc: python -m uvicorn backend.scripts.x_simulator:simulator_app --host 127.0.0.1 --port 8099)
+
+# Terminal 1 — Backend FastAPI (:8000):
+python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Terminal 2 — Frontend Next.js (:3000):
+cd frontend; npm.cmd run dev
+```
+
+- Web UI: **`http://localhost:3000/login`**
+  - **Partner (Full quyền):** `partner@genaifund.ai` / `GenAIFund2026!`
+  - **Analyst (Nếu reset kèm `--with-analyst`, để test `/403`):** `analyst@genaifund.ai` / `Analyst2026!`
+- Kiểm tra profile đang chạy: **`http://127.0.0.1:8000/api/system/runtime`**
+- Kiểm tra X Simulator `:8099` đang sống: **`http://127.0.0.1:8099/health`** *(hỗ trợ các handle giả lập lỗi `@sim_401`, `@credits_depleted`, `@forbidden_handle`, `@missing_user`, `@rate_limit`)*.
 
 ---
 
-## 4. Các Script Điều khiển Dữ liệu & Kiểm chứng Key (CLI)
+## 3. Cách chạy Local bằng Đóng gói Docker Image & Docker Compose theo từng `RUNTIME_PROFILE`
 
-Chạy tại thư mục gốc `d:\AssignmentFDE`:
+Hệ thống dùng [`docker-compose.yml`](docker-compose.yml) gồm các container:
+- `x-simulator` (nội bộ cổng `8099`, chạy từ [`backend/Dockerfile`](backend/Dockerfile))
+- `backend` (cổng `8000`, gắn named volume **`genai_sqlite_data:/app/data`** lưu `outreach.db` bền vững qua restart)
+- `frontend` (cổng `3000`, multi-stage build **`output: "standalone"`** từ [`frontend/Dockerfile`](frontend/Dockerfile) với `NEXT_PUBLIC_API_BASE_URL=auto`)
+- `proxy` (tùy chọn `--profile prod-sim`, Nginx [`infra/nginx/nginx.conf`](infra/nginx/nginx.conf) ở cổng **`80`** giả lập y hệt rule định tuyến của AWS ALB: `/api/auth/* -> frontend`, `/api/* -> backend`, `/* -> frontend`).
 
-### A. Reset Dữ liệu Sạch Chỉ Giữ User Đăng nhập *(Khuyên dùng trước Manual Check)*
-Xóa sạch toàn bộ `candidates`, `outreach_ledger`, `job_queue`, **chỉ giữ lại tài khoản đăng nhập**:
+### Bước 1: Tạo `.env.docker` từ file mẫu
 
 ```powershell
-# Chỉ giữ Partner (partner@genaifund.ai / GenAIFund2026!)
-python -m backend.reset_clean_users --yes
-
-# Giữ Partner + tạo thêm Analyst (analyst@genaifund.ai / Analyst2026!) để test phân quyền /403
-python -m backend.reset_clean_users --yes --with-analyst
+Copy-Item .env.docker.example .env.docker
 ```
 
-*(Hoặc nếu muốn nạp sẵn 20 profiles mẫu + 4 lịch sử ledger ngay lập tức: chạy `python backend/seed_data.py`)*
+*(Nhớ giữ Docker Desktop ở trạng thái Running trước khi chạy `docker build` / `docker compose`.)*
 
-### B. Kiểm chứng Live AI & Live X Key trước khi mở Web
+### Bước 2: Chỉnh `.env.docker` & Chạy cho từng `RUNTIME_PROFILE`
+
+#### Profile 1: `RUNTIME_PROFILE=OFFLINE_MOCK` (Mặc định `$0`, không cần key)
+
+File `.env.docker` mặc định đã đặt sẵn cho chế độ này:
+```dotenv
+RUNTIME_PROFILE=OFFLINE_MOCK
+DISPATCH_MODE=SANDBOX
+X_SIMULATOR_BASE_URL=http://x-simulator:8099/2
+```
+Khởi chạy 2 cổng tiêu chuẩn (`:3000` / `:8000`):
 ```powershell
-# 1. Kiểm tra tổng thể tất cả key đã nhận diện đúng chưa (Gate L1 + L2 + L3)
+docker compose --env-file .env.docker up --build -d
+# Mở: http://localhost:3000/login
+```
+
+#### Profile 2: `RUNTIME_PROFILE=HYBRID_AUTO` (Test Live Gemini + Simulator / Dry-run trong Docker)
+
+Sửa trong `.env.docker`:
+```dotenv
+RUNTIME_PROFILE=HYBRID_AUTO
+GEMINI_API_KEY=<key_gemini_that>
+
+# Nếu chưa có X Bearer thật, trỏ vào tên DNS nội bộ của container x-simulator:
+X_API_BASE_URL=http://x-simulator:8099/2
+X_BEARER_TOKEN=sim_dev_bearer_token
+
+# Giữ an toàn khi test pre-prod:
+DISPATCH_MODE=SANDBOX
+# Hoặc thử nhánh LIVE_X nhưng chỉ dry-run trong whitelist:
+# DISPATCH_MODE=LIVE_X
+# LIVE_X_DRY_RUN=True
+# ALLOWED_TEST_HANDLES=linhtran_robo,minh_quant,test_builder_sea
+```
+Chạy lại container để nạp env mới:
+```powershell
+docker compose --env-file .env.docker up --build -d
+```
+
+#### Profile 3: `RUNTIME_PROFILE=LIVE_PRODUCTION` (Mô phỏng Production Strict + Nginx ALB tại `:80`)
+
+Sửa trong `.env.docker`:
+```dotenv
+RUNTIME_PROFILE=LIVE_PRODUCTION
+SECRET_KEY=<chuoi-bi-mat-dai-ngau-nhien>
+
+GEMINI_API_KEY=<key_gemini_that>
+X_API_BASE_URL=https://api.twitter.com/2
+X_BEARER_TOKEN=<x_bearer_token_that>
+
+# Muốn bắn DM thật phải đặt LIVE_X_DRY_RUN=False và đủ 4 khóa OAuth + whitelist:
+DISPATCH_MODE=LIVE_X
+LIVE_X_DRY_RUN=False
+ALLOWED_TEST_HANDLES=<handle_test_trong_whitelist>
+X_API_KEY=<x_api_key>
+X_API_SECRET=<x_api_secret>
+X_ACCESS_TOKEN=<x_access_token>
+X_ACCESS_TOKEN_SECRET=<x_access_token_secret>
+```
+Chạy kèm Nginx reverse proxy `--profile prod-sim` (Zero CORS qua cùng domain `http://localhost`):
+```powershell
+docker compose --env-file .env.docker --profile prod-sim up --build -d
+# Mở: http://localhost/login
+# Kiểm tra RuntimeGateway Readiness: http://localhost/api/system/runtime
+```
+
+> **Cơ chế 1 image cho mọi cổng/domain:** Nhờ [`frontend/src/lib/api-config.ts`](frontend/src/lib/api-config.ts) (`NEXT_PUBLIC_API_BASE_URL=auto`), **cùng một Docker image `frontend`** tự gọi `http://localhost:8000/api` khi bạn mở `:3000`, và tự động đổi sang `/api` (Same-Origin) khi bạn mở qua Nginx `:80` hoặc AWS ALB.
+
+### Bước 3: Lệnh Build Image riêng lẻ & Kiểm chứng Persistence (`MQ-F2`)
+
+```powershell
+# Build từng Docker image độc lập (dùng cho ECR / CI)
+docker build -f backend/Dockerfile -t genai-fde-backend:local .
+docker build -f frontend/Dockerfile --build-arg NEXT_PUBLIC_API_BASE_URL=auto -t genai-fde-frontend:local ./frontend
+
+# Kiểm tra tất cả container đạt trạng thái (healthy)
+docker compose ps
+
+# Kiểm chứng RuntimeGateway profile đang chạy
+curl.exe http://localhost:8000/api/system/runtime
+
+# Test bền vững dữ liệu SQLite (/app/data/outreach.db) sau khi nạp Starter Pack & gửi DM:
+docker compose restart backend
+
+# Dừng container (giữ lại DB volume):
+docker compose --profile prod-sim down
+# Dừng và XÓA SẠCH hoàn toàn volume SQLite cũ để tạo bản build sạch chỉ có 1 User đăng nhập:
+docker compose --env-file .env.docker --profile prod-sim down -v && docker compose --env-file .env.docker up --build -d
+```
+
+> **Lưu ý về dữ liệu khởi tạo sạch:** Mặc định `AUTO_SEED_LEDGER_BASELINE=False` (trong `.env.docker` và `backend/.env.example`) nên khi dựng container mới (hoặc sau `reset_clean_users.py --yes`), DB **chỉ giữ duy nhất 1 User đăng nhập** (`partner@genaifund.ai`) và `0` candidates / `0` ledger, không còn tự động bơm 4 bản ghi lịch sử `OUT-101..104` lúc vừa mở web. Nếu dựng lại Docker sau khi đã từng test trước đó, hãy chạy `down -v` để xóa named volume `genai_sqlite_data` cũ.
+
+---
+
+## 4. Cách dùng & Triển khai AWS (Terraform + ECS Fargate) theo từng `RUNTIME_PROFILE`
+
+Toàn bộ mã nguồn IaC đặt tại [`infra/terraform/`](infra/terraform/) (modules: `network/`, `alb/`, `storage_secrets/`, `ecs_cluster/`) và CI/CD blueprint tại [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml).
+
+### 4.1. Ánh xạ 3 Môi trường AWS (`environments/{dev,staging,prod}.tfvars`)
+
+| Thông số Hạ tầng & Bảo mật | `dev` ([`dev.tfvars`](infra/terraform/environments/dev.tfvars)) | `staging` ([`staging.tfvars`](infra/terraform/environments/staging.tfvars)) | `prod` ([`prod.tfvars`](infra/terraform/environments/prod.tfvars)) |
+| :--- | :--- | :--- | :--- |
+| **`runtime_profile`** | **`OFFLINE_MOCK`** | **`HYBRID_AUTO`** | **`LIVE_PRODUCTION`** |
+| **Domain mặc định** | `dev.scout.genaifund.ai` | `staging.scout.genaifund.ai` | `scout.genaifund.ai` *(bắt buộc điền `acm_certificate_arn` cho HTTPS :443)* |
+| **ECS Fargate Sizing** | FE `0.25 vCPU / 512MB` (Spot)<br>BE `0.25 vCPU / 512MB` (`1` task) | FE `0.25 vCPU / 512MB`<br>BE `0.5 vCPU / 1GB` (`1` task) | FE `0.5 vCPU / 1GB` (`2` tasks)<br>BE `1 vCPU / 2GB` (`2` tasks + CPU AutoScaling) |
+| **Database** | SQLite WAL trên **Amazon EFS** *(Terraform tự khóa `1` backend writer)* | SQLite WAL trên **Amazon EFS** *(Terraform tự khóa `1` backend writer)* | **Amazon RDS PostgreSQL 16** Multi-AZ (`db.t4g.small`, backup 14 ngày, deletion protection) |
+| **X Simulator nội bộ** | **`enable_x_simulator = true`** (`http://x-simulator.genai-fde-dev.local:8099/2`) | **`enable_x_simulator = true`** *(dự phòng qua Cloud Map DNS)* | **`enable_x_simulator = false`** *(tắt hoàn toàn)* |
+| **Chính sách gửi DM** | `DISPATCH_MODE=SANDBOX` cứng | `DISPATCH_MODE=SANDBOX` + `LIVE_X_DRY_RUN=true` + `ALLOWED_TEST_HANDLES` | `DISPATCH_MODE=LIVE_X` + `LIVE_X_DRY_RUN=false` + `ALLOWED_TEST_HANDLES` |
+| **Session & Monitoring** | JWT `10080m` (7d), Log `7` ngày | JWT `1440m` (24h), Log `14` ngày, Alarms `true` | JWT `480m` (8h), Log `90` ngày, Alarms `true` |
+
+> **Chú ý cho `staging` (`HYBRID_AUTO`):** `HYBRID_AUTO` cho phép chạy ngay cả khi chưa nạp đủ mọi API key. Trước khi promote lên `prod`, hãy gọi `GET https://staging.scout.genaifund.ai/api/system/runtime` để xác nhận `"live_production_readiness": { "ready": true }` (hoặc test 1 vòng với `RUNTIME_PROFILE=LIVE_PRODUCTION`) nhằm chắc chắn không tồn tại silent fallback.
+
+### 4.2. Quy trình Deploy AWS từng bước cho môi trường mục tiêu (PowerShell, `<env>` = `dev` | `staging` | `prod`)
+
+**Bước 0 — Cài đặt & kiểm tra CLI trên Windows:**
+```powershell
+# Cài Terraform CLI >= 1.6.0 (chỉ 1 lần đầu)
+winget install --id Hashicorp.Terraform -e --accept-source-agreements --accept-package-agreements
+# Mở cửa sổ PowerShell mới (hoặc nạp lại PATH ngay trong terminal hiện tại):
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+terraform version
+aws sts get-caller-identity   # Xác nhận đúng AWS Account & region ap-southeast-1
+```
+
+**Bước 1 — `terraform init` & tạo 2 kho Amazon ECR trước (bắt buộc ở lần deploy đầu):**
+Vì ECS Fargate sẽ kéo `:latest` ngay lúc khởi tạo service, ở lần đầu tiên của mỗi môi trường hãy tạo 2 ECR repository trước để tránh lỗi thiếu image:
+```powershell
+cd d:\AssignmentFDE\infra\terraform
+terraform init   # (Xem backend.tf.example nếu muốn dùng S3 Remote State + DynamoDB Lock)
+terraform plan -var-file="environments/dev.tfvars"
+
+terraform apply -var-file="environments/dev.tfvars" `
+  -target="module.ecs_cluster.aws_ecr_repository.backend" `
+  -target="module.ecs_cluster.aws_ecr_repository.frontend"
+```
+
+**Bước 2 — Build & Push Docker Image lên Amazon ECR:**
+*(Trên Windows PowerShell 5.1, luôn bọc `aws ecr get-login-password | docker login` trong `cmd /c` để tránh lỗi `400 Bad Request` do pipeline PowerShell thêm ký tự xuống dòng/encoding.)*
+```powershell
+cd d:\AssignmentFDE
+
+$REGION   = "ap-southeast-1"
+$BE_REPO  = terraform -chdir=infra/terraform output -raw ecr_backend_repository_url
+$FE_REPO  = terraform -chdir=infra/terraform output -raw ecr_frontend_repository_url
+$ECR_HOST = $BE_REPO.Split("/")[0]
+
+cmd /c "aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_HOST"
+
+docker build -f backend/Dockerfile -t "${BE_REPO}:latest" .
+docker push "${BE_REPO}:latest"
+
+docker build -f frontend/Dockerfile --build-arg NEXT_PUBLIC_API_BASE_URL=auto -t "${FE_REPO}:latest" ./frontend
+docker push "${FE_REPO}:latest"
+```
+
+**Bước 3 — `terraform apply` toàn bộ hạ tầng `<env>`:**
+```powershell
+cd d:\AssignmentFDE\infra\terraform
+terraform apply -var-file="environments/dev.tfvars"   # hoặc staging.tfvars / prod.tfvars
+```
+> **Về tên miền & chi phí ở `dev`/`staging`:** Output `app_url = "http://dev.scout.genaifund.ai"` chỉ là chuỗi cấu hình/CORS và **không tạo Route53 hay tốn tiền mua domain**. Sau khi `apply` xong, truy cập trực tiếp bằng **`http://<alb_dns_name>`** (miễn phí từ AWS ALB). Chỉ khi chạy `prod` HTTPS thật mới cần gắn `acm_certificate_arn` và trỏ domain.
+
+**Bước 4 — Nạp Secrets vào AWS Secrets Manager (`<env>/genai-fde/app-secrets`):**
+- Với **`dev` (`OFFLINE_MOCK`)**: **không cần chạy bước này** (Terraform đã tự sinh sẵn `SECRET_KEY` ngẫu nhiên 48 ký tự).
+- Với **`staging` (`HYBRID_AUTO`)** và **`prod` (`LIVE_PRODUCTION`)**: nạp key thật qua AWS CLI rồi force rollout lại ECS *(tuyệt đối không lưu key trong Git hoặc `.tfvars`)*:
+```powershell
+aws secretsmanager put-secret-value `
+  --region ap-southeast-1 `
+  --secret-id staging/genai-fde/app-secrets `
+  --secret-string '{"SECRET_KEY":"<random-48-char>","GEMINI_API_KEY":"<key>","OPENAI_API_KEY":"","X_BEARER_TOKEN":"<bearer>","X_API_KEY":"<oauth-key>","X_API_SECRET":"<oauth-secret>","X_ACCESS_TOKEN":"<oauth-token>","X_ACCESS_TOKEN_SECRET":"<oauth-token-secret>"}'
+
+aws ecs update-service --region ap-southeast-1 --cluster genai-fde-staging-cluster --service genai-fde-staging-backend --force-new-deployment
+```
+
+**Bước 5 — Kiểm tra ECS Healthy, `/api/system/runtime` & Dọn dẹp (`destroy`):**
+```powershell
+$ALB_DNS = terraform -chdir=d:\AssignmentFDE\infra\terraform output -raw alb_dns_name
+Write-Output "App URL: http://$ALB_DNS/login"
+
+aws ecs describe-services --region ap-southeast-1 --cluster genai-fde-dev-cluster `
+  --services genai-fde-dev-backend genai-fde-dev-frontend genai-fde-dev-x-simulator `
+  --query "services[*].{Name:serviceName,Desired:desiredCount,Running:runningCount,Status:status}" --output table
+
+curl.exe "http://$ALB_DNS/api/health"
+curl.exe "http://$ALB_DNS/api/system/runtime"
+# (Trên staging: kiểm tra live_production_readiness.ready == true trước khi cutover prod)
+```
+```powershell
+# Khi test xong muốn dừng tính phí AWS (NAT Gateway, ALB, Fargate Spot, EFS):
+cd d:\AssignmentFDE\infra\terraform
+terraform destroy -var-file="environments/dev.tfvars"
+```
+
+*(Hoặc chạy CI/CD tự động qua GitHub Actions: [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml) — chi tiết module xem thêm tại [`infra/README.md`](infra/README.md).)*
+
+---
+
+## 5. Công cụ CLI Reset Dữ liệu, Kiểm chứng Live Key & Manual QA
+
+### 5.1. Reset Dữ liệu Sạch Chỉ Giữ User Đăng nhập *(Khuyên dùng trước Manual Check)*
+
+```powershell
+# Xóa job_queue, outreach_ledger, candidates; giữ Partner (partner@genaifund.ai / GenAIFund2026!)
+python -m backend.reset_clean_users --yes
+
+# Giữ Partner + tạo thêm Analyst (analyst@genaifund.ai / Analyst2026!) để test chặn quyền /403
+python -m backend.reset_clean_users --yes --with-analyst
+
+# Hoặc nạp sẵn 20 profiles mẫu + 4 historical ledger records:
+python backend/seed_data.py
+```
+
+### 5.2. Kiểm chứng Live AI & Live X Key (`verify_live_keys.py`)
+
+```powershell
+# Gate L1 + L2 + L3 tổng hợp
 python -m backend.scripts.verify_live_keys --mode all
 
-# 2. Chạy chấm điểm THẬT bằng Gemini/OpenAI trên toàn bộ 19 hồ sơ unique & đo Alignment % + Latency
+# Benchmark chấm điểm THẬT bằng Gemini/OpenAI trên 19 hồ sơ unique & đo Alignment %
 python -m backend.scripts.verify_live_keys --mode llm --full-benchmark --json-out tests/manual/results/live-verify-report.json
 
-# 3. Kiểm tra tra cứu X API v2 thật với một handle bất kỳ
+# Kiểm tra tra cứu X API v2 thật với 1 handle
 python -m backend.scripts.verify_live_keys --mode x --handle OpenAI
 
-# 4. Kiểm tra chốt chặn whitelist LIVE_X (Dry-run an toàn, không bắn DM thật)
+# Kiểm tra chốt chặn whitelist LIVE_X (Dry-run an toàn)
 python -m backend.scripts.verify_live_keys --mode dispatch
 
-# 5. (CHỈ DÙNG KHI MUỐN BẮN 1 DM TEST THẬT) Gửi thử tới handle đã có trong ALLOWED_TEST_HANDLES
+# (Tùy chọn) Gửi 1 DM test thật tới handle đã có trong ALLOWED_TEST_HANDLES
 python -m backend.scripts.verify_live_keys --mode dispatch --execute-send --dm-handle <handle_trong_whitelist>
 ```
 
----
+### 5.3. Luồng Manual QA Nhanh trên Giao diện ([`tests/manual/MANUAL_QA_CHECKLIST.md`](tests/manual/MANUAL_QA_CHECKLIST.md))
 
-## 5. Khởi chạy Web App để Manual Check
-
-Mở **2 cửa sổ PowerShell** tại `d:\AssignmentFDE` *(hoặc 3 cửa sổ nếu dùng Local X Simulator `$0`)*:
-
-**Terminal 0 *(Tùy chọn $0 Dev)* — Local X API v2 Simulator (`:8099`):**
-
-File [`backend/scripts/x_simulator.py`](backend/scripts/x_simulator.py) đã tự gọi Uvicorn bên trong nên **không gõ thêm `uvicorn`** ở Cách 1 (nếu gọi qua `uvicorn` phải chỉ rõ `:simulator_app`):
-
-```powershell
-# Cách 1 (khuyên dùng, bỏ uvicorn):
-python -m backend.scripts.x_simulator --host 127.0.0.1 --port 8099
-
-# Cách 2 (nếu gọi qua uvicorn):
-python -m uvicorn backend.scripts.x_simulator:simulator_app --host 127.0.0.1 --port 8099
-```
-
-- Kiểm tra nhanh Simulator đang sống tại: `http://127.0.0.1:8099/health` (`{"status":"ok", ...}`).
-- Giữ cửa sổ này chạy song song khi test tab **X Lookup** ở `$0`. Thử nhập `@sim_401`, `@credits_depleted`, `@forbidden_handle`, `@missing_user`, `@rate_limit` để kiểm chứng UI hiển thị đúng từng mã lỗi `401` / `402` / `403` / `404` / `429`.
-
-**Terminal 1 — Backend FastAPI (`:8000`):**
-```powershell
-python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-**Terminal 2 — Frontend Next.js (`:3000`):**
-```powershell
-cd frontend
-npm.cmd run dev
-```
-
-Sau đó mở trình duyệt tại **`http://localhost:3000/login`** và đăng nhập với tài khoản điền sẵn:
-- **Partner (Full quyền):** `partner@genaifund.ai` / `GenAIFund2026!`
-- **Analyst (Nếu reset bằng `--with-analyst`, để test chặn `/calibration` $\rightarrow$ `/403`):** `analyst@genaifund.ai` / `Analyst2026!`
+1. **Login & Workspace (`/login` $\rightarrow$ `/`):** Kiểm tra khối KPI thu gọn mặc định (`Show Metrics` / `Hide Metrics`) và badge sidebar `Candidate Review`.
+2. **Ingestion 3 tab (`/ingestion`):** Test `X Lookup` (nhận diện Simulator hoặc Live mode), `Starter Pack` (20 rows, gộp `P002`/`P020`), và `CSV Import` (Pre-flight column status + 5-row preview, thử `missing_bio.csv`).
+3. **Review & Dispatch (`/`):** Bấm `Process Queue`, kiểm tra `ScorePill` 1 dòng (`4 / 4`), highlight trích dẫn vàng trong modal Review, `P017` Prompt Injection (`1 / 4`, DM rỗng), `P018` Sparse (`INSUFFICIENT_EVIDENCE`), `P019` khóa gửi (`422`), và khóa chống gửi đúp (`409`) sau khi `Approve & Send DM`.
+4. **Ledger, Calibration & i18n (`/ledger`, `/calibration`):** Kiểm tra `Log Reply` $\rightarrow$ badge `URGENT` $\rightarrow$ `Mark Handled`, bảng `Partner Calibration Matrix` (`100%` alignment), và nút đổi ngôn ngữ **`EN` $\leftrightarrow$ `VI`**.
 
 ---
 
-## 6. Thứ tự Manual Check Nhanh trên Giao diện
+## 6. Bộ Kiểm thử Tự động 3 Tầng & E/R Result Contract
 
-Checklist chi tiết lưu tại [`tests/manual/MANUAL_QA_CHECKLIST.md`](tests/manual/MANUAL_QA_CHECKLIST.md). Luồng đi nhanh đề xuất sau khi đã `reset_clean_users --yes`:
-
-1. **Login & Workspace trắng (`/login` $\rightarrow$ `/`):**
-   - Kiểm tra form Login gọn (`Sign In`, đã bỏ badge prefill & footer XSS).
-   - Vào `/` thấy khối 4 thẻ KPI mặc định **đang thu gọn**, nút `Show Metrics` / `Hide Metrics` nằm ngay cạnh `Process Queue` & `Refresh` trên thanh công cụ $\rightarrow$ bấm để kiểm tra đóng/mở KPI. Badge sidebar cạnh **Candidate Review** phản ánh đúng số `PENDING_REVIEW` trong SQLite.
-2. **Nạp dữ liệu 3 cách (`/ingestion`):**
-   - **Tab `X Lookup`:** Nhập 1 handle (vd `@minh_quant`, `@arjun_infer` hoặc `@OpenAI`) $\rightarrow$ xác nhận badge `Local X API v2 Simulator ($0 HTTP)` (hoặc `Live Mode`), bio & tweets load qua HTTP $\rightarrow$ bấm đẩy vào AI Queue.
-   - **Tab `Starter Pack`:** Bấm `Load Starter Pack` $\rightarrow$ kiểm tra Audit Report (20 rows, gộp duplicate `P002`/`P020`).
-   - **Tab `CSV Import`:** Giao diện ban đầu chỉ hiện Dropzone; ngay khi chọn/tải file `.csv`, hệ thống mới hiển thị **CSV Required Columns Status** (trạng thái `Found` / `Missing` cho từng cột `handle`, `name`, `bio`, `recent_tweets` + các header đọc được) và bảng **PRE-FLIGHT DATA PREVIEW (FIRST 5 ROWS)**. Thử `missing_bio.csv` (báo đỏ thiếu cột `bio`, khóa nút Import) và file chuẩn.
-3. **Chấm AI thật & Duyệt DM (`/`):**
-   - Bấm `Process Queue` để Live Gemini/OpenAI chấm hàng loạt.
-   - Kiểm tra cột điểm `4 / 4`, `3 / 4`, `1 / 4` hiển thị **đúng 1 dòng**.
-   - Bấm `Review` trên 1 hồ sơ `4 / 4`: kiểm tra đoạn highlight màu vàng khớp nguyên văn bio/tweet; bấm `Regenerate with AI` để thử gọi Live LLM tạo nháp mới; thanh nút **Reject · Cancel · Approve & Send DM** nằm cố định ở footer đáy modal.
-   - Kiểm tra `P017` (Prompt Injection $\rightarrow$ `1 / 4`, DM rỗng), `P018` (Sparse $\rightarrow$ `0 / 4`, `INSUFFICIENT_EVIDENCE`), `P019` (`@arjun_infer` khóa nút gửi).
-   - Bấm `Approve & Send DM` cho `@minh_quant` (chế độ `SANDBOX`, hoặc `LIVE_X` nếu đã đưa handle test vào whitelist) $\rightarrow$ mở lại kiểm tra cảnh báo khóa chống gửi đúp (`409`).
-4. **Outreach Log, Reply & Calibration (`/ledger`, `/calibration`):**
-   - Vào `/ledger`: trang chỉ gọi `/api/ledger` (không kéo theo `/calibration`), kiểm tra header bảng 1 từ (`ID`, `Candidate`, `Message`, `Channel`, `Reply`, `Actions`), bấm `Log Reply` $\rightarrow$ hiện badge `URGENT`, mở `Audit Trail`, bấm `Mark Handled`.
-   - Chuyển sang tab/trang `/calibration`: `/api/ledger/calibration` dùng điểm có sẵn trong SQLite hoặc Tri-Guard local (`0` token, phản hồi tức thì, không gọi lại Gemini cho các hồ sơ chưa nạp).
-   - Chuyển đổi ngôn ngữ `EN` $\leftrightarrow$ `VI` trên menu góc phải trên.
-
----
-
-## 7. Bộ Kiểm thử Tự động (Chạy lại bất kỳ lúc nào)
-
-Các bộ test này chạy hoàn toàn cô lập (dùng `sqlite:///:memory:` và `outreach_e2e.db` ở cổng `3100`/`8001`/`8099`), **không ghi đè** dữ liệu test tay của bạn trên `outreach.db` và **không tốn tiền API**:
+Các bộ test chạy hoàn toàn cô lập (`sqlite:///:memory:` và `outreach_e2e.db` ở cổng `3100`/`8001`/`8099`), **không ghi đè** `outreach.db` và **không tốn tiền API**:
 
 ```powershell
-# Kiểm tra TypeScript Frontend (an toàn, không đè thư mục .next của next dev)
+# Kiểm tra TypeScript Frontend (không ảnh hưởng .next dev server)
 cd frontend; npx.cmd tsc --noEmit; cd ..
 
-# Toàn bộ bộ test Backend (Unit + API Integration + Contracts + Reset/X-Client/Simulator Tools)
+# Toàn bộ Backend Tests (Unit + Integration + Contracts + RuntimeGateway + Tools)
 python -m pytest backend/tests/ -v
 
-# Full Quality Gate 3 tầng (Tier 1: 6 Contract Tests + Tier 2: 9 Playwright E2E + Tier 3: E/R Result Contract)
-# Lưu ý: tắt trước terminal x_simulator (:8099) nếu đang mở tay vì Playwright tự khởi động server riêng trên cổng 8099
+# Full Quality Gate 3 tầng (Tier 1: 6 Contracts + Tier 2: 9 Playwright E2E + Tier 3: E/R Result Contract)
+# Lưu ý: tắt terminal x_simulator (:8099) nếu đang mở tay để Playwright tự khởi động ở cổng 8099
 powershell -ExecutionPolicy Bypass -File tests/manual/test-all.ps1
 
-# Chạy riêng bước trung gian đối chiếu E/R Result Contract từ raw traces (ER-data-packing + ER-F5-F6 + 9 States)
+# Chạy riêng bước chuyển đổi & đối chiếu E/R Result Contract từ raw traces
 python -m backend.scripts.build_er_result_contract
-# (Chỉ dùng khi chủ đích cập nhật lại Golden Expected sau khi đổi thiết kế E/R):
+# (Chỉ cập nhật Golden Expected khi chủ đích thay đổi spec E/R):
 # python -m backend.scripts.build_er_result_contract --update-expected
 ```
 
-**Cơ chế Kiểm chứng E/R Result Contract (`ln-522-manual-tester` Expected-Based Testing):**
-- Raw telemetry (`tests/manual/results/traces/raw/all-traces.jsonl` & `*.state.json`) ghi lại từng HTTP request và DB snapshot theo thứ tự thời gian.
-- Script [`backend/scripts/build_er_result_contract.py`](backend/scripts/build_er_result_contract.py) đóng vai trò **bước trung gian** chiếu toàn bộ trace thô sang chuẩn **Result Contract** ([`tests/manual/results/traces/er_result_contract.json`](tests/manual/results/traces/er_result_contract.json)) rồi `diff` nghiêm ngặt (Fail-Fast) với Golden **Expected Contract** ([`backend/tests/contracts/expected/er_expected_contract.json`](backend/tests/contracts/expected/er_expected_contract.json)), đồng thời xuất báo cáo đối chiếu [`tests/manual/results/traces/_ER_CONTRACT_VERIFICATION.md`](tests/manual/results/traces/_ER_CONTRACT_VERIFICATION.md).
-- Phạm vi phủ đối chiếu:
-  - [`testing/ER-data-packing.md`](testing/ER-data-packing.md): Seed 20 dòng (`queued=16, dup=1, ledger_collisions=3`), thuộc tính phức hợp/đa trị (`location`, `recent_tweets` nối `||`), và kịch bản Cross-Batch `T1 -> T2 -> T3` (`IMPORTED`, `ALREADY_EXISTS_IN_DB`, `SKIPPED_IN_BATCH_DUPLICATE`, `HISTORICAL_COLLISION`, `jobs_total=1`, giữ nguyên `REPLIED`).
-  - [`testing/ER-F5-F6.md`](testing/ER-F5-F6.md): Trọn bộ `T1 -> T2 -> T3 -> T4` gồm Reject `P009/P017`, khóa `422` `P019`, `AI_ASSESSMENT_DRAFT` (`evidence_snippet` verbatim, tách `draft_dm`/`edited_dm`, `OPTIMAL` 250–600 ký tự), tạo `OUT-105` & KPI Mốc T2–T3 (`dispatched=4`, `reply_rate=50% -> 75%`, `needs_attention=2 -> 3 -> 2`), khóa gửi trùng `409`, chặn reply `422` trên `OUT-104`, và `Partner Calibration Matrix` (`100.0%` alignment `19/19`, `2/2` safety blocks).
-  - [`testing/e2e.md`](testing/e2e.md): Độ phủ 9/9 trạng thái State Machine (`8` trực tiếp trên DB/API + `APPROVED_QUEUED` trung gian đồng bộ).
+- Raw telemetry (`tests/manual/results/traces/raw/all-traces.jsonl` & `*.state.json`) được [`backend/scripts/build_er_result_contract.py`](backend/scripts/build_er_result_contract.py) chiếu sang **Result Contract** ([`tests/manual/results/traces/er_result_contract.json`](tests/manual/results/traces/er_result_contract.json)) và `diff` nghiêm ngặt với **Golden Expected** ([`backend/tests/contracts/expected/er_expected_contract.json`](backend/tests/contracts/expected/er_expected_contract.json)) kèm báo cáo [`_ER_CONTRACT_VERIFICATION.md`](tests/manual/results/traces/_ER_CONTRACT_VERIFICATION.md), phủ trọn [`testing/ER-data-packing.md`](testing/ER-data-packing.md), [`testing/ER-F5-F6.md`](testing/ER-F5-F6.md), và 9/9 trạng thái trong [`testing/e2e.md`](testing/e2e.md).
 
 ---
 
-## 8. Ghi chú Xử lý Lỗi Thường gặp (Troubleshooting)
+## 7. Ghi chú Xử lý Lỗi Thường gặp (Troubleshooting)
 
 | Triệu chứng / Thông báo lỗi | Nguyên nhân | Cách khắc phục |
 | :--- | :--- | :--- |
-| `ERROR: Error loading ASGI app. Import string "backend.scripts.x_simulator" must be in format "<module>:<attribute>"` | Gõ dư `uvicorn` khi chạy `x_simulator.py` | Bỏ chữ `uvicorn` (`python -m backend.scripts.x_simulator --host 127.0.0.1 --port 8099`) **hoặc** dùng `backend.scripts.x_simulator:simulator_app`. |
-| `HTTP 401 [X API 401 Unauthorized]` dù đang dùng `sim_dev_bearer_token` | Thiếu `X_API_BASE_URL=http://127.0.0.1:8099/2` trong `backend/.env` hoặc quên restart `uvicorn` sau khi sửa `.env` | Thêm `X_API_BASE_URL=http://127.0.0.1:8099/2` vào `backend/.env` rồi `Ctrl+C` khởi động lại `uvicorn`. |
-| `HTTP 503 Unable to reach X API endpoint (http://127.0.0.1:8099/2): [WinError 10061]` | Chưa bật Local X Simulator ở cổng `8099` | Chạy `python -m backend.scripts.x_simulator --host 127.0.0.1 --port 8099` ở một cửa sổ PowerShell riêng. |
-| `HTTP 402 [X API 402 Payment Required] credits depleted` | Token X thật chưa nạp credit trả phí trên `console.x.com` | Nạp credit Pay-Per-Use nếu muốn test X thật, hoặc chuyển `X_API_BASE_URL=http://127.0.0.1:8099/2` dùng Simulator `$0`. |
-| `ENOENT ... app-build-manifest.json` trong terminal Frontend `next dev` | Chạy `npm run build` (`next build`) trong lúc `next dev` đang mở làm ghi đè thư mục `.next` | Ở terminal Frontend bấm `Ctrl+C`, chạy `Remove-Item -Recurse -Force .next` rồi chạy lại `npm.cmd run dev`. |
-| `GET /.well-known/appspecific/com.chrome.devtools.json 404` | Chrome/Edge DevTools (khi mở F12) tự dò cấu hình workspace cục bộ | Log vô hại của trình duyệt, hoàn toàn bình thường và không ảnh hưởng tới app. |
-| Gọi `curl` trên PowerShell báo lỗi hoặc trả `401` | PowerShell alias `curl` trỏ tới `Invoke-WebRequest` (không hiểu `\` xuống dòng kiểu bash) hoặc thiếu `-b "session_token=..."` | Dùng `curl.exe` trên 1 dòng kèm cookie `-b "session_token=..."` (hoặc test trực tiếp trên UI). |
-
+| `ERROR: Error loading ASGI app. Import string "backend.scripts.x_simulator"` | Gõ dư `uvicorn` khi chạy `x_simulator.py` | Dùng `python -m backend.scripts.x_simulator --host 127.0.0.1 --port 8099` hoặc chỉ rõ `:simulator_app`. |
+| `HTTP 401 [X API 401 Unauthorized]` dù dùng `sim_dev_bearer_token` | Thiếu `X_API_BASE_URL` trong `.env` (khi ở `HYBRID_AUTO`) hoặc quên restart `uvicorn` | Dùng `RUNTIME_PROFILE=OFFLINE_MOCK`, hoặc thêm `X_API_BASE_URL=http://127.0.0.1:8099/2` rồi restart `uvicorn`. |
+| `HTTP 503 [LIVE_PRODUCTION] ...` khi X Lookup hoặc Send DM | Đang bật `LIVE_PRODUCTION` nhưng thiếu API key, trỏ nhầm Simulator/localhost, hoặc `LIVE_X_DRY_RUN=True` | Gọi `GET /api/system/runtime` xem mục `live_production_readiness.missing_requirements` để bổ sung đúng biến còn thiếu. |
+| `HTTP 503 Unable to reach X API endpoint (...:8099): [WinError 10061]` | Chưa bật Local X Simulator `:8099` | Chạy `python -m backend.scripts.x_simulator --host 127.0.0.1 --port 8099` ở terminal riêng. |
+| `HTTP 402 [X API 402 Payment Required] credits depleted` | Token X thật chưa nạp credit trả phí trên `console.x.com` | Nạp credit Pay-Per-Use hoặc chuyển `RUNTIME_PROFILE=OFFLINE_MOCK` dùng Simulator `$0`. |
+| Docker Desktop báo lỗi `dockerDesktopLinuxEngine` không tìm thấy | Docker Desktop chưa được bật | Mở **Docker Desktop** trên Windows và chờ Engine chuyển sang `Running` rồi chạy lại `docker compose`. |
+| `terraform : The term 'terraform' is not recognized` sau khi vừa cài `winget` | Terminal trong IDE vẫn giữ `PATH` cũ | Chạy `$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")` hoặc mở lại IDE/terminal mới. |
+| `docker login` tới ECR bị `400 Bad Request` trên Windows PowerShell 5.1 | Pipe PowerShell 5.1 thêm CRLF/encoding vào token ~2.200 ký tự | Chạy `docker logout <ecr_host>` rồi bọc lệnh login vào `cmd /c "..."` như ở **Bước 2 (mục 4.2)** thay vì pipe trực tiếp trên PowerShell. |
+| Đăng nhập xong trên Docker `http://localhost` nhưng bị đá lại `/login` | Reverse proxy hoặc HTTPS config không khớp `SameSite`/protocol | Dùng đúng profile `--profile prod-sim` qua `http://localhost` (hoặc `:3000`); không chạy thẳng container production behind custom proxy mà thiếu `X-Forwarded-Proto`. |
+| `ENOENT ... app-build-manifest.json` trong terminal `next dev` | Chạy `npm run build` trong lúc `next dev` đang mở làm ghi đè `.next` | `Ctrl+C` ở terminal Frontend, `Remove-Item -Recurse -Force .next`, rồi `npm.cmd run dev`. |
+| `GET /.well-known/appspecific/com.chrome.devtools.json 404` | Chrome/Edge DevTools (F12) tự dò cấu hình workspace cục bộ | Log vô hại của trình duyệt, hoàn toàn bình thường. |
+| `curl` trên PowerShell báo lỗi hoặc trả `401` | PowerShell alias `curl` là `Invoke-WebRequest` hoặc thiếu cookie `-b` | Dùng `curl.exe` trên 1 dòng kèm `-b "session_token=..."`. |

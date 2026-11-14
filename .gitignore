@@ -13,3 +13,16 @@ __pycache__/
 .venv/
 venv/
 
+# Environment & Secrets (never commit real API keys or Docker env files)
+.env
+.env.docker
+backend/.env
+frontend/.env.local
+
+# Infrastructure / Terraform local state & plugin cache
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/*.tfvars.local
+
+

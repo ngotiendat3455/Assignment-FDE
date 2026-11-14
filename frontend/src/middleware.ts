@@ -8,6 +8,7 @@ interface JwtPayload {
 
 const PUBLIC_PATHS = new Set([
   "/login",
+  "/healthz",
   "/401",
   "/403",
   "/404",

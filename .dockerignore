@@ -1,0 +1,34 @@
+# Version control & editor artifacts
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Python caches, virtualenvs & SQLite dev databases
+**/__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+outreach*.db*
+backend/outreach*.db*
+
+# Secrets & local runtime env files
+.env
+.env.*
+backend/.env
+backend/.env.*
+!.env.example
+!.env.docker.example
+!backend/.env.example
+!backend/.env.e2e
+
+# Frontend build & test artifacts (built separately inside frontend context)
+frontend/
+node_modules/
+tests/manual/results/
+testing/
+infra/terraform/.terraform/
+infra/terraform/*.tfstate*
+

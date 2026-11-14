@@ -48,6 +48,7 @@ import {
   retryCandidateEvaluation,
   regenerateAiEvaluation,
 } from "@/lib/candidates-api";
+import { getApiBaseUrl } from "@/lib/api-config";
 
 type FilterTabKey =
   | "ALL"
@@ -114,8 +115,7 @@ export default function HitlReviewWorkspacePage() {
   const handleProcessQueue = async () => {
     try {
       setIsProcessingQueue(true);
-      const API_BASE_URL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
+      const API_BASE_URL = getApiBaseUrl();
       const res = await fetch(`${API_BASE_URL}/queue/process`, {
         method: "POST",
         credentials: "include",

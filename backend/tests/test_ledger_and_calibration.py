@@ -10,7 +10,10 @@ from backend.app.core.security import create_access_token, ensure_default_partne
 
 
 @pytest.fixture()
-def db_session_and_client():
+def db_session_and_client(monkeypatch):
+    from backend.app.core.config import settings
+
+    monkeypatch.setattr(settings, "AUTO_SEED_LEDGER_BASELINE", True)
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -183,4 +186,23 @@ def test_calibration_never_calls_external_llm_on_get(db_session_and_client, monk
     resp = client.get("/api/ledger/calibration")
     assert resp.status_code == 200
     assert resp.json()["kpi"]["unique_benchmarked"] == 19
+
+
+def test_clean_db_does_not_auto_seed_ledger_when_flag_disabled(db_session_and_client, monkeypatch):
+    """Verify fresh / reset user-only DB stays completely empty when AUTO_SEED_LEDGER_BASELINE=False."""
+    from backend.app.core.config import settings
+    from backend.app.models.candidate import Candidate
+    from backend.app.models.ledger import OutreachLedger
+
+    db, client = db_session_and_client
+    monkeypatch.setattr(settings, "AUTO_SEED_LEDGER_BASELINE", False)
+
+    resp = client.get("/api/ledger")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 0
+    assert data["items"] == []
+    assert db.query(OutreachLedger).count() == 0
+    assert db.query(Candidate).count() == 0
+
 

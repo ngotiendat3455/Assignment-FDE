@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from backend.app.core.config import settings
 from backend.app.models.candidate import Candidate, CandidateStatus
 from backend.app.models.ledger import OutreachLedger, OutreachStatus
 from backend.app.services.ai_evaluator import evaluate_candidate_profile
@@ -96,7 +97,8 @@ def list_ledger_entries(
     """
     List immutable outreach ledger records with KPI summary metrics, filter tabs, and search.
     """
-    ensure_ledger_baseline(db)
+    if settings.AUTO_SEED_LEDGER_BASELINE:
+        ensure_ledger_baseline(db)
 
     all_entries: List[OutreachLedger] = (
         db.query(OutreachLedger).order_by(OutreachLedger.id.asc()).all()

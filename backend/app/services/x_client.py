@@ -30,9 +30,12 @@ def get_x_api_base() -> str:
 
 
 def is_local_x_simulator() -> bool:
-    """True when X_API_BASE_URL points to a local HTTP simulator rather than api.twitter.com/x.com."""
+    """True when X_API_BASE_URL points to a local/container HTTP simulator rather than api.twitter.com/x.com."""
     base = get_x_api_base().lower()
-    return "127.0.0.1" in base or "localhost" in base or "0.0.0.0" in base
+    return any(
+        marker in base
+        for marker in ("127.0.0.1", "localhost", "0.0.0.0", "x-simulator", "x_simulator")
+    )
 
 
 def extract_x_api_error_detail(resp: httpx.Response) -> str:

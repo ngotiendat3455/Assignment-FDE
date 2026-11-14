@@ -5,9 +5,7 @@ import {
   SendCandidatePayload,
   SendCandidateResponse,
 } from "@/types/candidate";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
+import { getApiBaseUrl } from "@/lib/api-config";
 
 async function handleApiResponse<T>(res: Response): Promise<T> {
   if (res.status === 401 && typeof window !== "undefined") {
@@ -39,7 +37,7 @@ export async function fetchCandidates(params?: {
     query.set("min_score", String(params.min_score));
   }
 
-  const url = `${API_BASE_URL}/candidates${query.toString() ? `?${query.toString()}` : ""}`;
+  const url = `${getApiBaseUrl()}/candidates${query.toString() ? `?${query.toString()}` : ""}`;
   const res = await fetch(url, {
     method: "GET",
     credentials: "include",
@@ -51,7 +49,7 @@ export async function fetchCandidates(params?: {
 }
 
 export async function fetchCandidateDetail(id: number): Promise<CandidateItem> {
-  const res = await fetch(`${API_BASE_URL}/candidates/${id}`, {
+  const res = await fetch(`${getApiBaseUrl()}/candidates/${id}`, {
     method: "GET",
     credentials: "include",
   });
@@ -59,7 +57,7 @@ export async function fetchCandidateDetail(id: number): Promise<CandidateItem> {
 }
 
 export async function fetchStateMachineSummary(): Promise<StateMachineSummary> {
-  const res = await fetch(`${API_BASE_URL}/candidates/state-summary`, {
+  const res = await fetch(`${getApiBaseUrl()}/candidates/state-summary`, {
     method: "GET",
     credentials: "include",
   });
@@ -70,7 +68,7 @@ export async function sendCandidateDm(
   candidateId: number,
   payload: SendCandidatePayload
 ): Promise<SendCandidateResponse> {
-  const res = await fetch(`${API_BASE_URL}/candidates/${candidateId}/send`, {
+  const res = await fetch(`${getApiBaseUrl()}/candidates/${candidateId}/send`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -87,7 +85,7 @@ export async function rejectCandidate(
   candidateId: number,
   reason?: string
 ): Promise<CandidateItem> {
-  const res = await fetch(`${API_BASE_URL}/candidates/${candidateId}/reject`, {
+  const res = await fetch(`${getApiBaseUrl()}/candidates/${candidateId}/reject`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -99,7 +97,7 @@ export async function rejectCandidate(
 export async function retryCandidateEvaluation(
   candidateId: number
 ): Promise<CandidateItem> {
-  const res = await fetch(`${API_BASE_URL}/candidates/${candidateId}/retry`, {
+  const res = await fetch(`${getApiBaseUrl()}/candidates/${candidateId}/retry`, {
     method: "POST",
     credentials: "include",
   });
@@ -109,7 +107,7 @@ export async function retryCandidateEvaluation(
 export async function regenerateAiEvaluation(
   candidateId: number
 ): Promise<{ candidate: CandidateItem; evaluation: unknown }> {
-  const res = await fetch(`${API_BASE_URL}/queue/evaluate/${candidateId}`, {
+  const res = await fetch(`${getApiBaseUrl()}/queue/evaluate/${candidateId}`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },

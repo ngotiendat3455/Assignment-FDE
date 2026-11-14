@@ -38,8 +38,17 @@ def _is_live_x_bearer_token(value: Optional[str]) -> bool:
 
 
 def _is_localhost_url(url: str) -> bool:
-    lowered = (url or "").strip().lower()
-    return "127.0.0.1" in lowered or "localhost" in lowered or "0.0.0.0" in lowered
+    """Return True if URL targets local/container X API simulator rather than public api.twitter.com."""
+    lowered = (url or "").strip().lower().rstrip("/")
+    if not lowered:
+        return False
+    sim_override = (getattr(settings, "X_SIMULATOR_BASE_URL", "") or "").strip().lower().rstrip("/")
+    if sim_override and lowered == sim_override:
+        return True
+    return any(
+        marker in lowered
+        for marker in ("127.0.0.1", "localhost", "0.0.0.0", "x-simulator", "x_simulator")
+    )
 
 
 @dataclass
