@@ -257,6 +257,8 @@ def approve_and_send_candidate(
             x_user_id=candidate.x_user_id,
         )
         external_dm_id = live_resp["dm_event_id"]
+        if live_resp.get("participant_id") and not (candidate.x_user_id or "").strip().isdigit():
+            candidate.x_user_id = str(live_resp["participant_id"]).strip()
 
     # --- TIER 2: Atomic Database Transaction with Unique Constraints ---
     try:
@@ -337,6 +339,75 @@ def retry_candidate_ai_evaluation(
     db.add(job)
     db.commit()
     return updated
+
+
+def override_candidate_fit_score(
+    db: Session,
+    candidate_id: int,
+    fit_score: int,
+    reason: str,
+) -> Candidate:
+    """
+    Allow a Partner to manually override a candidate's Fit Score (1-4) with a mandatory rationale.
+    - Protects terminal outreach states (SENT / REPLIED).
+    - Updates fit_score, is_match (True for >=3), and fit_reason with explicit Partner Override tag.
+    - Moves QUEUED_FOR_AI / AI_FAILED / INSUFFICIENT_EVIDENCE into PENDING_REVIEW.
+    - Populates an initial grounded draft_dm if upgraded to >=3 and draft_dm was empty.
+    """
+    from backend.app.services.ai_evaluator import (
+        _compose_grounded_dm_variant,
+        _verify_verbatim_grounding,
+        detect_prompt_injection,
+        detect_sparse_profile,
+    )
+
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not candidate:
+        raise LookupError(f"Candidate with ID {candidate_id} not found.")
+
+    if candidate.status in (CandidateStatus.SENT.value, CandidateStatus.REPLIED.value):
+        raise DoubleMessageConflictError(
+            f"Candidate @{candidate.handle} is already in terminal state ({candidate.status}); fit score cannot be overridden."
+        )
+
+    if fit_score < 1 or fit_score > 4:
+        raise StateTransitionError("Override fit_score must be between 1 and 4.")
+
+    clean_reason = (reason or "").strip()
+    if len(clean_reason) < 3:
+        raise StateTransitionError("Override reason is required (at least 3 characters).")
+
+    prefix = f"[Partner Override ({fit_score}/4)]"
+    if clean_reason.startswith("[Partner Override"):
+        clean_reason = clean_reason.split("]", 1)[-1].strip()
+    candidate.fit_score = fit_score
+    candidate.is_match = bool(fit_score >= 3)
+    candidate.fit_reason = f"{prefix} {clean_reason}"
+
+    if candidate.status in (
+        CandidateStatus.QUEUED_FOR_AI.value,
+        CandidateStatus.AI_FAILED.value,
+        CandidateStatus.INSUFFICIENT_EVIDENCE.value,
+    ):
+        candidate.status = CandidateStatus.PENDING_REVIEW.value
+        candidate.error_message = None
+
+    if (
+        fit_score >= 3
+        and not (candidate.draft_dm or "").strip()
+        and not (candidate.edited_dm or "").strip()
+        and not detect_prompt_injection(candidate)
+        and not detect_sparse_profile(candidate)
+    ):
+        snippet = _verify_verbatim_grounding(candidate.evidence_snippet or "", candidate)
+        if snippet and not candidate.evidence_snippet:
+            candidate.evidence_snippet = snippet
+        candidate.draft_dm = _compose_grounded_dm_variant(candidate, snippet or candidate.bio or "")
+
+    candidate.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(candidate)
+    return candidate
 
 
 def record_candidate_reply(

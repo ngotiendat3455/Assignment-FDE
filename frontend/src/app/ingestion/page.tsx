@@ -8,12 +8,18 @@ import { SeedPackTab } from "@/components/ingestion/SeedPackTab";
 import { CsvUploadTab } from "@/components/ingestion/CsvUploadTab";
 import { LiveXLookupTab } from "@/components/ingestion/LiveXLookupTab";
 import { useI18n } from "@/context/i18n";
+import { useRuntime } from "@/context/runtime";
 import { fetchStateMachineSummary } from "@/lib/candidates-api";
 import { StateMachineSummary } from "@/types/candidate";
 
 export default function CandidateIngestionPage() {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState<string>("seed");
+  const { runtimeProfile } = useRuntime();
+  const isLiveProduction = runtimeProfile === "LIVE_PRODUCTION";
+
+  const [activeTab, setActiveTab] = useState<string>(
+    isLiveProduction ? "live" : "seed"
+  );
   const [summary, setSummary] = useState<StateMachineSummary | null>(null);
 
   useEffect(() => {
@@ -31,12 +37,16 @@ export default function CandidateIngestionPage() {
   }, [activeTab]);
 
   const tabItems: TabItem[] = [
-    {
-      key: "seed",
-      label: t("ingestion.tab_seed"),
-      icon: Zap,
-      count: 20,
-    },
+    ...(!isLiveProduction
+      ? [
+          {
+            key: "seed",
+            label: t("ingestion.tab_seed"),
+            icon: Zap,
+            count: 20,
+          },
+        ]
+      : []),
     {
       key: "csv",
       label: t("ingestion.tab_csv"),

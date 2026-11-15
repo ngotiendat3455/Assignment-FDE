@@ -13,6 +13,33 @@ export const SAMPLE_CSV_TEMPLATE = `handle,name,location,bio,recent_tweets,can_d
 @minh_quant,Minh Nguyen Duplicate,"Hanoi, Vietnam","Duplicate row in same CSV batch to test in-batch deduplication.","[2026-11-08] Duplicate tweet row.",true,SEG-02: LLM Inference & AI Infra
 @linhtran_robo,Linh Tran,"Ho Chi Minh City, Vietnam","Co-founder & CTO @MekongRobotics. Autonomous mobile manipulation for electronics factories.","[2026-11-09] Completed 30-day pilot with 12 autonomous mobile cobots.",true,SEG-01: SEA Embodied AI & Robotics`;
 
+export const LIVE_X_HEADER_TEMPLATE = `handle,segment\n`;
+export const LIVE_MANUAL_HEADER_TEMPLATE = `handle,name,location,bio,recent_tweets,can_dm,segment\n`;
+
+export function getCsvTemplateForRuntime(
+  runtimeProfile: string,
+  verifyWithX: boolean
+): { content: string; filename: string; isHeaderOnly: boolean } {
+  if (runtimeProfile === "LIVE_PRODUCTION") {
+    return verifyWithX
+      ? {
+          content: LIVE_X_HEADER_TEMPLATE,
+          filename: "genai_fund_live_x_template.csv",
+          isHeaderOnly: true,
+        }
+      : {
+          content: LIVE_MANUAL_HEADER_TEMPLATE,
+          filename: "genai_fund_live_manual_template.csv",
+          isHeaderOnly: true,
+        };
+  }
+  return {
+    content: SAMPLE_CSV_TEMPLATE,
+    filename: "genai_fund_sample_candidates_mock.csv",
+    isHeaderOnly: false,
+  };
+}
+
 export function normalizeHandleClient(raw: string): string {
   const cleaned = raw.trim().replace(/^["']+|["']+$/g, "");
   const urlMatch = cleaned.match(
@@ -67,14 +94,55 @@ export async function triggerSeedPackIngest(
   return handleApiResponse<IngestionAuditReport>(res);
 }
 
+export function normalizePastedHandlesToCsv(rawInput: string): string {
+  const trimmed = rawInput.replace(/^\uFEFF/, "").trim();
+  if (!trimmed) return "";
+
+  const lines = trimmed
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return "";
+
+  const firstLower = lines[0].toLowerCase();
+  if (
+    firstLower.startsWith("handle,") ||
+    firstLower === "handle" ||
+    firstLower.startsWith("username,") ||
+    firstLower === "username"
+  ) {
+    return lines.join("\n");
+  }
+
+  // Allow comma-separated handles on a single line (e.g. "@a, @b, @c") or 1 per line
+  const items: string[] = [];
+  for (const line of lines) {
+    if (line.includes(",")) {
+      const parts = line.split(",");
+      const h = (parts[0] || "").trim();
+      const rest = parts.slice(1).join(",").trim();
+      if (h) items.push(`${h},${rest}`);
+    } else {
+      items.push(`${line},`);
+    }
+  }
+  return `handle,segment\n${items.join("\n")}`;
+}
+
 export async function runCsvPreflight(
-  csvContent: string
+  csvContent: string,
+  verifyWithXApi: boolean = false,
+  fetchXPreview: boolean = false
 ): Promise<CsvPreflightResponse> {
   const res = await fetch(`${getApiBaseUrl()}/ingestion/preflight`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ csv_content: csvContent }),
+    body: JSON.stringify({
+      csv_content: csvContent,
+      verify_with_x_api: verifyWithXApi,
+      fetch_x_preview: fetchXPreview,
+    }),
   });
   return handleApiResponse<CsvPreflightResponse>(res);
 }
@@ -85,6 +153,7 @@ export async function ingestCsvBatch(
   options?: {
     skipLedgerCollisions?: boolean;
     queueAiEnabled?: boolean;
+    verifyWithXApi?: boolean;
   }
 ): Promise<IngestionAuditReport> {
   const res = await fetch(`${getApiBaseUrl()}/ingestion/csv`, {
@@ -96,6 +165,7 @@ export async function ingestCsvBatch(
       default_segment: defaultSegment || null,
       skip_ledger_collisions: options?.skipLedgerCollisions ?? true,
       queue_ai_enabled: options?.queueAiEnabled ?? true,
+      verify_with_x_api: options?.verifyWithXApi ?? false,
     }),
   });
   return handleApiResponse<IngestionAuditReport>(res);

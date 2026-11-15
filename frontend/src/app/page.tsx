@@ -23,6 +23,7 @@ import { ScorePill } from "@/components/atoms/ScorePill";
 import { StatCard } from "@/components/molecules/StatCard";
 import { useToast } from "@/components/molecules/ToastNotification";
 import { useI18n } from "@/context/i18n";
+import { useRuntime } from "@/context/runtime";
 import {
   Table,
   TableHeader,
@@ -47,6 +48,7 @@ import {
   rejectCandidate,
   retryCandidateEvaluation,
   regenerateAiEvaluation,
+  overrideCandidateFitScore,
 } from "@/lib/candidates-api";
 import { getApiBaseUrl } from "@/lib/api-config";
 
@@ -81,6 +83,11 @@ export default function HitlReviewWorkspacePage() {
   const [pageSize, setPageSize] = useState<number>(10);
 
   // Review & Composer Modal State
+  const { runtimeProfile, dispatchMode } = useRuntime();
+  const defaultDispatchMode: "SANDBOX" | "LIVE_X" =
+    runtimeProfile === "LIVE_PRODUCTION" || dispatchMode === "LIVE_X"
+      ? "LIVE_X"
+      : "SANDBOX";
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateItem | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
 
@@ -251,12 +258,16 @@ export default function HitlReviewWorkspacePage() {
     }
   };
 
-  const handleModalRegenerate = async (candidateId: number) => {
+  const handleModalRegenerate = async (
+    candidateId: number,
+    currentDm?: string
+  ): Promise<CandidateItem> => {
     try {
-      const res = await regenerateAiEvaluation(candidateId);
+      const res = await regenerateAiEvaluation(candidateId, currentDm);
       setSelectedCandidate(res.candidate);
       success(t("workspace.toast_regenerate_success"));
       await loadWorkspaceData();
+      return res.candidate;
     } catch (err) {
       error((err as Error).message || "Failed to regenerate AI draft");
       throw err;
@@ -271,6 +282,32 @@ export default function HitlReviewWorkspacePage() {
       await loadWorkspaceData();
     } catch (err) {
       error((err as Error).message || "Failed to retry evaluation");
+      throw err;
+    }
+  };
+
+  const handleModalOverrideFitScore = async (
+    candidateId: number,
+    fitScore: number,
+    reason: string
+  ): Promise<CandidateItem> => {
+    try {
+      const updated = await overrideCandidateFitScore(
+        candidateId,
+        fitScore,
+        reason
+      );
+      setSelectedCandidate(updated);
+      success(
+        t("workspace.toast_override_success", {
+          score: String(fitScore),
+          handle: updated.handle,
+        })
+      );
+      await loadWorkspaceData();
+      return updated;
+    } catch (err) {
+      error((err as Error).message || "Failed to override fit score");
       throw err;
     }
   };
@@ -774,10 +811,12 @@ export default function HitlReviewWorkspacePage() {
         isOpen={isReviewModalOpen}
         onClose={() => setIsReviewModalOpen(false)}
         candidate={selectedCandidate}
+        defaultDispatchMode={defaultDispatchMode}
         onApproveAndSend={handleApproveAndSend}
         onReject={handleModalReject}
         onRegenerate={handleModalRegenerate}
         onRetryEvaluation={handleModalRetryEvaluation}
+        onOverrideFitScore={handleModalOverrideFitScore}
       />
 
       {/* Conversation Trail Drawer for REPLIED / CRM Candidates */}

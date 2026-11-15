@@ -1,0 +1,142 @@
+name: GenAI Fund CI/CD & Multi-Env AWS Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: "Target AWS Environment (dev=OFFLINE_MOCK, staging=HYBRID_AUTO, prod=LIVE_PRODUCTION)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # 1. Automated Quality Gate (Pytest + Tier 1 Contracts + Frontend Build + E/R)
+  # ----------------------------------------------------------------------------
+  quality-gate:
+    name: Backend Tests, Frontend Build & E/R Contract Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run Backend Unit, RuntimeGateway & Tier 1 Contract Tests
+        env:
+          RUNTIME_PROFILE: OFFLINE_MOCK
+        run: python -m pytest backend/tests/ -v
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend dependencies & Typecheck + Standalone Build
+        working-directory: frontend
+        run: |
+          npm ci
+          npx tsc --noEmit
+          NEXT_PUBLIC_API_BASE_URL=auto npm run build
+
+  # ----------------------------------------------------------------------------
+  # 2. Terraform Format & Validate Across All 3 Environments
+  # ----------------------------------------------------------------------------
+  terraform-validate:
+    name: Terraform Validate & Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Terraform Format Check
+        working-directory: infra/terraform
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init (No Backend) & Validate
+        working-directory: infra/terraform
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+  # ----------------------------------------------------------------------------
+  # 3. Docker Build & Push to ECR + ECS Fargate Rollout (Protected by Env)
+  # ----------------------------------------------------------------------------
+  deploy-aws:
+    name: Build Images & Deploy to AWS ECS (${{ github.event.inputs.target_env || (github.ref == 'refs/heads/main' && 'staging' || 'dev') }})
+    needs: [quality-gate, terraform-validate]
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'))
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.target_env || (github.ref == 'refs/heads/main' && 'staging' || 'dev') }}
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      TARGET_ENV: ${{ github.event.inputs.target_env || (github.ref == 'refs/heads/main' && 'staging' || 'dev') }}
+      AWS_REGION: ap-southeast-1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials via OIDC
+        if: vars.AWS_DEPLOY_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build Docker Compose Images (Smoke Verification)
+        run: |
+          docker build -f backend/Dockerfile -t genai-fde-${{ env.TARGET_ENV }}-backend:${{ github.sha }} .
+          docker build -f frontend/Dockerfile --build-arg NEXT_PUBLIC_API_BASE_URL=/api -t genai-fde-${{ env.TARGET_ENV }}-frontend:${{ github.sha }} ./frontend
+
+      - name: Push to Amazon ECR & Apply ECS Service Rollout
+        if: vars.AWS_DEPLOY_ROLE_ARN != ''
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          ECR_REG="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REG"
+
+          BE_REPO="${ECR_REG}/genai-fde-${TARGET_ENV}-backend"
+          FE_REPO="${ECR_REG}/genai-fde-${TARGET_ENV}-frontend"
+
+          docker tag "genai-fde-${TARGET_ENV}-backend:${GITHUB_SHA}" "${BE_REPO}:${GITHUB_SHA}"
+          docker tag "genai-fde-${TARGET_ENV}-backend:${GITHUB_SHA}" "${BE_REPO}:latest"
+          docker push "${BE_REPO}:${GITHUB_SHA}"
+          docker push "${BE_REPO}:latest"
+
+          docker tag "genai-fde-${TARGET_ENV}-frontend:${GITHUB_SHA}" "${FE_REPO}:${GITHUB_SHA}"
+          docker tag "genai-fde-${TARGET_ENV}-frontend:${GITHUB_SHA}" "${FE_REPO}:latest"
+          docker push "${FE_REPO}:${GITHUB_SHA}"
+          docker push "${FE_REPO}:latest"
+
+          aws ecs update-service --cluster "genai-fde-${TARGET_ENV}-cluster" --service "genai-fde-${TARGET_ENV}-backend" --force-new-deployment
+          aws ecs update-service --cluster "genai-fde-${TARGET_ENV}-cluster" --service "genai-fde-${TARGET_ENV}-frontend" --force-new-deployment
+

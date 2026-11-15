@@ -68,6 +68,24 @@ export async function markLedgerHandled(
   return handleApiResponse<{ action: string; ledger: LedgerEntryItem }>(res);
 }
 
+export interface SyncXRepliesResponse {
+  action: string;
+  synced_count: number;
+  checked_entries: number;
+  updated_handles: string[];
+  updated_ledgers: LedgerEntryItem[];
+  message?: string;
+}
+
+export async function syncLiveXReplies(): Promise<SyncXRepliesResponse> {
+  const res = await fetch(`${getApiBaseUrl()}/ledger/sync-replies`, {
+    method: "POST",
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  });
+  return handleApiResponse<SyncXRepliesResponse>(res);
+}
+
 export async function fetchCalibrationMatrix(): Promise<CalibrationMatrixResponse> {
   const res = await fetch(`${getApiBaseUrl()}/ledger/calibration`, {
     method: "GET",

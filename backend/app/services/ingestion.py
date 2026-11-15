@@ -2,11 +2,15 @@ import csv
 import io
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 import httpx
 from sqlalchemy.orm import Session
+
+MAX_CSV_X_VERIFY_BATCH = 25
+X_TWEETS_CONCURRENCY = 3
 
 from backend.app.core.config import settings
 from backend.app.core.runtime_gateway import RuntimeGateway
@@ -27,6 +31,18 @@ class XApiLookupError(RuntimeError):
         super().__init__(detail)
         self.status_code = status_code
         self.detail = detail
+
+
+def is_valid_x_username(handle: Optional[str]) -> bool:
+    """
+    Validate X API v2 username syntax (`A-Z`, `a-z`, `0-9`, `_`).
+    Enforces X's strict 15-character limit against real X API v2, while allowing up to 30 chars
+    on local X simulator handles (e.g. `@credits_depleted`, `@forbidden_handle`).
+    """
+    if not handle:
+        return False
+    max_len = 30 if is_local_x_simulator() and RuntimeGateway.get_active_profile() != "LIVE_PRODUCTION" else 15
+    return bool(re.fullmatch(rf"[A-Za-z0-9_]{{1,{max_len}}}", handle))
 
 
 def normalize_handle(raw_handle: Optional[str]) -> str:
@@ -64,50 +80,140 @@ def _resolve_column_mapping(fieldnames: List[str]) -> Dict[str, Optional[str]]:
     }
 
 
-def preflight_csv_check(csv_text: str) -> Dict[str, Any]:
+def preflight_csv_check(
+    csv_text: str,
+    verify_with_x_api: bool = False,
+    fetch_x_preview: bool = False,
+    db: Optional[Session] = None,
+) -> Dict[str, Any]:
     """
-    Validate CSV headers and preview the first 5 rows before ingestion.
-    Never raises on missing columns; returns structured pre-flight diagnostics for UI Tab 2.
+    Validate CSV headers and preview rows before ingestion.
+    When `verify_with_x_api=True`, only the `handle` column is required (up to 25 rows/batch),
+    performs $0 local deduplication inspection, and optionally runs 1 batch `GET /2/users/by`
+    lookup when `fetch_x_preview=True`.
+    Never raises on missing columns; preserves exact legacy schema when `verify_with_x_api=False`.
     """
-    if not csv_text or not csv_text.strip():
+    required_cols = ["handle"] if verify_with_x_api else ["handle", "name", "bio", "recent_tweets"]
+    cleaned_csv = (csv_text or "").lstrip("\ufeff").strip()
+
+    if not cleaned_csv:
         return {
             "valid": False,
             "total_rows": 0,
-            "missing_columns": ["handle", "name", "bio", "recent_tweets"],
+            "missing_columns": required_cols,
             "detected_columns": [],
             "preview_rows": [],
             "error_message": "CSV file is empty or missing header row.",
         }
 
-    reader = csv.DictReader(io.StringIO(csv_text.strip()))
+    reader = csv.DictReader(io.StringIO(cleaned_csv))
     if not reader.fieldnames:
         return {
             "valid": False,
             "total_rows": 0,
-            "missing_columns": ["handle", "name", "bio", "recent_tweets"],
+            "missing_columns": required_cols,
             "detected_columns": [],
             "preview_rows": [],
             "error_message": "CSV is empty or missing header row.",
         }
 
-    detected_columns = [c.strip() for c in reader.fieldnames if c]
+    detected_columns = [c.strip().lstrip("\ufeff") for c in reader.fieldnames if c]
     mapping = _resolve_column_mapping(detected_columns)
 
     missing_columns: List[str] = []
-    for req_key in ["handle", "name", "bio", "recent_tweets"]:
+    for req_key in required_cols:
         if not mapping.get(req_key):
             missing_columns.append(req_key)
 
-    all_rows = list(reader)
+    # Ignore completely blank trailing/separator lines (e.g. from Excel saves)
+    all_rows = [
+        row
+        for row in reader
+        if any(str(v or "").strip() for k, v in row.items() if k is not None)
+    ]
+
+    is_enhanced_mode = verify_with_x_api or fetch_x_preview
+    batch_exceeded = verify_with_x_api and len(all_rows) > MAX_CSV_X_VERIFY_BATCH
+
+    # Zero-cost local DB/Ledger/in-batch dedup inspection for Live X preflight mode
+    existing_db_handles: set[str] = set()
+    blocked_ledger_handles: set[str] = set()
+    if is_enhanced_mode and db is not None:
+        normalized_all = [
+            normalize_handle(r.get(mapping["handle"], "") if mapping["handle"] else "")
+            for r in all_rows
+        ]
+        unique_lookup = list({h for h in normalized_all if h})
+        if unique_lookup:
+            existing_db_handles = {
+                h
+                for (h,) in db.query(Candidate.handle)
+                .filter(Candidate.handle.in_(unique_lookup))
+                .all()
+            }
+            blocked_ledger_handles = {
+                h
+                for (h,) in db.query(OutreachLedger.handle)
+                .filter(
+                    OutreachLedger.handle.in_(unique_lookup),
+                    OutreachLedger.status.in_([OutreachStatus.SENT, OutreachStatus.REPLIED]),
+                )
+                .all()
+            }
+
+    seen_in_csv: set[str] = set()
+    row_dedup_statuses: List[str] = []
+    local_dedup_summary = {
+        "new_handles": 0,
+        "in_batch_duplicates": 0,
+        "already_in_db": 0,
+        "already_contacted": 0,
+    }
+    if is_enhanced_mode:
+        for row in all_rows:
+            raw_h = row.get(mapping["handle"], "") if mapping["handle"] else ""
+            norm_h = normalize_handle(raw_h)
+            if not norm_h or (verify_with_x_api and not is_valid_x_username(norm_h)):
+                row_dedup_statuses.append("INVALID")
+                continue
+            if norm_h in seen_in_csv:
+                row_dedup_statuses.append("IN_BATCH_DUPLICATE")
+                local_dedup_summary["in_batch_duplicates"] += 1
+                continue
+            seen_in_csv.add(norm_h)
+            if norm_h in blocked_ledger_handles:
+                row_dedup_statuses.append("ALREADY_CONTACTED")
+                local_dedup_summary["already_contacted"] += 1
+            elif norm_h in existing_db_handles:
+                row_dedup_statuses.append("ALREADY_IN_DB")
+                local_dedup_summary["already_in_db"] += 1
+            else:
+                row_dedup_statuses.append("NEW")
+                local_dedup_summary["new_handles"] += 1
+
+    live_profiles_by_handle: Dict[str, Dict[str, Any]] = {}
+    if fetch_x_preview and not missing_columns and all_rows and not batch_exceeded:
+        net_new_handles: List[str] = []
+        for idx, row in enumerate(all_rows):
+            if row_dedup_statuses[idx] != "NEW":
+                continue
+            norm_h = normalize_handle(row.get(mapping["handle"], "") if mapping["handle"] else "")
+            if norm_h and norm_h not in net_new_handles:
+                net_new_handles.append(norm_h)
+        if net_new_handles:
+            live_profiles_by_handle = _batch_fetch_x_user_profiles(net_new_handles[:MAX_CSV_X_VERIFY_BATCH])
+
+    preview_limit = MAX_CSV_X_VERIFY_BATCH if verify_with_x_api else 5
     preview_rows: List[Dict[str, Any]] = []
 
-    for idx, row in enumerate(all_rows[:5], start=1):
+    for idx, row in enumerate(all_rows[:preview_limit], start=1):
         raw_h = row.get(mapping["handle"], "") if mapping["handle"] else ""
         norm_h = normalize_handle(raw_h)
-        name_val = str(row.get(mapping["name"], "")).strip() if mapping["name"] else ""
-        bio_val = str(row.get(mapping["bio"], "")).strip() if mapping["bio"] else ""
-        tweets_val = str(row.get(mapping["recent_tweets"], "")).strip() if mapping["recent_tweets"] else ""
-        loc_val = str(row.get(mapping["location"], "")).strip() if mapping["location"] else "Southeast Asia"
+        name_val = str(row.get(mapping["name"], "")).strip() if mapping["name"] and row.get(mapping["name"]) else ""
+        bio_val = str(row.get(mapping["bio"], "")).strip() if mapping["bio"] and row.get(mapping["bio"]) else ""
+        tweets_val = str(row.get(mapping["recent_tweets"], "")).strip() if mapping["recent_tweets"] and row.get(mapping["recent_tweets"]) else ""
+        loc_val = str(row.get(mapping["location"], "")).strip() if mapping["location"] and row.get(mapping["location"]) else "Southeast Asia"
+        seg_val = str(row.get(mapping["segment"], "")).strip() if mapping["segment"] and row.get(mapping["segment"]) else ""
 
         can_dm_val = True
         if mapping["can_dm"] and row.get(mapping["can_dm"]) is not None:
@@ -118,34 +224,93 @@ def preflight_csv_check(csv_text: str) -> Dict[str, Any]:
         row_missing = list(missing_columns)
         if not norm_h and "handle" not in row_missing:
             row_missing.append("handle")
-        if not bio_val and "bio" not in row_missing:
-            row_missing.append("bio")
-        if not tweets_val and "recent_tweets" not in row_missing:
-            row_missing.append("recent_tweets")
+        if not verify_with_x_api:
+            if not bio_val and "bio" not in row_missing:
+                row_missing.append("bio")
+            if not tweets_val and "recent_tweets" not in row_missing:
+                row_missing.append("recent_tweets")
 
         is_row_valid = len(row_missing) == 0
-        note = "Valid" if is_row_valid else f"Missing: {', '.join(row_missing)}"
+        if not is_enhanced_mode:
+            note = "Valid" if is_row_valid else f"Missing: {', '.join(row_missing)}"
+            preview_rows.append({
+                "line_number": idx,
+                "handle": f"@{norm_h}" if norm_h else "(empty)",
+                "name": name_val or "(missing)",
+                "bio": bio_val or "(missing)",
+                "recent_tweets": tweets_val or "(missing)",
+                "location": loc_val,
+                "can_dm": can_dm_val,
+                "is_valid": is_row_valid,
+                "validation_note": note,
+            })
+            continue
+
+        dedup_status = row_dedup_statuses[idx - 1]
+        followers_count: Optional[int] = None
+        if not is_row_valid or dedup_status == "INVALID":
+            x_preview_status = "INVALID"
+            is_row_valid = False
+            if row_missing:
+                note = f"Missing: {', '.join(row_missing)}"
+            else:
+                note = "Invalid X handle (A-Z, 0-9, _ only, max 15 chars)"
+        elif dedup_status != "NEW":
+            x_preview_status = "SKIPPED_DEDUP"
+            dedup_notes = {
+                "IN_BATCH_DUPLICATE": "Duplicate in CSV (skipped)",
+                "ALREADY_IN_DB": "Already in DB (skipped)",
+                "ALREADY_CONTACTED": "Already contacted in Ledger (blocked)",
+            }
+            note = dedup_notes.get(dedup_status, "Skipped")
+        elif fetch_x_preview:
+            live_prof = live_profiles_by_handle.get(norm_h)
+            if live_prof:
+                name_val = live_prof.get("name") or name_val or norm_h
+                bio_val = live_prof.get("bio") or bio_val or f"Builder @{norm_h}"
+                loc_val = live_prof.get("location") or loc_val
+                followers_count = live_prof.get("followers_count")
+                if live_prof.get("can_dm") is False:
+                    can_dm_val = False
+                x_preview_status = "FOUND"
+                note = "Verified on Live X"
+            else:
+                x_preview_status = "NOT_FOUND"
+                is_row_valid = False
+                note = "Not found on X (404)"
+        else:
+            x_preview_status = "PENDING_SYNC"
+            note = "Ready (Live X Sync)"
 
         preview_rows.append({
             "line_number": idx,
             "handle": f"@{norm_h}" if norm_h else "(empty)",
-            "name": name_val or "(missing)",
-            "bio": bio_val or "(missing)",
-            "recent_tweets": tweets_val or "(missing)",
+            "name": name_val or "Pending X API sync",
+            "bio": bio_val or "Syncs bio & 5 recent tweets on Import",
+            "recent_tweets": tweets_val or "Syncs up to 5 posts on Import",
             "location": loc_val,
             "can_dm": can_dm_val,
             "is_valid": is_row_valid,
             "validation_note": note,
+            "segment": seg_val or "Auto / Default Segment",
+            "dedup_status": dedup_status,
+            "x_preview_status": x_preview_status,
+            "followers_count": followers_count,
         })
 
-    is_valid = len(missing_columns) == 0 and len(all_rows) > 0
+    is_valid = len(missing_columns) == 0 and len(all_rows) > 0 and not batch_exceeded
     error_msg = None
     if missing_columns:
         error_msg = f"Missing required column(s): {', '.join(missing_columns)}"
     elif len(all_rows) == 0:
         error_msg = "CSV contains headers but 0 data rows."
+    elif batch_exceeded:
+        error_msg = (
+            f"Live X API sync is capped at {MAX_CSV_X_VERIFY_BATCH} rows per CSV upload "
+            f"(detected {len(all_rows)} rows) to protect X API rate limits and credits."
+        )
 
-    return {
+    result: Dict[str, Any] = {
         "valid": is_valid,
         "total_rows": len(all_rows),
         "missing_columns": missing_columns,
@@ -153,11 +318,15 @@ def preflight_csv_check(csv_text: str) -> Dict[str, Any]:
         "preview_rows": preview_rows,
         "error_message": error_msg,
     }
+    if is_enhanced_mode:
+        result["local_dedup_summary"] = local_dedup_summary
+    return result
 
 
-def parse_csv_content(csv_text: str) -> List[Dict[str, Any]]:
+def parse_csv_content(csv_text: str, verify_with_x_api: bool = False) -> List[Dict[str, Any]]:
     """Parse CSV text with flexible column mapping and return list of raw dicts."""
-    reader = csv.DictReader(io.StringIO(csv_text.strip()))
+    cleaned_csv = (csv_text or "").lstrip("\ufeff").strip()
+    reader = csv.DictReader(io.StringIO(cleaned_csv))
     if not reader.fieldnames:
         raise ValueError("CSV is empty or missing header row.")
 
@@ -170,12 +339,13 @@ def parse_csv_content(csv_text: str) -> List[Dict[str, Any]]:
 
     if not handle_col:
         raise ValueError("Missing required column for X handle (e.g. 'handle', 'username').")
-    if not name_col:
-        raise ValueError("Missing required column for Name (e.g. 'name', 'display_name').")
-    if not bio_col:
-        raise ValueError("Missing required column for Bio (e.g. 'bio', 'description').")
-    if not tweets_col:
-        raise ValueError("Missing required column for Tweets (e.g. 'recent_tweets', 'tweets').")
+    if not verify_with_x_api:
+        if not name_col:
+            raise ValueError("Missing required column for Name (e.g. 'name', 'display_name').")
+        if not bio_col:
+            raise ValueError("Missing required column for Bio (e.g. 'bio', 'description').")
+        if not tweets_col:
+            raise ValueError("Missing required column for Tweets (e.g. 'recent_tweets', 'tweets').")
 
     loc_col = mapping["location"]
     dm_col = mapping["can_dm"]
@@ -198,9 +368,9 @@ def parse_csv_content(csv_text: str) -> List[Dict[str, Any]]:
         parsed_rows.append({
             "line_number": idx,
             "handle": norm_h,
-            "name": str(row.get(name_col, "")).strip(),
-            "bio": str(row.get(bio_col, "")).strip(),
-            "recent_tweets": str(row.get(tweets_col, "")).strip(),
+            "name": str(row.get(name_col, "")).strip() if name_col and row.get(name_col) else "",
+            "bio": str(row.get(bio_col, "")).strip() if bio_col and row.get(bio_col) else "",
+            "recent_tweets": str(row.get(tweets_col, "")).strip() if tweets_col and row.get(tweets_col) else "",
             "location": str(row.get(loc_col, "")).strip() if loc_col and row.get(loc_col) else "Southeast Asia",
             "can_dm": can_dm_val,
             "segment": str(row.get(seg_col, "")).strip() if seg_col and row.get(seg_col) else "SEA AI & Robotics Ecosystem",
@@ -210,18 +380,147 @@ def parse_csv_content(csv_text: str) -> List[Dict[str, Any]]:
     return parsed_rows
 
 
+def _batch_fetch_x_user_profiles(
+    handles: List[str],
+    client: Optional[httpx.Client] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Batch-verify up to MAX_CSV_X_VERIFY_BATCH handles against X API v2 using
+    a SINGLE `GET /2/users/by?usernames=h1,h2,...` HTTP request (no tweets fetched).
+    """
+    valid_handles = [h for h in handles if is_valid_x_username(h)]
+    if not valid_handles:
+        return {}
+    if len(valid_handles) > MAX_CSV_X_VERIFY_BATCH:
+        raise ValueError(
+            f"Live X API batch sync is capped at {MAX_CSV_X_VERIFY_BATCH} net-new handles per upload "
+            f"(got {len(valid_handles)})."
+        )
+
+    lookup_plan = RuntimeGateway.resolve_x_lookup_plan()
+    if lookup_plan.strict_error:
+        raise XApiLookupError(503, lookup_plan.strict_error)
+
+    base_url = lookup_plan.base_url
+    headers = {"Authorization": f"Bearer {lookup_plan.bearer_token}"}
+    enriched: Dict[str, Dict[str, Any]] = {}
+
+    def _run_lookup(http_client: httpx.Client) -> None:
+        users_resp = http_client.get(
+            f"{base_url}/users/by",
+            params={
+                "usernames": ",".join(valid_handles),
+                "user.fields": "id,name,username,description,location,public_metrics",
+            },
+            headers=headers,
+        )
+        if users_resp.status_code != 200:
+            raise _map_x_lookup_http_error(users_resp, valid_handles[0])
+
+        users_data = users_resp.json().get("data") or []
+        for u in users_data:
+            uname = normalize_handle(u.get("username"))
+            uid = str(u.get("id") or "").strip()
+            if not uname or not uid:
+                continue
+            metrics = u.get("public_metrics") if isinstance(u.get("public_metrics"), dict) else {}
+            raw_followers = metrics.get("followers_count")
+            enriched[uname] = {
+                "handle": uname,
+                "x_user_id": uid,
+                "name": (u.get("name") or uname).strip(),
+                "bio": (u.get("description") or f"Builder @{uname}").strip(),
+                "location": (u.get("location") or "Southeast Asia").strip(),
+                "followers_count": int(raw_followers) if isinstance(raw_followers, (int, float)) else None,
+                "can_dm": bool(u.get("can_dm", True)) if "can_dm" in u else None,
+                "recent_tweets": "",
+            }
+
+    try:
+        if client is not None:
+            _run_lookup(client)
+        else:
+            with httpx.Client(timeout=10.0) as local_client:
+                _run_lookup(local_client)
+    except httpx.RequestError as exc:
+        raise XApiLookupError(
+            503,
+            f"Unable to reach X API endpoint ({base_url}) during batch CSV sync: {exc}",
+        ) from exc
+
+    return enriched
+
+
+def _batch_fetch_x_profiles_and_tweets(handles: List[str]) -> Dict[str, Dict[str, Any]]:
+    """
+    Batch-verify and enrich up to MAX_CSV_X_VERIFY_BATCH handles against X API v2:
+    1. Calls `GET /2/users/by?usernames=h1,h2,...` via `_batch_fetch_x_user_profiles`.
+    2. Fetches `GET /2/users/{uid}/tweets?max_results=5` with bounded concurrency (`max_workers=3`).
+    """
+    if not handles:
+        return {}
+
+    lookup_plan = RuntimeGateway.resolve_x_lookup_plan()
+    if lookup_plan.strict_error:
+        raise XApiLookupError(503, lookup_plan.strict_error)
+
+    base_url = lookup_plan.base_url
+    headers = {"Authorization": f"Bearer {lookup_plan.bearer_token}"}
+    enriched: Dict[str, Dict[str, Any]] = {}
+
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            enriched = _batch_fetch_x_user_profiles(handles, client=client)
+
+            def _fetch_user_tweets(uname_and_uid: tuple[str, str]) -> tuple[str, str]:
+                uname_key, uid_val = uname_and_uid
+                t_resp = client.get(
+                    f"{base_url}/users/{uid_val}/tweets",
+                    params={"max_results": 5, "tweet.fields": "created_at,text"},
+                    headers=headers,
+                )
+                if t_resp.status_code != 200:
+                    return uname_key, "No recent public tweets found via X API v2."
+                tweets_arr = [
+                    (t_obj.get("text") or "").strip()
+                    for t_obj in (t_resp.json().get("data") or [])
+                    if (t_obj.get("text") or "").strip()
+                ]
+                return (
+                    uname_key,
+                    " || ".join(tweets_arr)
+                    if tweets_arr
+                    else "No recent public tweets found via X API v2.",
+                )
+
+            pairs = [(uname, info["x_user_id"]) for uname, info in enriched.items()]
+            if pairs:
+                with ThreadPoolExecutor(max_workers=min(X_TWEETS_CONCURRENCY, len(pairs))) as pool:
+                    for uname_key, joined_tweets in pool.map(_fetch_user_tweets, pairs):
+                        enriched[uname_key]["recent_tweets"] = joined_tweets
+    except httpx.RequestError as exc:
+        raise XApiLookupError(
+            503,
+            f"Unable to reach X API endpoint ({base_url}) during batch CSV sync: {exc}",
+        ) from exc
+
+    return enriched
+
+
 def ingest_candidate_batch(
     db: Session,
     records: List[Dict[str, Any]],
     source_label: str = "CSV_IMPORT",
     default_segment: Optional[str] = None,
     skip_ledger_collisions: bool = True,
+    verify_with_x_api: bool = False,
 ) -> Dict[str, Any]:
     """
     Ingest a batch of candidate records with 3-tier deduplication:
     1. In-batch deduplication: skips duplicate handles within the same upload.
     2. Database deduplication: checks existing records in 'candidates'.
     3. Ledger deduplication: checks 'outreach_ledger' to permanently protect against double-messaging.
+    4. Optional Live X API v2 batch verification (`verify_with_x_api=True`) on net-new handles.
     """
     report: Dict[str, Any] = {
         "total_rows": len(records),
@@ -236,7 +535,7 @@ def ingest_candidate_batch(
     }
 
     seen_in_batch = set()
-    new_candidates_to_create = []
+    pending_new_items: List[tuple[str, Dict[str, Any], bool, Optional[OutreachLedger]]] = []
 
     for item in records:
         h = normalize_handle(item.get("handle"))
@@ -286,6 +585,45 @@ def ingest_candidate_batch(
             })
             continue
 
+        pending_new_items.append((h, item, is_past_messaged, existing_ledger))
+
+    # Optional Step 2.5: Batch-sync net-new valid handles from X API v2 (1 `/users/by` call + bounded `/tweets`)
+    x_enriched_map: Dict[str, Dict[str, Any]] = {}
+    if verify_with_x_api and pending_new_items:
+        net_new_handles = [
+            h for h, _, _, _ in pending_new_items if is_valid_x_username(h)
+        ]
+        if net_new_handles:
+            x_enriched_map = _batch_fetch_x_profiles_and_tweets(net_new_handles)
+
+    new_candidates_to_create = []
+    for h, item, is_past_messaged, existing_ledger in pending_new_items:
+        if verify_with_x_api:
+            if not is_valid_x_username(h):
+                report["details"].append({
+                    "handle": h,
+                    "status": "SKIPPED_INVALID_X_HANDLE",
+                    "already_contacted": is_past_messaged,
+                })
+                continue
+            live_prof = x_enriched_map.get(h)
+            if not live_prof:
+                report["details"].append({
+                    "handle": h,
+                    "status": "SKIPPED_X_NOT_FOUND",
+                    "already_contacted": is_past_messaged,
+                })
+                continue
+            item = {
+                **item,
+                "name": live_prof["name"],
+                "bio": live_prof["bio"],
+                "recent_tweets": live_prof["recent_tweets"],
+                "location": live_prof["location"] or item.get("location") or "Southeast Asia",
+                "x_user_id": live_prof["x_user_id"],
+                "can_dm": live_prof["can_dm"] if live_prof["can_dm"] is not None else item.get("can_dm", True),
+            }
+
         # 3. Determine initial pipeline status for new candidate
         initial_status = CandidateStatus.QUEUED_FOR_AI.value
         if is_past_messaged and existing_ledger is not None:
@@ -296,7 +634,7 @@ def ingest_candidate_batch(
 
         candidate = Candidate(
             handle=h,
-            name=item["name"],
+            name=item["name"] or h,
             location=item.get("location") or "Southeast Asia",
             bio=item["bio"],
             recent_tweets=item["recent_tweets"],
@@ -500,6 +838,10 @@ def lookup_x_handle(db: Session, raw_handle: str) -> Dict[str, Any]:
     handle = normalize_handle(raw_handle)
     if not handle:
         raise ValueError("Please provide a valid X handle.")
+    if not is_valid_x_username(handle):
+        raise ValueError(
+            f"Invalid X handle '@{handle}': X usernames can only contain letters, numbers, and underscores (1–15 characters)."
+        )
 
     # Check if already contacted in outreach_ledger (double-messaging guard)
     existing_ledger = db.query(OutreachLedger).filter(OutreachLedger.handle == handle).first()

@@ -15,26 +15,20 @@ acm_certificate_arn = "" # REQUIRED for production HTTPS :443 (set real ACM ARN 
 # in AWS Secrets Manager (`prod/genai-fde/app-secrets`); missing keys fail-fast (no mock/sim fallback).
 dispatch_mode        = "LIVE_X"
 live_x_dry_run       = false
-allowed_test_handles = "linhtran_robo,minh_quant,test_builder_sea"
+allowed_test_handles = "dat_ai_test"
 enable_x_simulator   = false
 
-# Persistence: Multi-AZ Amazon RDS PostgreSQL 16 + Multi-Task AutoScaling ECS Fargate
-use_rds                   = true
-rds_instance_class        = "db.t4g.small"
-rds_multi_az              = true
-rds_backup_retention_days = 14
-rds_deletion_protection   = true
+# Persistence: Single-task SQLite WAL backed by Amazon EFS (/app/data)
+use_rds                = false
+frontend_cpu           = 256
+frontend_memory        = 512
+frontend_desired_count = 1
+backend_cpu            = 256
+backend_memory         = 512
+backend_desired_count  = 1
+use_fargate_spot       = true
+enable_autoscaling     = false
 
-frontend_cpu           = 512
-frontend_memory        = 1024
-frontend_desired_count = 2
-backend_cpu            = 1024
-backend_memory         = 2048
-backend_desired_count  = 2
-use_fargate_spot       = false
-enable_autoscaling     = true
-
-access_token_expire_minutes = 480 # 8 hours hardened session TTL
-log_retention_days          = 90
-enable_cloudwatch_alarms    = true
-
+access_token_expire_minutes = 10080 # 7 days for smooth QA workflows
+log_retention_days          = 7
+enable_cloudwatch_alarms    = false

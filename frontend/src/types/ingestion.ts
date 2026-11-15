@@ -8,6 +8,10 @@ export interface CsvPreviewRow {
   can_dm: boolean;
   is_valid: boolean;
   validation_note: string;
+  segment?: string;
+  dedup_status?: "NEW" | "IN_BATCH_DUPLICATE" | "ALREADY_IN_DB" | "ALREADY_CONTACTED" | "INVALID" | string;
+  x_preview_status?: "PENDING_SYNC" | "FOUND" | "NOT_FOUND" | "SKIPPED_DEDUP" | "INVALID" | string;
+  followers_count?: number | null;
 }
 
 export interface CsvPreflightResponse {
@@ -17,6 +21,12 @@ export interface CsvPreflightResponse {
   detected_columns: string[];
   preview_rows: CsvPreviewRow[];
   error_message?: string | null;
+  local_dedup_summary?: {
+    new_handles: number;
+    in_batch_duplicates: number;
+    already_in_db: number;
+    already_contacted: number;
+  };
 }
 
 export interface CollisionDetail {

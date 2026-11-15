@@ -153,7 +153,7 @@ def build_oauth1_header(
 def resolve_x_user_id(handle: str, timeout: float = 8.0) -> Optional[str]:
     """Resolve numeric X user ID from handle via X API v2 Bearer or OAuth 1.0a."""
     clean_handle = handle.strip().lstrip("@")
-    url = f"{get_x_api_base()}/users/by/username/{clean_handle}"
+    url = f"{get_x_api_base()}/users/by/username/{clean_handle}?user.fields=id,username"
 
     headers: Dict[str, str] = {}
     if has_x_bearer_token():
@@ -171,7 +171,7 @@ def resolve_x_user_id(handle: str, timeout: float = 8.0) -> Optional[str]:
         return None
 
     with httpx.Client(timeout=timeout) as client:
-        resp = client.get(url, params={"user.fields": "id,username"}, headers=headers)
+        resp = client.get(url, headers=headers)
         if resp.status_code == 429:
             retry_after = float(resp.headers.get("retry-after", "60"))
             raise XApiRateLimitError(
@@ -183,6 +183,62 @@ def resolve_x_user_id(handle: str, timeout: float = 8.0) -> Optional[str]:
                 f"X API failed resolving @{clean_handle} (HTTP {resp.status_code}): {resp.text[:200]}"
             )
         return resp.json().get("data", {}).get("id")
+
+
+def fetch_x_dm_events(
+    participant_id: Optional[str] = None,
+    max_results: int = 50,
+    timeout: float = 10.0,
+) -> list[Dict[str, Any]]:
+    """
+    Fetch recent Direct Message events via X API v2 OAuth 1.0a User Context (`dm.read`).
+    - When `participant_id` is provided, queries `GET /2/dm_conversations/with/{participant_id}/dm_events`.
+    - Otherwise queries `GET /2/dm_events` across all conversations.
+    """
+    if not has_x_oauth_credentials():
+        raise XApiDispatchError("X OAuth 1.0a credentials are not fully configured for DM sync.")
+
+    base = get_x_api_base()
+    if participant_id and str(participant_id).strip().isdigit():
+        endpoint = f"{base}/dm_conversations/with/{str(participant_id).strip()}/dm_events"
+    else:
+        endpoint = f"{base}/dm_events"
+
+    query = urllib.parse.urlencode(
+        {
+            "dm_event.fields": "id,text,sender_id,created_at,dm_conversation_id,event_type",
+            "event_types": "MessageCreate",
+            "max_results": str(max(5, min(max_results, 100))),
+        }
+    )
+    full_url = f"{endpoint}?{query}"
+
+    auth_header = build_oauth1_header(
+        method="GET",
+        url=full_url,
+        consumer_key=settings.X_API_KEY.strip(),
+        consumer_secret=settings.X_API_SECRET.strip(),
+        access_token=settings.X_ACCESS_TOKEN.strip(),
+        access_token_secret=settings.X_ACCESS_TOKEN_SECRET.strip(),
+    )
+    headers = {"Authorization": auth_header}
+
+    with httpx.Client(timeout=timeout) as client:
+        resp = client.get(full_url, headers=headers)
+        if resp.status_code == 429:
+            retry_after = float(resp.headers.get("retry-after", "60"))
+            raise XApiRateLimitError(
+                "X API DM events sync rate-limited (HTTP 429)",
+                retry_after_seconds=retry_after,
+            )
+        if resp.status_code != 200:
+            detail = extract_x_api_error_detail(resp)
+            raise XApiDispatchError(
+                f"X API DM events sync failed (HTTP {resp.status_code}): {detail}"
+            )
+        payload = resp.json()
+        data = payload.get("data")
+        return data if isinstance(data, list) else []
 
 
 def send_x_dm(

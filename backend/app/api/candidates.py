@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import get_db
@@ -13,6 +13,7 @@ from backend.app.services.state_machine import (
     approve_and_send_candidate,
     reject_candidate,
     retry_candidate_ai_evaluation,
+    override_candidate_fit_score,
     record_candidate_reply,
     mark_ledger_handled,
     get_state_machine_summary,
@@ -20,6 +21,11 @@ from backend.app.services.state_machine import (
     SendBlockedError,
     StateTransitionError,
 )
+from backend.app.services.ai_evaluator import (
+    AIEvaluationServiceError,
+    DMGenerationBlockedError,
+)
+from backend.app.services.queue_worker import regenerate_candidate_dm_by_id
 from backend.app.services.x_client import XApiDispatchError, XApiRateLimitError
 
 router = APIRouter(
@@ -31,6 +37,15 @@ router = APIRouter(
 
 class RejectCandidateRequest(BaseModel):
     reason: Optional[str] = None
+
+
+class RegenerateDmRequest(BaseModel):
+    current_dm: Optional[str] = None
+
+
+class OverrideFitScoreRequest(BaseModel):
+    fit_score: int = Field(..., ge=1, le=4, description="Overridden Fit Score from 1 to 4")
+    reason: str = Field(..., min_length=3, max_length=1000, description="Partner rationale for overriding Fit Score")
 
 
 def _enrich_candidate_with_ledger(
@@ -185,6 +200,64 @@ def retry_candidate_ai_endpoint(
     try:
         cand = retry_candidate_ai_evaluation(db, candidate_id)
         return cand.to_dict()
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except DoubleMessageConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except StateTransitionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/{candidate_id}/regenerate-dm")
+def regenerate_candidate_dm_endpoint(
+    candidate_id: int,
+    payload: RegenerateDmRequest = RegenerateDmRequest(),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Regenerate ONLY the personalized DM draft for a candidate without overwriting
+    AI Fit Assessment (fit_score / fit_reason). Clears stale edited_dm.
+    """
+    try:
+        return regenerate_candidate_dm_by_id(
+            db=db,
+            candidate_id=candidate_id,
+            current_dm=payload.current_dm,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except DoubleMessageConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except DMGenerationBlockedError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except AIEvaluationServiceError as exc:
+        status_code = 503 if str(exc).startswith("[LIVE_PRODUCTION]") else 502
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+
+
+@router.post("/{candidate_id}/override-fit")
+def override_candidate_fit_score_endpoint(
+    candidate_id: int,
+    payload: OverrideFitScoreRequest,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Manually override a candidate's Fit Score (1-4) and Why They Fit rationale.
+    """
+    try:
+        cand = override_candidate_fit_score(
+            db=db,
+            candidate_id=candidate_id,
+            fit_score=payload.fit_score,
+            reason=payload.reason,
+        )
+        ledger = (
+            db.query(OutreachLedger)
+            .filter(OutreachLedger.candidate_id == cand.id)
+            .first()
+        )
+        ledger_map = {cand.id: ledger} if ledger else {}
+        return _enrich_candidate_with_ledger(cand, ledger_map)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DoubleMessageConflictError as exc:

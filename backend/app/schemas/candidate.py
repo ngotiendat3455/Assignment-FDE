@@ -55,6 +55,14 @@ class SeedIngestRequest(BaseModel):
 
 class CsvPreflightRequest(BaseModel):
     csv_content: str = Field(..., description="Raw CSV file content")
+    verify_with_x_api: bool = Field(
+        default=False,
+        description="When True, only 'handle' column is required and profiles are synced live from X API v2",
+    )
+    fetch_x_preview: bool = Field(
+        default=False,
+        description="When True with verify_with_x_api, performs 1 batch GET /2/users/by lookup (no tweets) for preview",
+    )
 
 
 class CsvPreviewRow(BaseModel):
@@ -67,6 +75,10 @@ class CsvPreviewRow(BaseModel):
     can_dm: bool = True
     is_valid: bool = True
     validation_note: str = "Valid"
+    segment: Optional[str] = None
+    dedup_status: Optional[str] = None
+    x_preview_status: Optional[str] = None
+    followers_count: Optional[int] = None
 
 
 class CsvPreflightResponse(BaseModel):
@@ -76,6 +88,7 @@ class CsvPreflightResponse(BaseModel):
     detected_columns: List[str]
     preview_rows: List[CsvPreviewRow]
     error_message: Optional[str] = None
+    local_dedup_summary: Optional[Dict[str, int]] = None
 
 
 class CsvIngestRequest(BaseModel):
@@ -83,6 +96,7 @@ class CsvIngestRequest(BaseModel):
     default_segment: Optional[str] = "SEA AI & Robotics Ecosystem"
     skip_ledger_collisions: bool = True
     queue_ai_enabled: bool = True
+    verify_with_x_api: bool = False
 
 
 class CollisionDetail(BaseModel):

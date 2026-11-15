@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import settings
+from backend.app.core.runtime_gateway import RuntimeGateway
 from backend.app.models.candidate import Candidate, CandidateStatus
 from backend.app.models.ledger import OutreachLedger, OutreachStatus
 from backend.app.services.ai_evaluator import evaluate_candidate_profile
@@ -14,6 +15,13 @@ from backend.app.services.ingestion import (
      normalize_handle,
     parse_csv_content,
     seed_history_ledger,
+)
+from backend.app.services.x_client import (
+    XApiDispatchError,
+    XApiRateLimitError,
+    fetch_x_dm_events,
+    has_x_oauth_credentials,
+    resolve_x_user_id,
 )
 
 
@@ -253,6 +261,145 @@ def mark_ledger_handled(
     return {
         "action": "MARKED_HANDLED",
         "ledger": serialize_ledger_entry(entry),
+    }
+
+
+def sync_x_dm_replies(db: Session) -> Dict[str, Any]:
+    """
+    Poll X API v2 (`GET /2/dm_events` and `/2/dm_conversations/with/{participant_id}/dm_events`)
+    using OAuth 1.0a User Context (`dm.read`) to automatically sync incoming candidate DM replies
+    into `outreach_ledger` (SENT -> REPLIED, needs_attention=True).
+    """
+    active_entries: List[OutreachLedger] = (
+        db.query(OutreachLedger)
+        .filter(
+            OutreachLedger.status.in_(
+                [OutreachStatus.SENT.value, OutreachStatus.REPLIED.value]
+            )
+        )
+        .all()
+    )
+
+    if not active_entries:
+        return {
+            "action": "X_REPLIES_SYNCED",
+            "synced_count": 0,
+            "checked_entries": 0,
+            "updated_handles": [],
+            "updated_ledgers": [],
+            "message": "No active SENT/REPLIED outreach entries to sync.",
+        }
+
+    profile = RuntimeGateway.get_active_profile()
+    if profile == "OFFLINE_MOCK" or not has_x_oauth_credentials():
+        return {
+            "action": "X_REPLIES_SYNCED",
+            "synced_count": 0,
+            "checked_entries": len(active_entries),
+            "updated_handles": [],
+            "updated_ledgers": [],
+            "message": "Skipped live X DM sync (OFFLINE_MOCK active or OAuth 1.0a keys not configured).",
+        }
+
+    try:
+        global_events = fetch_x_dm_events(max_results=50)
+    except (XApiRateLimitError, XApiDispatchError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    synced_count = 0
+    updated_handles: List[str] = []
+    updated_ledgers: List[Dict[str, Any]] = []
+
+    for entry in active_entries:
+        cand = entry.candidate
+        uid = (cand.x_user_id if cand and cand.x_user_id else "") or ""
+        uid = str(uid).strip()
+
+        # Resolve real numeric X user ID if missing or if current uid has no match in global_events
+        has_direct_match = uid.isdigit() and any(
+            str(ev.get("sender_id") or "").strip() == uid for ev in global_events
+        )
+        if (not has_direct_match) and entry.handle:
+            try:
+                resolved_uid = resolve_x_user_id(entry.handle)
+                if resolved_uid and str(resolved_uid).strip().isdigit():
+                    uid = str(resolved_uid).strip()
+                    if cand:
+                        cand.x_user_id = uid
+            except Exception:
+                pass
+
+        if not uid.isdigit():
+            continue
+
+        candidate_events = [
+            ev
+            for ev in global_events
+            if str(ev.get("sender_id") or "").strip() == uid
+            and str(ev.get("id") or "").strip() != str(entry.external_dm_id or "").strip()
+            and (ev.get("text") or "").strip()
+        ]
+
+        # Fallback: query 1-to-1 conversation directly for LIVE_X entries if not in global top 50
+        if not candidate_events and entry.dispatch_mode == "LIVE_X":
+            try:
+                conv_events = fetch_x_dm_events(participant_id=uid, max_results=20)
+                candidate_events = [
+                    ev
+                    for ev in conv_events
+                    if str(ev.get("sender_id") or "").strip() == uid
+                    and str(ev.get("id") or "").strip() != str(entry.external_dm_id or "").strip()
+                    and (ev.get("text") or "").strip()
+                ]
+            except Exception:
+                pass
+
+        if not candidate_events:
+            continue
+
+        # X API v2 returns newest events first; pick the most recent reply from the candidate
+        latest_ev = candidate_events[0]
+        latest_text = (latest_ev.get("text") or "").strip()
+        if not latest_text:
+            continue
+
+        if (
+            entry.status != OutreachStatus.REPLIED.value
+            or (entry.reply_text or "").strip() != latest_text
+        ):
+            now = datetime.now(timezone.utc)
+            ev_created = latest_ev.get("created_at")
+            replied_dt = now
+            if ev_created:
+                try:
+                    replied_dt = datetime.fromisoformat(str(ev_created).replace("Z", "+00:00"))
+                except Exception:
+                    replied_dt = now
+
+            entry.status = OutreachStatus.REPLIED.value
+            entry.reply_text = latest_text
+            entry.replied_at = replied_dt
+            entry.needs_attention = True
+
+            if cand:
+                cand.status = CandidateStatus.REPLIED.value
+                cand.updated_at = now
+
+            synced_count += 1
+            updated_handles.append(entry.handle)
+            updated_ledgers.append(serialize_ledger_entry(entry))
+
+    db.commit()
+
+    return {
+        "action": "X_REPLIES_SYNCED",
+        "synced_count": synced_count,
+        "checked_entries": len(active_entries),
+        "updated_handles": updated_handles,
+        "updated_ledgers": updated_ledgers,
     }
 
 

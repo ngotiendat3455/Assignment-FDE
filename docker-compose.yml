@@ -74,6 +74,8 @@ services:
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
+      RUNTIME_PROFILE: ${RUNTIME_PROFILE:-OFFLINE_MOCK}
+      DISPATCH_MODE: ${DISPATCH_MODE:-SANDBOX}
       BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8000/api}
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-auto}
     depends_on:

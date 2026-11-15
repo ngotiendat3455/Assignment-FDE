@@ -9,6 +9,7 @@ from backend.app.services.ledger_service import (
     list_ledger_entries,
     mark_ledger_handled,
     record_ledger_reply,
+    sync_x_dm_replies,
 )
 
 router = APIRouter(prefix="/ledger", tags=["ledger"])
@@ -47,6 +48,17 @@ def get_calibration(db: Session = Depends(get_db)):
     GenAI Fund's reference benchmark dataset.
     """
     return get_calibration_matrix(db=db)
+
+
+@router.post("/sync-replies", response_model=Dict[str, Any])
+def post_sync_x_replies(
+    db: Session = Depends(get_db),
+):
+    """
+    Poll X API v2 (`GET /2/dm_events`) using OAuth 1.0a User Context (`dm.read`)
+    to sync incoming candidate DM replies into the Outreach Ledger.
+    """
+    return sync_x_dm_replies(db=db)
 
 
 @router.post("/{ledger_id}/reply", response_model=Dict[str, Any])

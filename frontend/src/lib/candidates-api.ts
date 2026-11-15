@@ -105,16 +105,39 @@ export async function retryCandidateEvaluation(
 }
 
 export async function regenerateAiEvaluation(
-  candidateId: number
-): Promise<{ candidate: CandidateItem; evaluation: unknown }> {
-  const res = await fetch(`${getApiBaseUrl()}/queue/evaluate/${candidateId}`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ simulate_failure: false }),
-  });
-  return handleApiResponse<{ candidate: CandidateItem; evaluation: unknown }>(
-    res
+  candidateId: number,
+  currentDm?: string
+): Promise<{ candidate: CandidateItem; draft_dm: string; execution_meta?: unknown }> {
+  const res = await fetch(
+    `${getApiBaseUrl()}/candidates/${candidateId}/regenerate-dm`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current_dm: currentDm ?? null }),
+    }
   );
+  return handleApiResponse<{
+    candidate: CandidateItem;
+    draft_dm: string;
+    execution_meta?: unknown;
+  }>(res);
+}
+
+export async function overrideCandidateFitScore(
+  candidateId: number,
+  fitScore: number,
+  reason: string
+): Promise<CandidateItem> {
+  const res = await fetch(
+    `${getApiBaseUrl()}/candidates/${candidateId}/override-fit`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fit_score: fitScore, reason }),
+    }
+  );
+  return handleApiResponse<CandidateItem>(res);
 }
 

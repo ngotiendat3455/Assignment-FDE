@@ -206,3 +206,39 @@ def test_clean_db_does_not_auto_seed_ledger_when_flag_disabled(db_session_and_cl
     assert db.query(Candidate).count() == 0
 
 
+def test_sync_x_dm_replies_transitions_sent_to_replied(db_session_and_client, monkeypatch):
+    """Verify POST /api/ledger/sync-replies matches sender_id to candidate x_user_id and marks REPLIED."""
+    from backend.app.core.config import settings
+
+    _, client = db_session_and_client
+    monkeypatch.setattr(settings, "RUNTIME_PROFILE", "LIVE_PRODUCTION")
+    monkeypatch.setattr("backend.app.services.ledger_service.has_x_oauth_credentials", lambda: True)
+    monkeypatch.setattr("backend.app.services.ledger_service.resolve_x_user_id", lambda handle: "199887766" if handle == "putri_agentic" else None)
+    monkeypatch.setattr(
+        "backend.app.services.ledger_service.fetch_x_dm_events",
+        lambda participant_id=None, max_results=50: [
+            {
+                "id": "dm_ev_9991",
+                "sender_id": "199887766",
+                "text": "Hi! Yes, I am open to discussing the AI Lead role this week.",
+                "created_at": "2026-11-14T11:30:00Z",
+                "event_type": "MessageCreate",
+            }
+        ],
+    )
+
+    # Seed baseline so @putri_agentic (OUT-102) is in SENT status
+    client.get("/api/ledger")
+
+    sync_resp = client.post("/api/ledger/sync-replies")
+    assert sync_resp.status_code == 200
+    sync_data = sync_resp.json()
+    assert sync_data["action"] == "X_REPLIES_SYNCED"
+    assert sync_data["synced_count"] == 1
+    assert "putri_agentic" in sync_data["updated_handles"]
+    assert sync_data["updated_ledgers"][0]["status"] == "REPLIED"
+    assert sync_data["updated_ledgers"][0]["needs_attention"] is True
+    assert "open to discussing" in sync_data["updated_ledgers"][0]["reply_text"]
+
+
+

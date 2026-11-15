@@ -11,7 +11,9 @@ from backend.app.models.candidate import Candidate, CandidateStatus
 from backend.app.models.queue import JobQueue, JobStatus
 from backend.app.services.ai_evaluator import (
     evaluate_candidate_profile,
+    regenerate_candidate_dm_draft,
     AIEvaluationServiceError,
+    DMGenerationBlockedError,
 )
 from backend.app.services.dispatcher import (
     dispatch_candidate_dm,
@@ -122,6 +124,47 @@ def evaluate_candidate_by_id(
             "execution_meta": ai_plan.to_meta(),
             "candidate": candidate.to_dict(),
         }
+
+
+def regenerate_candidate_dm_by_id(
+    db: Session,
+    candidate_id: int,
+    current_dm: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Regenerate ONLY the personalized DM draft for a candidate inside the Composer modal.
+    Preserves existing fit_score, fit_reason ('AI Fit Assessment'), and is_match,
+    and clears stale edited_dm so the UI displays the fresh draft_dm immediately.
+    """
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not candidate:
+        raise LookupError(f"Candidate with ID {candidate_id} not found.")
+
+    if candidate.status in (CandidateStatus.SENT.value, CandidateStatus.REPLIED.value):
+        raise DoubleMessageConflictError(
+            f"Candidate @{candidate.handle} is already in terminal state ({candidate.status}); DM cannot be regenerated."
+        )
+
+    ai_plan = RuntimeGateway.resolve_ai_plan()
+    previous = current_dm if current_dm is not None else (candidate.edited_dm or candidate.draft_dm or "")
+    new_draft, evidence = regenerate_candidate_dm_draft(candidate, previous_dm=previous)
+
+    candidate.draft_dm = new_draft
+    candidate.edited_dm = None
+    if not candidate.evidence_snippet and evidence:
+        candidate.evidence_snippet = evidence
+    candidate.error_message = None
+    candidate.updated_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(candidate)
+    return {
+        "candidate_id": candidate.id,
+        "handle": candidate.handle,
+        "draft_dm": new_draft,
+        "execution_meta": ai_plan.to_meta(),
+        "candidate": candidate.to_dict(),
+    }
 
 
 def enqueue_send_dm_job(

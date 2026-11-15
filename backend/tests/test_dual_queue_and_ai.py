@@ -239,3 +239,116 @@ def test_live_x_safety_whitelist_and_ai_failed_isolation(auth_client, db_session
     assert recover_resp.json()["status"] == CandidateStatus.PENDING_REVIEW.value
     assert recover_resp.json()["evaluation"]["fit_score"] == 4
 
+
+def test_regenerate_dm_preserves_fit_assessment_and_updates_draft(auth_client, db_session):
+    """
+    Clicking 'Regenerate with AI' inside Personalized DM Composer must ONLY regenerate
+    draft_dm (returning a fresh variation and clearing stale edited_dm), while keeping
+    fit_score and fit_reason ('AI Fit Assessment / Why They Fit') intact.
+    """
+    ingest_seed_pack(db_session)
+    process_pending_jobs(db_session, job_type="AI_EVALUATE")
+
+    target = db_session.query(Candidate).filter(Candidate.handle == "dr_somchai_ai").first()
+    assert target is not None
+    original_fit_score = target.fit_score
+    original_fit_reason = target.fit_reason
+    original_draft = target.draft_dm
+
+    # Simulate stale user edit shadowing draft_dm
+    target.edited_dm = "Stale manual draft edit"
+    db_session.commit()
+
+    regen_resp = auth_client.post(
+        f"/api/candidates/{target.id}/regenerate-dm",
+        json={"current_dm": original_draft},
+    )
+    assert regen_resp.status_code == 200
+    body = regen_resp.json()
+
+    db_session.refresh(target)
+    assert body["candidate"]["fit_score"] == original_fit_score
+    assert body["candidate"]["fit_reason"] == original_fit_reason
+    assert body["candidate"]["edited_dm"] is None
+    assert target.edited_dm is None
+    assert body["draft_dm"] != original_draft
+    assert body["draft_dm"] != "Stale manual draft edit"
+    assert 120 <= len(body["draft_dm"]) <= 600
+
+    # Sparse profile -> HTTP 422 without modifying fit_reason
+    sparse = db_session.query(Candidate).filter(Candidate.handle == "ghost_builder_sea").first()
+    assert sparse is not None
+    sparse_reason = sparse.fit_reason
+    sparse_resp = auth_client.post(
+        f"/api/candidates/{sparse.id}/regenerate-dm",
+        json={},
+    )
+    assert sparse_resp.status_code == 422
+    db_session.refresh(sparse)
+    assert sparse.fit_reason == sparse_reason
+
+    # Sent candidate -> HTTP 409 Conflict
+    minh = db_session.query(Candidate).filter(Candidate.handle == "minh_quant").first()
+    assert minh is not None
+    send_resp = auth_client.post(f"/api/candidates/{minh.id}/send", json={})
+    assert send_resp.status_code == 200
+    sent_regen_resp = auth_client.post(f"/api/candidates/{minh.id}/regenerate-dm", json={})
+    assert sent_regen_resp.status_code == 409
+
+
+def test_partner_override_fit_score_with_reason(auth_client, db_session):
+    """
+    Partner Fit Score Override (POST /api/candidates/{id}/override-fit):
+    - Allows overriding fit_score (1-4) with mandatory rationale.
+    - Prefixes fit_reason with '[Partner Override (X/4)] ...', updates is_match,
+      and populates an initial grounded draft_dm when upgraded to >=3.
+    - Protects terminal SENT/REPLIED candidates with HTTP 409 Conflict.
+    """
+    ingest_seed_pack(db_session)
+    process_pending_jobs(db_session, job_type="AI_EVALUATE")
+
+    # Find a low-score candidate (Score 2, draft_dm="") and upgrade to 4/4
+    low_cand = db_session.query(Candidate).filter(Candidate.fit_score == 2).first()
+    assert low_cand is not None
+    assert (low_cand.draft_dm or "") == ""
+
+    up_resp = auth_client.post(
+        f"/api/candidates/{low_cand.id}/override-fit",
+        json={
+            "fit_score": 4,
+            "reason": "Met founder at Vietnam AI Summit; deep unpublished CUDA kernel work.",
+        },
+    )
+    assert up_resp.status_code == 200
+    up_body = up_resp.json()
+    assert up_body["fit_score"] == 4
+    assert up_body["is_match"] is True
+    assert up_body["fit_reason"].startswith("[Partner Override (4/4)] Met founder at Vietnam AI Summit")
+    assert len(up_body["draft_dm"] or "") >= 120
+
+    # Downgrade to 1/4
+    down_resp = auth_client.post(
+        f"/api/candidates/{low_cand.id}/override-fit",
+        json={
+            "fit_score": 1,
+            "reason": "Out of thesis scope after deeper portfolio review.",
+        },
+    )
+    assert down_resp.status_code == 200
+    down_body = down_resp.json()
+    assert down_body["fit_score"] == 1
+    assert down_body["is_match"] is False
+    assert down_body["fit_reason"] == "[Partner Override (1/4)] Out of thesis scope after deeper portfolio review."
+
+    # Terminal SENT candidate -> HTTP 409 Conflict
+    minh = db_session.query(Candidate).filter(Candidate.handle == "minh_quant").first()
+    assert minh is not None
+    auth_client.post(f"/api/candidates/{minh.id}/send", json={})
+    sent_override = auth_client.post(
+        f"/api/candidates/{minh.id}/override-fit",
+        json={"fit_score": 3, "reason": "Attempt override after send"},
+    )
+    assert sent_override.status_code == 409
+
+
+

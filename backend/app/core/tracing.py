@@ -535,6 +535,19 @@ def _summarize_semantic_event(
         if res_json.get("status"):
             observed_states.append(str(res_json["status"]))
         facts.append(f"Retry AI: `@{res_json.get('handle')}` -> `{res_json.get('status')}`")
+    elif path.startswith("/api/candidates/") and path.endswith("/regenerate-dm") and isinstance(res_json, dict):
+        cand = res_json.get("candidate", {})
+        if cand.get("status"):
+            observed_states.append(str(cand["status"]))
+        facts.append(
+            f"Regenerate DM `@{res_json.get('handle')}` -> len=`{len(res_json.get('draft_dm') or '')}` chars"
+        )
+    elif path.startswith("/api/candidates/") and path.endswith("/override-fit") and isinstance(res_json, dict):
+        if res_json.get("status"):
+            observed_states.append(str(res_json["status"]))
+        facts.append(
+            f"Override Fit Score `@{res_json.get('handle')}` -> `{res_json.get('fit_score')}/4`"
+        )
     elif "/evaluate/" in path and isinstance(res_json, dict):
         cand = res_json.get("candidate", {})
         ev = res_json.get("evaluation", {})

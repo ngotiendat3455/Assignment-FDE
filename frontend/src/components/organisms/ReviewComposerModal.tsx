@@ -28,39 +28,66 @@ export interface ReviewComposerModalProps {
   isOpen: boolean;
   onClose: () => void;
   candidate: CandidateItem | null;
+  defaultDispatchMode?: "SANDBOX" | "LIVE_X";
   onApproveAndSend: (
     candidateId: number,
     customMessage: string,
     dispatchMode: string
   ) => Promise<void>;
   onReject: (candidateId: number) => Promise<void>;
-  onRegenerate: (candidateId: number) => Promise<void>;
+  onRegenerate: (
+    candidateId: number,
+    currentDm?: string
+  ) => Promise<CandidateItem | void>;
   onRetryEvaluation: (candidateId: number) => Promise<void>;
+  onOverrideFitScore?: (
+    candidateId: number,
+    fitScore: number,
+    reason: string
+  ) => Promise<CandidateItem | void>;
 }
 
 export const ReviewComposerModal: React.FC<ReviewComposerModalProps> = ({
   isOpen,
   onClose,
   candidate,
+  defaultDispatchMode = "SANDBOX",
   onApproveAndSend,
   onReject,
   onRegenerate,
   onRetryEvaluation,
+  onOverrideFitScore,
 }) => {
   const { t } = useI18n();
 
   const [dmText, setDmText] = useState("");
-  const [dispatchMode, setDispatchMode] = useState<"SANDBOX" | "LIVE_X">("SANDBOX");
+  const [dispatchMode, setDispatchMode] = useState<"SANDBOX" | "LIVE_X">(defaultDispatchMode);
   const [isSending, setIsSending] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isOverrideOpen, setIsOverrideOpen] = useState(false);
+  const [overrideScore, setOverrideScore] = useState<number>(3);
+  const [overrideReason, setOverrideReason] = useState<string>("");
+  const [isSavingOverride, setIsSavingOverride] = useState(false);
 
   useEffect(() => {
     if (candidate) {
       setDmText(candidate.edited_dm || candidate.draft_dm || "");
+      setOverrideScore(
+        candidate.fit_score && candidate.fit_score >= 1 && candidate.fit_score <= 4
+          ? candidate.fit_score
+          : 3
+      );
+      const rawReason = candidate.fit_reason || "";
+      const strippedReason = rawReason.startsWith("[Partner Override")
+        ? rawReason.split("]").slice(1).join("]").trim()
+        : rawReason;
+      setOverrideReason(strippedReason);
+      setIsOverrideOpen(false);
     } else {
       setDmText("");
+      setIsOverrideOpen(false);
     }
   }, [candidate]);
 
@@ -110,7 +137,10 @@ export const ReviewComposerModal: React.FC<ReviewComposerModalProps> = ({
   const handleRegenerate = async () => {
     setIsRegenerating(true);
     try {
-      await onRegenerate(candidate.id);
+      const updated = await onRegenerate(candidate.id, dmText);
+      if (updated && typeof updated === "object" && "draft_dm" in updated) {
+        setDmText(updated.edited_dm || updated.draft_dm || "");
+      }
     } finally {
       setIsRegenerating(false);
     }
@@ -122,6 +152,26 @@ export const ReviewComposerModal: React.FC<ReviewComposerModalProps> = ({
       await onRetryEvaluation(candidate.id);
     } finally {
       setIsRetrying(false);
+    }
+  };
+
+  const handleSaveOverride = async () => {
+    if (!onOverrideFitScore || overrideReason.trim().length < 3) return;
+    setIsSavingOverride(true);
+    try {
+      const updated = await onOverrideFitScore(
+        candidate.id,
+        overrideScore,
+        overrideReason.trim()
+      );
+      if (updated && typeof updated === "object" && "draft_dm" in updated) {
+        if (!dmText.trim() && updated.draft_dm) {
+          setDmText(updated.edited_dm || updated.draft_dm || "");
+        }
+      }
+      setIsOverrideOpen(false);
+    } finally {
+      setIsSavingOverride(false);
     }
   };
 
@@ -204,17 +254,108 @@ export const ReviewComposerModal: React.FC<ReviewComposerModalProps> = ({
               </Badge>
             </div>
 
-            {/* AI Fit Assessment */}
-            {candidate.fit_reason && (
-              <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
-                <div className="text-xs font-bold text-primary mb-1">
+            {/* AI Fit Assessment & Partner Score Override */}
+            <div className="bg-primary/5 rounded-xl p-4 border border-primary/10 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-bold text-primary">
                   {t("review_modal.why_fit_label")}
                 </div>
-                <p className="text-xs text-foreground/90 leading-relaxed">
-                  {candidate.fit_reason}
-                </p>
+                {onOverrideFitScore && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setIsOverrideOpen((prev) => !prev)}
+                    disabled={isTerminal}
+                    data-testid="toggle-override-fit-btn"
+                    className="text-[11px] text-primary hover:text-primary/90 h-6 px-2"
+                  >
+                    {t("review_modal.btn_override_fit")}
+                  </Button>
+                )}
               </div>
-            )}
+
+              <p
+                data-testid="why-fit-reason-text"
+                className="text-xs text-foreground/90 leading-relaxed"
+              >
+                {candidate.fit_reason || t("review_modal.why_fit_empty")}
+              </p>
+
+              {isOverrideOpen && (
+                <div
+                  data-testid="override-fit-panel"
+                  className="bg-white rounded-lg p-3 border border-primary/20 space-y-3 pt-2.5"
+                >
+                  <div className="text-[11px] font-bold text-foreground">
+                    {t("review_modal.override_title")}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-muted-foreground block">
+                      {t("review_modal.override_score_label")}
+                    </label>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[1, 2, 3, 4].map((scoreVal) => {
+                        const isSelected = overrideScore === scoreVal;
+                        return (
+                          <button
+                            key={scoreVal}
+                            type="button"
+                            data-testid={`override-score-btn-${scoreVal}`}
+                            onClick={() => setOverrideScore(scoreVal)}
+                            className={`py-1.5 px-2 rounded-md text-xs font-bold border transition-colors ${
+                              isSelected
+                                ? "bg-primary text-white border-primary shadow-xs"
+                                : "bg-muted/30 text-foreground border-border hover:bg-muted/60"
+                            }`}
+                          >
+                            {scoreVal}/4
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-muted-foreground block">
+                      {t("review_modal.override_reason_label")}
+                    </label>
+                    <Textarea
+                      data-testid="override-reason-input"
+                      value={overrideReason}
+                      onChange={(e) => setOverrideReason(e.target.value)}
+                      placeholder={t("review_modal.override_reason_placeholder")}
+                      rows={2}
+                      className="text-xs font-sans bg-white"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsOverrideOpen(false)}
+                      disabled={isSavingOverride}
+                      data-testid="cancel-override-fit-btn"
+                      className="text-xs h-7 px-2.5"
+                    >
+                      {t("review_modal.btn_cancel_override")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={handleSaveOverride}
+                      loading={isSavingOverride}
+                      disabled={overrideReason.trim().length < 3 || isSavingOverride}
+                      data-testid="save-override-fit-btn"
+                      className="text-xs h-7 px-3"
+                    >
+                      {t("review_modal.btn_save_override")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Profile Bio */}
             <div>
@@ -372,6 +513,7 @@ export const ReviewComposerModal: React.FC<ReviewComposerModalProps> = ({
                     onClick={handleRegenerate}
                     loading={isRegenerating}
                     disabled={isTerminal || isClosedDm}
+                    data-testid="regenerate-dm-btn"
                     className="text-xs text-primary hover:text-primary/90 h-6 px-2"
                   >
                     <RotateCw className="w-3 h-3 mr-1" />

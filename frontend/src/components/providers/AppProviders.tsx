@@ -2,13 +2,27 @@
 
 import React from "react";
 import { I18nProvider } from "@/context/i18n";
+import { RuntimeProvider, RuntimeConfig } from "@/context/runtime";
 import { ToastProvider } from "@/components/molecules/ToastNotification";
 
-export function AppProviders({ children }: { children: React.ReactNode }) {
+const DEFAULT_RUNTIME: RuntimeConfig = {
+  runtimeProfile: "OFFLINE_MOCK",
+  dispatchMode: "SANDBOX",
+};
+
+export function AppProviders({
+  children,
+  initialRuntime = DEFAULT_RUNTIME,
+}: {
+  children: React.ReactNode;
+  initialRuntime?: RuntimeConfig;
+}) {
   return (
-    <I18nProvider>
-      <ToastProvider>{children}</ToastProvider>
-    </I18nProvider>
+    <RuntimeProvider initialRuntime={initialRuntime}>
+      <I18nProvider>
+        <ToastProvider>{children}</ToastProvider>
+      </I18nProvider>
+    </RuntimeProvider>
   );
 }
 

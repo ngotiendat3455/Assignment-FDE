@@ -350,6 +350,8 @@ resource "aws_ecs_task_definition" "frontend" {
         { name = "NODE_ENV", value = "production" },
         { name = "PORT", value = "3000" },
         { name = "HOSTNAME", value = "0.0.0.0" },
+        { name = "RUNTIME_PROFILE", value = var.runtime_profile },
+        { name = "DISPATCH_MODE", value = var.dispatch_mode },
         { name = "BACKEND_INTERNAL_URL", value = "http://backend.${var.name_prefix}.local:8000/api" },
         { name = "NEXT_PUBLIC_API_BASE_URL", value = "/api" }
       ]

@@ -23,14 +23,17 @@ import {
 } from "@/lib/ingestion-api";
 import { LiveXLookupResponse, IngestionAuditReport } from "@/types/ingestion";
 import { useI18n } from "@/context/i18n";
+import { useRuntime } from "@/context/runtime";
 
 const QUICK_HANDLES = ["@minh_quant", "@arjun_infer", "@linhtran_robo"];
 
 export function LiveXLookupTab() {
   const { t } = useI18n();
+  const { runtimeProfile } = useRuntime();
+  const isLiveProduction = runtimeProfile === "LIVE_PRODUCTION";
   const { toast } = useToast();
 
-  const [query, setQuery] = useState<string>("@minh_quant");
+  const [query, setQuery] = useState<string>(isLiveProduction ? "" : "@minh_quant");
   const [lookingUp, setLookingUp] = useState<boolean>(false);
   const [ingesting, setIngesting] = useState<boolean>(false);
   const [profile, setProfile] = useState<LiveXLookupResponse | null>(null);
@@ -170,7 +173,11 @@ export function LiveXLookupTab() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onClear={() => setQuery("")}
-            placeholder={t("ingestion.live_input_placeholder")}
+            placeholder={
+              isLiveProduction
+                ? t("ingestion.live_input_placeholder_live")
+                : t("ingestion.live_input_placeholder")
+            }
             data-testid="live-lookup-input"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -192,22 +199,31 @@ export function LiveXLookupTab() {
         </Button>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <span className="font-medium">{t("ingestion.quick_try_label")}</span>
-        {QUICK_HANDLES.map((h) => (
-          <button
-            key={h}
-            type="button"
-            onClick={() => {
-              setQuery(h);
-              handleLookup(h);
-            }}
-            className="rounded-lg border border-border bg-accent px-2.5 py-1 font-mono text-xs font-medium text-primary transition-colors hover:border-primary/40 hover:bg-primary/5"
-          >
-            {h}
-          </button>
-        ))}
-      </div>
+      {isLiveProduction ? (
+        <div
+          data-testid="live-lookup-policy-note"
+          className="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs text-amber-900"
+        >
+          {t("ingestion.live_lookup_note")}
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className="font-medium">{t("ingestion.quick_try_label")}</span>
+          {QUICK_HANDLES.map((h) => (
+            <button
+              key={h}
+              type="button"
+              onClick={() => {
+                setQuery(h);
+                handleLookup(h);
+              }}
+              className="rounded-lg border border-border bg-accent px-2.5 py-1 font-mono text-xs font-medium text-primary transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              {h}
+            </button>
+          ))}
+        </div>
+      )}
 
       {profile && (
         <div className="mt-6 rounded-xl border border-border bg-accent p-5">

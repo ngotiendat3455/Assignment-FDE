@@ -120,13 +120,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 key={item.href}
                 href={item.href}
                 title={collapsed ? label : undefined}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative group ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors relative group border ${
                   isActive
-                    ? "bg-primary text-white shadow-xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    ? "bg-primary/10 text-primary font-semibold border-primary/15"
+                    : "font-medium border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
                 } ${collapsed ? "justify-center px-2" : ""}`}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : ""}`} />
+                <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
 
                 {!collapsed && (
                   <span className="flex-1 truncate">{label}</span>
@@ -136,7 +136,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                   <span
                     className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
                       isActive
-                        ? "bg-white/20 text-white"
+                        ? item.urgent
+                          ? "bg-destructive/15 text-destructive"
+                          : "bg-primary/15 text-primary"
                         : item.urgent
                         ? "bg-destructive text-white animate-pulse"
                         : "bg-muted text-muted-foreground"

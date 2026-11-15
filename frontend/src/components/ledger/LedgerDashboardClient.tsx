@@ -55,6 +55,7 @@ import {
   fetchLedgerEntries,
   markLedgerHandled,
   recordLedgerReply,
+  syncLiveXReplies,
 } from "@/lib/ledger-api";
 import { fetchStateMachineSummary } from "@/lib/candidates-api";
 
@@ -110,6 +111,8 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
   // Conversation Detail & Immutable Audit Trail Drawer State (Wireframe 3)
   const [drawerEntry, setDrawerEntry] = useState<LedgerEntryItem | null>(null);
   const [handlingId, setHandlingId] = useState<number | null>(null);
+  const [isSyncingReplies, setIsSyncingReplies] = useState<boolean>(false);
+  // const [autoSyncLive, setAutoSyncLive] = useState<boolean>(false);
 
   const loadLedgerData = useCallback(async () => {
     setIsLoading(true);
@@ -213,6 +216,43 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
     }
   };
 
+  const handleSyncXReplies = useCallback(
+    async (silent: boolean = false) => {
+      setIsSyncingReplies(true);
+      try {
+        const res = await syncLiveXReplies();
+        if (res.synced_count > 0) {
+          const handlesStr = res.updated_handles.map((h) => `@${h}`).join(", ");
+          success(`Synced ${res.synced_count} X DM reply(${handlesStr})!`);
+          await loadAllData();
+        } else if (!silent) {
+          success(
+            res.message ||
+            `Checked ${res.checked_entries} sent thread(s) on X — no new replies yet.`
+          );
+          await loadAllData();
+        }
+      } catch (err) {
+        if (!silent) {
+          toastError(
+            err instanceof Error ? err.message : "Failed to sync X DM replies."
+          );
+        }
+      } finally {
+        setIsSyncingReplies(false);
+      }
+    },
+    [loadAllData, success, toastError]
+  );
+
+  // useEffect(() => {
+  //   if (!autoSyncLive) return;
+  //   const interval = setInterval(() => {
+  //     void handleSyncXReplies(true);
+  //   }, 15000);
+  //   return () => clearInterval(interval);
+  // }, [autoSyncLive, handleSyncXReplies]);
+
   const formatShortDate = (iso: string | null): string => {
     if (!iso) return t("workspace.time_recent");
     try {
@@ -303,7 +343,32 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* <Button
+              variant={autoSyncLive ? "primary" : "outline"}
+              size="sm"
+              icon={Zap}
+              onClick={() => {
+                const next = !autoSyncLive;
+                setAutoSyncLive(next);
+                if (next) {
+                  void handleSyncXReplies(false);
+                }
+              }}
+              data-testid="btn-toggle-autosync-x"
+            >
+              {autoSyncLive ? "Live Auto-Sync: ON (15s)" : "Live Auto-Sync (15s)"}
+            </Button> */}
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={MessageSquareReply}
+              onClick={() => void handleSyncXReplies(false)}
+              loading={isSyncingReplies}
+              data-testid="btn-sync-x-replies"
+            >
+              Sync X Replies
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -471,9 +536,8 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
                       key={entry.id}
                       data-testid={`ledger-row-${entry.outreach_id}`}
                       data-status={entry.status}
-                      className={`cursor-pointer ${
-                        entry.needs_attention ? "bg-red-50/30" : ""
-                      }`}
+                      className={`cursor-pointer ${entry.needs_attention ? "bg-red-50/30" : ""
+                        }`}
                       onClick={() => setDrawerEntry(entry)}
                     >
                       {/* Col 1: Out-ID & Timestamp */}
@@ -966,11 +1030,10 @@ export const LedgerDashboardClient: React.FC<LedgerDashboardClientProps> = ({
 
               {/* Step 2: Founder Reply */}
               <div
-                className={`p-4 rounded-xl border space-y-2.5 ${
-                  drawerEntry.status === "REPLIED"
+                className={`p-4 rounded-xl border space-y-2.5 ${drawerEntry.status === "REPLIED"
                     ? "bg-green-50/40 border-positive/30"
                     : "bg-muted/20 border-border"
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-foreground flex items-center gap-1.5">

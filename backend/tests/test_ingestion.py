@@ -311,6 +311,72 @@ def test_ingestion_api_endpoints(db_session, monkeypatch):
     assert single_resp.status_code == 200
     assert single_resp.json()["imported"] == 1
 
+    # 5. Handle-only CSV with verify_with_x_api=True (Batch /2/users/by + /tweets, skips 404 @missing_user & invalid syntax T.Yamazaki)
+    handle_only_csv = "handle,segment\n@new_x_builder,SEG-01: SEA Embodied AI & Robotics\n@missing_user,SEG-01: SEA Embodied AI & Robotics\nT.Yamazaki,SEG-01: SEA Embodied AI & Robotics"
+    pre_x_resp = client.post(
+        "/api/ingestion/preflight",
+        json={"csv_content": handle_only_csv, "verify_with_x_api": True},
+    )
+    assert pre_x_resp.status_code == 200
+    pre_x_data = pre_x_resp.json()
+    assert pre_x_data["valid"] is True
+    assert pre_x_data["missing_columns"] == []
+    assert pre_x_data["local_dedup_summary"]["new_handles"] == 2
+    assert pre_x_data["preview_rows"][0]["x_preview_status"] == "PENDING_SYNC"
+    assert pre_x_data["preview_rows"][2]["x_preview_status"] == "INVALID"
+
+    # 5b. Preflight with fetch_x_preview=True calls 1 batch /2/users/by lookup cleanly (excluding T.Yamazaki)
+    pre_x_live_resp = client.post(
+        "/api/ingestion/preflight",
+        json={
+            "csv_content": handle_only_csv,
+            "verify_with_x_api": True,
+            "fetch_x_preview": True,
+        },
+    )
+    assert pre_x_live_resp.status_code == 200
+    pre_live_data = pre_x_live_resp.json()
+    assert pre_live_data["valid"] is True
+    assert pre_live_data["preview_rows"][0]["x_preview_status"] == "FOUND"
+    assert pre_live_data["preview_rows"][0]["followers_count"] == 1240
+    assert pre_live_data["preview_rows"][1]["x_preview_status"] == "NOT_FOUND"
+    assert pre_live_data["preview_rows"][2]["x_preview_status"] == "INVALID"
+
+    csv_x_resp = client.post(
+        "/api/ingestion/csv",
+        json={
+            "csv_content": handle_only_csv,
+            "verify_with_x_api": True,
+            "queue_ai_enabled": False,
+        },
+    )
+    assert csv_x_resp.status_code == 200
+    csv_x_data = csv_x_resp.json()
+    assert csv_x_data["imported"] == 1
+    statuses_by_handle = {d["handle"]: d["status"] for d in csv_x_data["details"]}
+    assert statuses_by_handle["new_x_builder"] == "IMPORTED"
+    assert statuses_by_handle["missing_user"] == "SKIPPED_X_NOT_FOUND"
+    assert statuses_by_handle["t.yamazaki"] == "SKIPPED_INVALID_X_HANDLE"
+
+    # 6. Environment-aware CSV template download
+    monkeypatch.setattr(settings, "RUNTIME_PROFILE", "OFFLINE_MOCK")
+    mock_tpl = client.get("/api/ingestion/template")
+    assert mock_tpl.status_code == 200
+    assert "@minh_quant" in mock_tpl.text
+    assert "genai_fund_sample_candidates_mock.csv" in mock_tpl.headers.get("content-disposition", "")
+
+    monkeypatch.setattr(settings, "RUNTIME_PROFILE", "LIVE_PRODUCTION")
+    live_tpl = client.get("/api/ingestion/template")
+    assert live_tpl.status_code == 200
+    assert live_tpl.text == "handle,segment\n"
+    assert "@minh_quant" not in live_tpl.text
+    assert "genai_fund_live_x_template.csv" in live_tpl.headers.get("content-disposition", "")
+
+    live_manual_tpl = client.get("/api/ingestion/template?verify_with_x_api=false")
+    assert live_manual_tpl.status_code == 200
+    assert live_manual_tpl.text == "handle,name,location,bio,recent_tweets,can_dm,segment\n"
+    assert "genai_fund_live_manual_template.csv" in live_manual_tpl.headers.get("content-disposition", "")
+
     app.dependency_overrides.clear()
 
 

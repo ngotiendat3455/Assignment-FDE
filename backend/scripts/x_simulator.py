@@ -273,6 +273,65 @@ def simulator_health() -> Dict[str, Any]:
     }
 
 
+@simulator_app.get("/2/users/by")
+def sim_get_users_by_usernames(
+    usernames: str = Query(..., description="Comma-separated usernames (up to 100)"),
+    authorization: Optional[str] = Header(default=None),
+) -> JSONResponse:
+    auth_err, _ = _validate_auth_header(authorization, require_oauth1=False)
+    if auth_err is not None:
+        return auth_err
+
+    handles = [
+        h.strip().lstrip("@").lower()
+        for h in (usernames or "").split(",")
+        if h.strip().lstrip("@")
+    ][:100]
+    data: List[Dict[str, Any]] = []
+    errors: List[Dict[str, Any]] = []
+
+    import re
+
+    for h in handles:
+        if not re.fullmatch(r"[A-Za-z0-9_]{1,30}", h):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "title": "Invalid Request",
+                    "detail": "One or more parameters to your request was invalid.",
+                },
+            )
+        fault = _check_handle_fault_trigger(h)
+        if fault is not None:
+            if fault.status_code == 404:
+                errors.append(
+                    {
+                        "value": h,
+                        "detail": f"Could not find user with username: [{h}].",
+                        "title": "Not Found Error",
+                    }
+                )
+                continue
+            return fault
+        prof = _resolve_profile_by_handle(h)
+        data.append(
+            {
+                "id": prof["id"],
+                "name": prof["name"],
+                "username": prof["username"],
+                "description": prof["description"],
+                "location": prof["location"],
+                "can_dm": prof["can_dm"],
+                "public_metrics": {"followers_count": 1240},
+            }
+        )
+
+    body: Dict[str, Any] = {"data": data}
+    if errors:
+        body["errors"] = errors
+    return JSONResponse(status_code=200, content=body)
+
+
 @simulator_app.get("/2/users/by/username/{username}")
 def sim_get_user_by_username(
     username: str,
@@ -390,6 +449,28 @@ async def sim_create_dm(
 @simulator_app.get("/2/dm_events/sent")
 def sim_list_sent_dms() -> Dict[str, Any]:
     return {"count": len(_DM_LEDGER), "events": list(_DM_LEDGER)}
+
+
+@simulator_app.get("/2/dm_events")
+def sim_get_dm_events(
+    authorization: Optional[str] = Header(default=None),
+) -> JSONResponse:
+    auth_err, _ = _validate_auth_header(authorization, require_oauth1=True)
+    if auth_err is not None:
+        return auth_err
+    return JSONResponse(status_code=200, content={"data": list(_DM_LEDGER), "meta": {"result_count": len(_DM_LEDGER)}})
+
+
+@simulator_app.get("/2/dm_conversations/with/{participant_id}/dm_events")
+def sim_get_conversation_dm_events(
+    participant_id: str,
+    authorization: Optional[str] = Header(default=None),
+) -> JSONResponse:
+    auth_err, _ = _validate_auth_header(authorization, require_oauth1=True)
+    if auth_err is not None:
+        return auth_err
+    events = [ev for ev in _DM_LEDGER if str(ev.get("participant_id")) == str(participant_id)]
+    return JSONResponse(status_code=200, content={"data": events, "meta": {"result_count": len(events)}})
 
 
 def main() -> None:
