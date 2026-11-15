@@ -1,7 +1,7 @@
 # Coding Standards
 # Coding Standards & Engineering Discipline
 
-This document outlines the architectural patterns, security requirements, and code hygiene rules for the **GenAI Fund FDE Outreach System**. Every module and test must adhere to these standards.
+This document outlines the architectural patterns, security requirements, and code hygiene rules for the **X-Scout AI FDE Outreach System**. Every module and test must adhere to these standards.
 
 ---
 

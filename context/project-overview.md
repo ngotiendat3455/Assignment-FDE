@@ -1,7 +1,7 @@
-# Project Overview: GenAI Fund – Autonomous Scouting & Personalized Outreach Tool
+# Project Overview: X-Scout AI – Autonomous Scouting & Personalized Outreach Tool
 
 ## 1. Executive Summary & Problem Context
-**GenAI Fund** is a venture capital fund dedicated to building and backing the Artificial Intelligence and Robotics ecosystem across Southeast Asia (SEA). 
+**X-Scout AI** is a venture capital fund dedicated to building and backing the Artificial Intelligence and Robotics ecosystem across Southeast Asia (SEA). 
 
 ### The Core Problem:
 - Discovering high-signal AI and robotics founders, researchers, and builders on **X (formerly Twitter)** requires dozens of hours of manual scouting each week.
@@ -10,7 +10,7 @@
 - Running outreach directly on X exposes accounts to strict rate limits, closed DMs, and communication blind spots (failing to track who replied and who needs immediate attention).
 
 ### The Objective:
-Build a **production-ready, reliable working prototype** that enables the GenAI Fund team to:
+Build a **production-ready, reliable working prototype** that enables the X-Scout AI team to:
 1. Ingest target candidates from seed CSV files or live X handles/queries.
 2. Leverage a real Large Language Model (LLM) to evaluate fit (Fit Score 1–4) and explain *why they fit* with concrete evidence citations.
 3. Generate grounded, warm, peer-to-peer introductory DMs referencing verifiable work without inventing familiarity.
@@ -48,7 +48,7 @@ These conditions are hard constraints that must never be broken:
    - No direct message can ever be dispatched without explicit human `Approve` action.
    - API keys and secret tokens must never leak to the client-side browser or be checked into version control.
 6. **Data Pack Calibration:**
-   - The system must seamlessly load `genai-outreach-pack` and provide a calibration view comparing AI scoring against GenAI Fund Partner reference scores.
+   - The system must seamlessly load `genai-outreach-pack` and provide a calibration view comparing AI scoring against X-Scout AI Partner reference scores.
 7. **Clean Machine Runnability:**
    - The application must boot and pass smoke tests on a clean machine in < 15 minutes using clear instructions in `README.md`.
 
@@ -102,4 +102,4 @@ These conditions are hard constraints that must never be broken:
 - **Backend:** Python 3.14 + FastAPI + SQLite (persistent file `outreach.db`) + SQLAlchemy ORM + Pydantic v2.
 - **LLM Integration:** Google Gemini API (`gemini-1.5-flash` or `gemini-2.0-flash`) / OpenAI API (`gpt-4o-mini`) via standard REST / SDK with structured JSON output enforcement.
 - **Frontend:** Modern, responsive Single-Page Dashboard (Tailwind CSS, clean modular architecture, Lucide icons, fast real-time polling/queue updates).
-- **Authentication:** Lightweight JWT authentication with persistent user accounts and a 1-click Demo Login for GenAI Fund Partners.
+- **Authentication:** Lightweight JWT authentication with persistent user accounts and a 1-click Demo Login for X-Scout AI Partners.

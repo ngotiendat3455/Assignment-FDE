@@ -6,7 +6,7 @@
 ## 1. Design Thinking: Thấu cảm, Định nghĩa & Ý tưởng hóa (Empathize, Define, Ideate)
 
 ### A. Empathize (Thấu cảm người dùng)
-1. **Investment Associate / Partner tại GenAI Fund (Người dùng vận hành):**
+1. **Investment Associate / Partner tại X-Scout AI (Người dùng vận hành):**
    - *Nhu cầu nhìn tổng quan:* Muốn có một bảng danh sách dạng Table rộng rãi, thoáng đãng để quét nhanh toàn bộ ứng viên, lọc theo điểm số và tìm kiếm tức thì.
    - *Nhu cầu không gian tập trung (Deep Focus):* Khi đọc bằng chứng và sửa câu chữ tin nhắn DM, họ cần một khung làm việc rộng rãi, không bị gò bó trong một cột nhỏ hẹp bên phải như cách chia đôi màn hình (*split-pane*).
    - *Thao tác nhanh gọn:* Có thể bấm xóa/từ chối ứng viên ngay từ bảng, hoặc mở modal xem chi tiết đầy đủ ngữ cảnh rồi mới bấm duyệt gửi.
@@ -36,7 +36,7 @@
 ---
 
 ## 2. Mục tiêu cốt lõi (Core Purpose)
-Cung cấp cho đội ngũ đầu tư của GenAI Fund một không gian làm việc dạng bảng (Table Workspace) để tìm kiếm, phân loại ứng viên, và một Modal kiểm duyệt chuyên sâu để kiểm chứng bằng chứng thực tế (*Visual Evidence Highlighting*), chỉnh sửa trực tiếp nội dung tin nhắn DM và bấm phê duyệt (*Approve & Send*) hoặc từ chối (*Reject*).
+Cung cấp cho đội ngũ đầu tư của X-Scout AI một không gian làm việc dạng bảng (Table Workspace) để tìm kiếm, phân loại ứng viên, và một Modal kiểm duyệt chuyên sâu để kiểm chứng bằng chứng thực tế (*Visual Evidence Highlighting*), chỉnh sửa trực tiếp nội dung tin nhắn DM và bấm phê duyệt (*Approve & Send*) hoặc từ chối (*Reject*).
 
 ---
 
@@ -84,7 +84,7 @@ Giao diện chính nằm trọn trong Canvas của AppShell, gồm Thanh tìm ki
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ [GenAI Fund Logo] ◀│ 🎯 BÀN DUYỆT ỨNG VIÊN (REVIEW WORKSPACE)             [👤 General Partner ▾]│
+│ [X-Scout AI Logo] ◀│ 🎯 BÀN DUYỆT ỨNG VIÊN (REVIEW WORKSPACE)             [👤 General Partner ▾]│
 ├────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
 │ 🧭 ĐIỀU HƯỚNG       │  ┌──────────────────────────────────────────────────────────────┬──────────┐  │
 │                    │  │ Nhập tên, @handle, bio, từ khóa kỹ thuật...                 │ 🔍 TÌM   │  │
@@ -136,7 +136,7 @@ Khi người dùng bấm vào nút **`[👁️ Xem]`** trên bất kỳ dòng n�
 │  engine for telcos."                             │ │ Hi Minh — saw your recent post on        │ │
 │                                                  │ │ AWQ-W4A8 speculative decoding for L40S    │ │
 │ Lý do AI chấm phù hợp (Why they fit):            │ │ GPUs. We back deep-tech AI infra founders │ │
-│ Founder có sản phẩm kỹ thuật sâu về suy luận LLM │ │ across SEA at GenAI Fund and would love   │ │
+│ Founder có sản phẩm kỹ thuật sâu về suy luận LLM │ │ across SEA at X-Scout AI and would love   │ │
 │ cho hạ tầng viễn thông, triển khai kernel thật.  │ │ to hear how adoption is going.            │ │
 │                                                  │ │                                           │ │
 │ Bài đăng gần nhất & Bằng chứng trích xuất:       │ │ P.S. Next week I'll be in Hanoi!          │ │

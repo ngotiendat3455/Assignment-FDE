@@ -1,4 +1,4 @@
-# GenAI Fund Talent Scout & Outreach Copilot — One-Page Technical Write-Up
+# X-Scout AI Talent Scout & Outreach Copilot — One-Page Technical Write-Up
 
 **Author:** Forward Deployed Engineer (FDE) Candidate  
 **Target Role Context:** Technical Founding Engineer / AI Lead (Robotics & Physical AI Startup, Vietnam — Cohort Batch 01)  
@@ -63,7 +63,7 @@ flowchart LR
 
 ## 3. What Comes Next (Production Scaling Roadmap)
 
-If deployed across all **GenAI Fund** portfolio companies and partner scouts:
+If deployed across all **X-Scout AI** portfolio companies and partner scouts:
 1. **Multi-Channel Fallback Orchestration:** Automatically draft and queue warm intros via **Email (Resend/SendGrid)** or **LinkedIn** whenever a candidate hits `BLOCKED_DM_CLOSED` on X.
 2. **Webhook & Two-Way Inbox Sync:** Subscribe to X Account Activity API webhooks (and Gmail webhooks) to automatically transition candidates from `SENT` $\rightarrow$ `REPLIED` and trigger AI sentiment/intent classification on replies.
 3. **Cross-Source Identity Resolution:** Enrich X handles automatically with GitHub commit graphs, Google Scholar / arXiv citation velocity, and Crunchbase/LinkedIn history via background workers.

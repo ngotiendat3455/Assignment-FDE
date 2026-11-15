@@ -177,7 +177,7 @@ flowchart TD
 │                                                                        │
 │ Nội dung phản hồi của Founder:                                         │
 │ ┌────────────────────────────────────────────────────────────────────┐ │
-│ │ Cảm ơn quỹ GenAI Fund đã để ý! Bên mình vừa raise xong vòng pre-seed│ │
+│ │ Cảm ơn quỹ X-Scout AI đã để ý! Bên mình vừa raise xong vòng pre-seed│ │
 │ │ nhưng đang tìm kiếm đối tác chiến lược về compute GPU cho vòng tới.│ │
 │ │ Sáng thứ Sáu này chúng ta có thể call 15 phút qua Google Meet nhé? │ │
 │ └────────────────────────────────────────────────────────────────────┘ │
@@ -210,7 +210,7 @@ flowchart TD
 │    - Idempotency Hash: `hash_p002_20261112_sent`                     │
 │                                                                       │
 │ 2. [12:45 12/11/2026] 💬 Founder phản hồi qua X DM                     │
-│    - "Cảm ơn quỹ GenAI Fund! Sáng thứ Sáu call Meet 15 phút nhé?"     │
+│    - "Cảm ơn quỹ X-Scout AI! Sáng thứ Sáu call Meet 15 phút nhé?"     │
 │    - Cờ hệ thống: 🚨 NEEDS ATTENTION = TRUE                           │
 │                                                                       │
 │ 3. HÀNH ĐỘNG DÀNH CHO PARTNER:                                        │
@@ -246,7 +246,7 @@ flowchart TD
 │              │ │ P018   │ @ghost_builder│ Sparse Profile   │ 0 / 4   │ 0 / 4      │ ⚠️ Không data    │ Flagged │
 │              │ └─────────────────────────────────────────────────────────────────────────────────────┘ │
 │              │ 💡 Ghi chú đánh giá: Thuật toán AI Scorer đã thể hiện sự tương đồng tuyệt đối với khẩu   │
-│              │ vị đầu tư của GenAI Fund, đặc biệt phòng thủ thành công 100% trước các mẫu prompt lừa. │
+│              │ vị đầu tư của X-Scout AI, đặc biệt phòng thủ thành công 100% trước các mẫu prompt lừa. │
 └──────────────┴─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 

@@ -1,5 +1,5 @@
 # SOURCE OF TRUTH & BẢN ĐÁNH GIÁ QUYẾT ĐỊNH
-## Tuyển dụng: Forward Deployed Engineer (FDE) – GenAI Fund
+## Tuyển dụng: Forward Deployed Engineer (FDE) – X-Scout AI
 **Bài toán:** X (Twitter) Autonomous Scouting & Personalized DM Outreach Tool for SEA AI/Robotics
 
 ---
@@ -9,8 +9,8 @@
 | Hạng mục | Chi tiết | Ghi chú quan trọng |
 | :--- | :--- | :--- |
 | **Vị trí** | Forward Deployed Engineer (FDE) | Yêu cầu tư duy sản phẩm, tốc độ hiện thực hóa (execution), xử lý giới hạn thực tế (trade-offs). |
-| **Công ty** | GenAI Fund | Quỹ đầu tư mạo hiểm tập trung vào Trí tuệ nhân tạo. |
-| **Thời hạn xác nhận** | **Trước 12:00 trưa, Thứ Sáu 13/11/2026 (GMT+7)** | Phải gửi email xác nhận tham gia về `hr@genaifund.ai`. |
+| **Công ty** | X-Scout AI | Quỹ đầu tư mạo hiểm tập trung vào Trí tuệ nhân tạo. |
+| **Thời hạn xác nhận** | **Trước 12:00 trưa, Thứ Sáu 13/11/2026 (GMT+7)** | Phải gửi email xác nhận tham gia về `hr@xscout.local`. |
 | **Thời hạn nộp bài** | **Trước 12:00 trưa, Thứ Ba 17/11/2026 (GMT+7)** | Tổng quỹ thời gian từ lúc xác nhận: **khoảng 96 giờ (~4 ngày)** bao gồm 2 ngày cuối tuần. |
 | **Sản phẩm bàn giao** | 1. Working Prototype (URL hoặc Repo cài đặt < 15 phút)<br>2. Video demo (3–5 phút)<br>3. One-page write-up | Cả 3 cấu phần đều mang tính bắt buộc (Mandatory). |
 
@@ -99,7 +99,7 @@ Yêu cầu nhấn mạnh phương châm: **"Narrow & Reliable" (Hẹp nhưng c�
   * Định nghĩa tiêu chí đánh giá rất rõ ràng: không yêu cầu UI màu mè, tập trung vào logic, rate limit, dedup, error handling và trade-off write-up.
   * Phản ánh đúng 100% công việc của một FDE: tiếp nhận bài toán nghiệp vụ chưa rõ ràng $\rightarrow$ làm chủ công nghệ $\rightarrow$ ra mắt prototype chạy được trong thời gian ngắn $\rightarrow$ giải thích trade-offs.
 * **Rủi ro khai thác ý tưởng (Spec Work / Free Labor Risk):**
-  * **Mức độ: Trung bình - Thấp.** Tool tìm kiếm founder/deal flow cho VC là bài toán phổ biến, đã có hàng trăm open-source repo tương tự. GenAI Fund không cần bạn code 4 ngày để lấy cắp một con bot gửi DM; họ đang kiểm tra **"System Thinking"** và **"Execution Speed"** của bạn.
+  * **Mức độ: Trung bình - Thấp.** Tool tìm kiếm founder/deal flow cho VC là bài toán phổ biến, đã có hàng trăm open-source repo tương tự. X-Scout AI không cần bạn code 4 ngày để lấy cắp một con bot gửi DM; họ đang kiểm tra **"System Thinking"** và **"Execution Speed"** của bạn.
 
 ---
 
@@ -180,9 +180,9 @@ Nếu quyết định tham gia (**GO**), gửi email này trước **12:00 trưa
 
 ```text
 Tiêu đề: [Xác nhận tham gia] FDE Take-home Challenge - [Họ và Tên của bạn]
-Gửi: hr@genaifund.ai
+Gửi: hr@xscout.local
 
-Kính gửi Ban Tuyển dụng GenAI Fund,
+Kính gửi Ban Tuyển dụng X-Scout AI,
 
 Tôi đã nhận được bản mô tả chi tiết cho bài tập thực tế vị trí Forward Deployed Engineer (FDE). 
 

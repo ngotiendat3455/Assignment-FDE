@@ -1,4 +1,4 @@
-# GenAI Fund – Autonomous Scouting & Personalized Outreach System
+# X-Scout AI – Autonomous Scouting & Personalized Outreach System
 
 Hệ thống tìm kiếm, chấm điểm AI (**Tri-Guard**), cá nhân hóa **DM X/Twitter** có **Human-in-the-Loop (HITL)** và **Outreach Ledger** chống gửi trùng lặp, điều phối tập trung qua **3 `RUNTIME_PROFILE`** trên cùng một codebase cho **Local Dev**, **Docker Compose**, và **AWS ECS Fargate (Terraform)**.
 
@@ -125,8 +125,8 @@ cd frontend; npm.cmd run dev
 ```
 
 - Web UI: **`http://localhost:3000/login`**
-  - **Partner (Full quyền):** `partner@genaifund.ai` / `GenAIFund2026!`
-  - **Analyst (Nếu reset kèm `--with-analyst`, để test `/403`):** `analyst@genaifund.ai` / `Analyst2026!`
+  - **Partner (Full quyền):** `partner@xscout.local` / `XScout2026!`
+  - **Analyst (Nếu reset kèm `--with-analyst`, để test `/403`):** `analyst@xscout.local` / `Analyst2026!`
 - Kiểm tra profile đang chạy: **`http://127.0.0.1:8000/api/system/runtime`**
 - Kiểm tra X Simulator `:8099` đang sống: **`http://127.0.0.1:8099/health`** *(hỗ trợ các handle giả lập lỗi `@sim_401`, `@credits_depleted`, `@forbidden_handle`, `@missing_user`, `@rate_limit`)*.
 
@@ -232,13 +232,19 @@ curl.exe http://localhost:8000/api/system/runtime
 # Test bền vững dữ liệu SQLite (/app/data/outreach.db) sau khi nạp Starter Pack & gửi DM:
 docker compose restart backend
 
+# Clear nhanh toàn bộ dữ liệu vận hành (candidates, outreach_ledger, job_queue) nhưng GIỮ LẠI user đăng nhập (không cần down -v):
+docker compose --env-file .env.docker exec backend python -m backend.reset_clean_users --yes
+
+# Nạp lại 20 profiles mẫu + 4 historical ledger records trực tiếp trong Docker:
+docker compose --env-file .env.docker exec backend python -m backend.seed_data
+
 # Dừng container (giữ lại DB volume):
 docker compose --profile prod-sim down
 # Dừng và XÓA SẠCH hoàn toàn volume SQLite cũ để tạo bản build sạch chỉ có 1 User đăng nhập:
 docker compose --env-file .env.docker --profile prod-sim down -v && docker compose --env-file .env.docker up --build -d
 ```
 
-> **Lưu ý về dữ liệu khởi tạo sạch:** Mặc định `AUTO_SEED_LEDGER_BASELINE=False` (trong `.env.docker` và `backend/.env.example`) nên khi dựng container mới (hoặc sau `reset_clean_users.py --yes`), DB **chỉ giữ duy nhất 1 User đăng nhập** (`partner@genaifund.ai`) và `0` candidates / `0` ledger, không còn tự động bơm 4 bản ghi lịch sử `OUT-101..104` lúc vừa mở web. Nếu dựng lại Docker sau khi đã từng test trước đó, hãy chạy `down -v` để xóa named volume `genai_sqlite_data` cũ.
+> **Lưu ý về dữ liệu khởi tạo sạch:** Mặc định `AUTO_SEED_LEDGER_BASELINE=False` (trong `.env.docker` và `backend/.env.example`) nên khi dựng container mới (hoặc sau `reset_clean_users.py --yes`), DB **chỉ giữ duy nhất 1 User đăng nhập** (`partner@xscout.local`) và `0` candidates / `0` ledger, không còn tự động bơm 4 bản ghi lịch sử `OUT-101..104` lúc vừa mở web. Nếu dựng lại Docker sau khi đã từng test trước đó, hãy chạy `down -v` để xóa named volume `genai_sqlite_data` cũ.
 
 ---
 
@@ -251,14 +257,14 @@ Toàn bộ mã nguồn IaC đặt tại [`infra/terraform/`](infra/terraform/) (
 | Thông số Hạ tầng & Bảo mật | `dev` ([`dev.tfvars`](infra/terraform/environments/dev.tfvars)) | `staging` ([`staging.tfvars`](infra/terraform/environments/staging.tfvars)) | `prod` ([`prod.tfvars`](infra/terraform/environments/prod.tfvars)) |
 | :--- | :--- | :--- | :--- |
 | **`runtime_profile`** | **`OFFLINE_MOCK`** | **`HYBRID_AUTO`** | **`LIVE_PRODUCTION`** |
-| **Domain mặc định** | `dev.scout.genaifund.ai` | `staging.scout.genaifund.ai` | `scout.genaifund.ai` *(bắt buộc điền `acm_certificate_arn` cho HTTPS :443)* |
+| **Domain mặc định** | `dev.scout.xscout.local` | `staging.scout.xscout.local` | `scout.xscout.local` *(bắt buộc điền `acm_certificate_arn` cho HTTPS :443)* |
 | **ECS Fargate Sizing** | FE `0.25 vCPU / 512MB` (Spot)<br>BE `0.25 vCPU / 512MB` (`1` task) | FE `0.25 vCPU / 512MB`<br>BE `0.5 vCPU / 1GB` (`1` task) | FE `0.5 vCPU / 1GB` (`2` tasks)<br>BE `1 vCPU / 2GB` (`2` tasks + CPU AutoScaling) |
 | **Database** | SQLite WAL trên **Amazon EFS** *(Terraform tự khóa `1` backend writer)* | SQLite WAL trên **Amazon EFS** *(Terraform tự khóa `1` backend writer)* | **Amazon RDS PostgreSQL 16** Multi-AZ (`db.t4g.small`, backup 14 ngày, deletion protection) |
 | **X Simulator nội bộ** | **`enable_x_simulator = true`** (`http://x-simulator.genai-fde-dev.local:8099/2`) | **`enable_x_simulator = true`** *(dự phòng qua Cloud Map DNS)* | **`enable_x_simulator = false`** *(tắt hoàn toàn)* |
 | **Chính sách gửi DM** | `DISPATCH_MODE=SANDBOX` cứng | `DISPATCH_MODE=SANDBOX` + `LIVE_X_DRY_RUN=true` + `ALLOWED_TEST_HANDLES` | `DISPATCH_MODE=LIVE_X` + `LIVE_X_DRY_RUN=false` + `ALLOWED_TEST_HANDLES` |
 | **Session & Monitoring** | JWT `10080m` (7d), Log `7` ngày | JWT `1440m` (24h), Log `14` ngày, Alarms `true` | JWT `480m` (8h), Log `90` ngày, Alarms `true` |
 
-> **Chú ý cho `staging` (`HYBRID_AUTO`):** `HYBRID_AUTO` cho phép chạy ngay cả khi chưa nạp đủ mọi API key. Trước khi promote lên `prod`, hãy gọi `GET https://staging.scout.genaifund.ai/api/system/runtime` để xác nhận `"live_production_readiness": { "ready": true }` (hoặc test 1 vòng với `RUNTIME_PROFILE=LIVE_PRODUCTION`) nhằm chắc chắn không tồn tại silent fallback.
+> **Chú ý cho `staging` (`HYBRID_AUTO`):** `HYBRID_AUTO` cho phép chạy ngay cả khi chưa nạp đủ mọi API key. Trước khi promote lên `prod`, hãy gọi `GET https://staging.scout.xscout.local/api/system/runtime` để xác nhận `"live_production_readiness": { "ready": true }` (hoặc test 1 vòng với `RUNTIME_PROFILE=LIVE_PRODUCTION`) nhằm chắc chắn không tồn tại silent fallback.
 
 ### 4.2. Quy trình Deploy AWS từng bước cho môi trường mục tiêu (PowerShell, `<env>` = `dev` | `staging` | `prod`)
 
@@ -309,7 +315,7 @@ docker push "${FE_REPO}:latest"
 cd d:\AssignmentFDE\infra\terraform
 terraform apply -var-file="environments/dev.tfvars"   # hoặc staging.tfvars / prod.tfvars
 ```
-> **Về tên miền & chi phí ở `dev`/`staging`:** Output `app_url = "http://dev.scout.genaifund.ai"` chỉ là chuỗi cấu hình/CORS và **không tạo Route53 hay tốn tiền mua domain**. Sau khi `apply` xong, truy cập trực tiếp bằng **`http://<alb_dns_name>`** (miễn phí từ AWS ALB). Chỉ khi chạy `prod` HTTPS thật mới cần gắn `acm_certificate_arn` và trỏ domain.
+> **Về tên miền & chi phí ở `dev`/`staging`:** Output `app_url = "http://dev.scout.xscout.local"` chỉ là chuỗi cấu hình/CORS và **không tạo Route53 hay tốn tiền mua domain**. Sau khi `apply` xong, truy cập trực tiếp bằng **`http://<alb_dns_name>`** (miễn phí từ AWS ALB). Chỉ khi chạy `prod` HTTPS thật mới cần gắn `acm_certificate_arn` và trỏ domain.
 
 **Bước 4 — Nạp Secrets vào AWS Secrets Manager (`<env>/genai-fde/app-secrets`):**
 - Với **`dev` (`OFFLINE_MOCK`)**: **không cần chạy bước này** (Terraform đã tự sinh sẵn `SECRET_KEY` ngẫu nhiên 48 ký tự).
@@ -350,15 +356,25 @@ terraform destroy -var-file="environments/dev.tfvars"
 
 ### 5.1. Reset Dữ liệu Sạch Chỉ Giữ User Đăng nhập *(Khuyên dùng trước Manual Check)*
 
+**Chạy Local:**
 ```powershell
-# Xóa job_queue, outreach_ledger, candidates; giữ Partner (partner@genaifund.ai / GenAIFund2026!)
+# Xóa job_queue, outreach_ledger, candidates; giữ Partner (partner@xscout.local / XScout2026!)
 python -m backend.reset_clean_users --yes
 
-# Giữ Partner + tạo thêm Analyst (analyst@genaifund.ai / Analyst2026!) để test chặn quyền /403
+# Giữ Partner + tạo thêm Analyst (analyst@xscout.local / Analyst2026!) để test chặn quyền /403
 python -m backend.reset_clean_users --yes --with-analyst
 
 # Hoặc nạp sẵn 20 profiles mẫu + 4 historical ledger records:
 python backend/seed_data.py
+```
+
+**Chạy trực tiếp trên Docker (`genai-backend`):**
+```powershell
+# Xóa sạch toàn bộ dữ liệu vận hành, chỉ giữ lại User đăng nhập:
+docker compose --env-file .env.docker exec backend python -m backend.reset_clean_users --yes
+
+# Nạp lại 20 profiles mẫu + 4 historical ledger records trong Docker:
+docker compose --env-file .env.docker exec backend python -m backend.seed_data
 ```
 
 ### 5.2. Kiểm chứng Live AI & Live X Key (`verify_live_keys.py`)

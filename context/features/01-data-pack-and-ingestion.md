@@ -7,9 +7,9 @@
 
 ### A. Empathize (Thấu cảm người dùng)
 Hệ thống Ingestion phục vụ 2 nhóm người dùng với nhu cầu và áp lực rất khác biệt:
-1. **Investment Associate / Scout tại GenAI Fund (Người dùng vận hành):**
+1. **Investment Associate / Scout tại X-Scout AI (Người dùng vận hành):**
    - *Hành vi:* Thường xuyên lùng sục trên X, lưu danh sách founder vào Google Sheets hoặc CSV xuất từ nhiều nguồn.
-   - *Nỗi sợ lớn nhất:* **Nhắn tin nhầm hoặc nhắn tin trùng (Double-messaging)** cho cùng một founder giữa các thành viên trong quỹ, gây tổn hại hình ảnh chuyên nghiệp của GenAI Fund.
+   - *Nỗi sợ lớn nhất:* **Nhắn tin nhầm hoặc nhắn tin trùng (Double-messaging)** cho cùng một founder giữa các thành viên trong quỹ, gây tổn hại hình ảnh chuyên nghiệp của X-Scout AI.
    - *Sự ức chế:* File CSV thường lộn xộn: handle có lúc có `@` có lúc không, viết hoa/thường lẫn lộn, thừa khoảng trắng. Họ cần hệ thống tự làm sạch thay vì báo lỗi bắt sửa tay.
 2. **Hiring Committee / Giám khảo bài test (Người đánh giá):**
    - *Áp lực:* Chấm bài trên máy tính mới (*clean machine*), thời gian kiểm thử chỉ **dưới 15 phút**.
@@ -18,7 +18,7 @@ Hệ thống Ingestion phục vụ 2 nhóm người dùng với nhu cầu và á
 
 ### B. Define (Định nghĩa bài toán & HMW)
 - **Tuyên ngôn vấn đề (POV):**
-  > *"Đội ngũ đầu tư GenAI Fund và Giám khảo bài test cần một cơ chế nạp ứng viên hoàn toàn 0-ma sát, tự chuẩn hóa dữ liệu và chặn trùng lặp ngay tại cửa ngõ, bởi vì dữ liệu sourcing từ X luôn phân mảnh, lộn xộn, và nếu để lọt dữ liệu bẩn vào trong thì AI phía sau sẽ bị ô nhiễm và gây rủi ro thương hiệu cho quỹ."*
+  > *"Đội ngũ đầu tư X-Scout AI và Giám khảo bài test cần một cơ chế nạp ứng viên hoàn toàn 0-ma sát, tự chuẩn hóa dữ liệu và chặn trùng lặp ngay tại cửa ngõ, bởi vì dữ liệu sourcing từ X luôn phân mảnh, lộn xộn, và nếu để lọt dữ liệu bẩn vào trong thì AI phía sau sẽ bị ô nhiễm và gây rủi ro thương hiệu cho quỹ."*
 - **4 Câu hỏi cốt lõi (How Might We):**
   - **HMW-1 (Zero Friction for Reviewer):** Làm thế nào để người chấm nạp ngay 20 hồ sơ AI/Robotics thực tế tại ĐNÁ trong < 3 giây mà không cần trả tiền mua X API?
   - **HMW-2 (Fault-Tolerant Ingestion):** Làm thế nào để tiếp nhận mọi file CSV dù định dạng lộn xộn mà không bao giờ crash hệ thống?
@@ -137,7 +137,7 @@ Toàn bộ các Wireframe dưới đây được đặt gọn gàng trong **Khun
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ [GenAI Fund Logo] ◀│ 📥 NẠP ỨNG VIÊN (CANDIDATE INGESTION)                 [👤 General Partner ▾]│
+│ [X-Scout AI Logo] ◀│ 📥 NẠP ỨNG VIÊN (CANDIDATE INGESTION)                 [👤 General Partner ▾]│
 ├────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
 │ 🧭 ĐIỀU HƯỚNG       │  ┌───────────────────────────────────────────────────────────────────────┐  │
 │                    │  │ [⚡ 1-Click Seed Pack (Đang chọn)]   [📁 Tải lên CSV]   [🔍 Tra cứu Live X]│  │
@@ -185,7 +185,7 @@ Toàn bộ các Wireframe dưới đây được đặt gọn gàng trong **Khun
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ [GenAI Fund Logo] ◀│ 📥 NẠP ỨNG VIÊN (CANDIDATE INGESTION)                 [👤 General Partner ▾]│
+│ [X-Scout AI Logo] ◀│ 📥 NẠP ỨNG VIÊN (CANDIDATE INGESTION)                 [👤 General Partner ▾]│
 ├────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
 │ 🧭 ĐIỀU HƯỚNG       │  ┌───────────────────────────────────────────────────────────────────────┐  │
 │                    │  │ [⚡ 1-Click Seed Pack]   [📁 Tải lên CSV (Đang chọn)]   [🔍 Tra cứu Live X]│  │
@@ -224,7 +224,7 @@ Toàn bộ các Wireframe dưới đây được đặt gọn gàng trong **Khun
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ [GenAI Fund Logo] ◀│ 📥 NẠP ỨNG VIÊN (CANDIDATE INGESTION)                 [👤 General Partner ▾]│
+│ [X-Scout AI Logo] ◀│ 📥 NẠP ỨNG VIÊN (CANDIDATE INGESTION)                 [👤 General Partner ▾]│
 ├────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
 │ 🧭 ĐIỀU HƯỚNG       │  ┌───────────────────────────────────────────────────────────────────────┐  │
 │                    │  │ [⚡ 1-Click Seed Pack]   [📁 Tải lên CSV]   [🔍 Tra cứu Live X (Đang chọn)]│  │
@@ -259,7 +259,7 @@ Toàn bộ các Wireframe dưới đây được đặt gọn gàng trong **Khun
 ---
 
 ## 5. Mục tiêu cốt lõi (Core Purpose)
-Cho phép đội ngũ GenAI Fund nạp danh sách ứng viên mục tiêu từ tệp CSV chuẩn hóa (`handle`, `name`, `bio`, `recent_tweets`) hoặc tra cứu trực tiếp tài khoản X (Live Handle Lookup), tự động chuẩn hóa dữ liệu và đưa vào hệ thống với tính toàn vẹn cao nhất.
+Cho phép đội ngũ X-Scout AI nạp danh sách ứng viên mục tiêu từ tệp CSV chuẩn hóa (`handle`, `name`, `bio`, `recent_tweets`) hoặc tra cứu trực tiếp tài khoản X (Live Handle Lookup), tự động chuẩn hóa dữ liệu và đưa vào hệ thống với tính toàn vẹn cao nhất.
 
 ---
 

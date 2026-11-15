@@ -1,11 +1,11 @@
 # Work Breakdown Structure (WBS) & Đánh giá Phân tích Hệ thống
-*(GenAI Fund – FDE Take-Home Assignment)*
+*(X-Scout AI – FDE Take-Home Assignment)*
 
 ---
 
 ## Phần 1: Đánh giá mức độ đầy đủ của Phân tích hiện tại ("Phần phân tích đã đủ chưa?")
 
-Dựa trên **Source of Truth**, **Requirement Specification**, và **Golden Flow 6 bước** bạn vừa chốt, phần phân tích cốt lõi đã đạt **~90% độ chín**. Tuy nhiên, để đảm bảo không bị hổng bất kỳ tiêu chí chấm điểm nào của GenAI Fund, có **4 điểm bổ sung quan trọng** cần khóa chặt vào 6 task của bạn:
+Dựa trên **Source of Truth**, **Requirement Specification**, và **Golden Flow 6 bước** bạn vừa chốt, phần phân tích cốt lõi đã đạt **~90% độ chín**. Tuy nhiên, để đảm bảo không bị hổng bất kỳ tiêu chí chấm điểm nào của X-Scout AI, có **4 điểm bổ sung quan trọng** cần khóa chặt vào 6 task của bạn:
 
 1. **Chuẩn hóa Input CSV song song với Live X Lookup (Task 1):**
    - Trong Golden Flow, bước 1 là nạp file CSV (`handle`, `name`, `bio`, `recent_tweets`). Tôi đã tạo thêm file chuẩn [`genai-outreach-pack/candidates_seed.csv`](file:///d:/AssignmentFDE/genai-outreach-pack/candidates_seed.csv) chứa đúng các cột này (kèm `x_user_id`, `can_dm`, `case_type`) để bạn có thể kiểm tra ngay lập tức.
@@ -20,7 +20,7 @@ Dựa trên **Source of Truth**, **Requirement Specification**, và **Golden Flo
 
 3. **Cơ chế Login / Register nhanh gọn cho Giám khảo (Task 3):**
    - Có đầy đủ chức năng **Login / Register** (JWT / Session) để phân quyền và lưu vết kiểm duyệt (`reviewed_by`, `sent_by`).
-   - **Lưu ý UX cho người chấm:** Vì GenAI Fund yêu cầu chạy thử được ngay trong < 15 phút, tại màn hình Login cần có nút **"1-Click Demo Login (Partner @ GenAI Fund)"** hoặc điền sẵn tài khoản mặc định được seed tự động khi khởi tạo DB để giám khảo không mất công tự tạo tài khoản mới nếu muốn vào thẳng.
+   - **Lưu ý UX cho người chấm:** Vì X-Scout AI yêu cầu chạy thử được ngay trong < 15 phút, tại màn hình Login cần có nút **"1-Click Demo Login (Partner @ X-Scout AI)"** hoặc điền sẵn tài khoản mặc định được seed tự động khi khởi tạo DB để giám khảo không mất công tự tạo tài khoản mới nếu muốn vào thẳng.
 
 4. **Task 7 bổ sung (Testing, README < 15p & Write-up 1 trang):**
    - Ngoài 6 task kỹ thuật bạn nêu, đề bài bắt buộc có **1-page write-up** và **README chạy dưới 15 phút**, nên cần đưa thành **Task 7** trong WBS để quản lý tiến độ.
@@ -109,8 +109,8 @@ Sử dụng **SQLite (lưu file bền vững `outreach.db`) + SQLAlchemy / SQLMo
   - Mã hóa mật khẩu (`bcrypt` / `passlib`), cấp JWT token.
   - Middleware bảo vệ toàn bộ các API nghiệp vụ (không đăng nhập không thể xem danh sách ứng viên, điểm số hay bấm gửi DM).
 - **3.2. Tự động tạo Tài khoản Mẫu & Giao diện Đăng nhập:**
-  - Seed sẵn tài khoản `partner@genaifund.ai` / `GenAIFund2026!`.
-  - Màn hình Login/Register hiện đại, có nút **"Quick Login as GenAI Fund Partner"** để ban giám khảo test trong 1 giây.
+  - Seed sẵn tài khoản `partner@xscout.local` / `XScout2026!`.
+  - Màn hình Login/Register hiện đại, có nút **"Quick Login as X-Scout AI Partner"** để ban giám khảo test trong 1 giây.
 
 #### Task 4: Hệ thống Hàng đợi Kép (Queue Đồng bộ AI & Queue Gửi tin)
 - **4.1. Queue 1 – Đồng bộ & Chấm điểm AI (`AI_EVALUATE` Worker):**
@@ -130,7 +130,7 @@ Sử dụng **SQLite (lưu file bền vững `outreach.db`) + SQLAlchemy / SQLMo
 
 #### Task 5: Màn hình Đánh giá Ứng viên, Soạn & Gửi tin nhắn (Review & Outreach Workspace)
 - **5.1. Thanh công cụ Nạp dữ liệu & Trạng thái Hàng đợi:**
-  - Nút **"Upload CSV"** (nhận mọi file CSV có cột `handle, name, bio, recent_tweets`) + Nút **"Load GenAI Fund SEA Pack (20 Profiles)"** + Ô **"Add Live X Handle"**.
+  - Nút **"Upload CSV"** (nhận mọi file CSV có cột `handle, name, bio, recent_tweets`) + Nút **"Load X-Scout AI SEA Pack (20 Profiles)"** + Ô **"Add Live X Handle"**.
   - Thanh tiến trình trực tiếp (Real-time Queue Status): Hiển thị số hồ sơ đang `QUEUED_FOR_AI`, đã `PENDING_REVIEW`, hoặc bị `AI_FAILED` (kèm nút **Retry Failed Jobs**).
 - **5.2. Bộ lọc & Danh sách Ứng viên (Candidate List):**
   - Các tab lọc nhanh: **Pending Review (Matched)** | **All Pending** | **Low Fit / Noise** | **Needs Human / Blocked** | **Already Contacted**.

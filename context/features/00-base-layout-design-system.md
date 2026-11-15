@@ -5,7 +5,7 @@
 
 ## 1. Mục tiêu & Tầm nhìn (Purpose & Vision)
 
-Tài liệu này định nghĩa **Hệ thống Thiết kế Nguyên tử (Atomic Design System)**, **Bảng Mã màu Semantic (Design Tokens với Tailwind CSS)**, **Khung Giao diện Khung vỏ Ứng dụng (AppShell with Sidebar Layout)**, **Bộ điều phối Đa ngôn ngữ (i18n)**, **Bộ tinh chỉnh Breakpoint Responsive**, và **Hệ thống Màn hình Báo lỗi (401, 403, 500, Error Boundary)** dùng chung cho toàn bộ các màn hình nghiệp vụ của hệ thống GenAI Fund Autonomous Scouting:
+Tài liệu này định nghĩa **Hệ thống Thiết kế Nguyên tử (Atomic Design System)**, **Bảng Mã màu Semantic (Design Tokens với Tailwind CSS)**, **Khung Giao diện Khung vỏ Ứng dụng (AppShell with Sidebar Layout)**, **Bộ điều phối Đa ngôn ngữ (i18n)**, **Bộ tinh chỉnh Breakpoint Responsive**, và **Hệ thống Màn hình Báo lỗi (401, 403, 500, Error Boundary)** dùng chung cho toàn bộ các màn hình nghiệp vụ của hệ thống X-Scout AI Autonomous Scouting:
 - **Module 01:** Thu thập & Nạp dữ liệu ([01-data-pack-and-ingestion.md](file:///d:/AssignmentFDE/context/features/01-data-pack-and-ingestion.md))
 - **Module 05:** Bàn làm việc Kiểm duyệt HITL & Soạn thảo DM ([05-hitl-review-and-composer-ui.md](file:///d:/AssignmentFDE/context/features/05-hitl-review-and-composer-ui.md))
 - **Module 06:** Sổ cái Chiến dịch, CRM Theo dõi & Đối chiếu Điểm chuẩn ([06-outreach-ledger-and-dashboard.md](file:///d:/AssignmentFDE/context/features/06-outreach-ledger-and-dashboard.md))
@@ -515,7 +515,7 @@ Top Header được chuẩn hóa tuyệt đối:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ [GenAI Fund Logo] ◀│ 🎯 BÀN DUYỆT ỨNG VIÊN (REVIEW WORKSPACE)             [👤 General Partner ▾]│
+│ [X-Scout AI Logo] ◀│ 🎯 BÀN DUYỆT ỨNG VIÊN (REVIEW WORKSPACE)             [👤 General Partner ▾]│
 │                    │                                                      ┌───────────────────┐ │
 │                    │                                                      │ 🌐 Ngôn ngữ: EN/VI│ │
 │                    │                                                      │ 🚪 Đăng xuất      │ │

@@ -18,7 +18,7 @@
 - **Tuyên ngôn vấn đề (POV):**
   > *"Hệ thống cần cơ chế xác thực bảo mật chuẩn công nghiệp để phân quyền và bảo vệ dữ liệu nhạy cảm, đồng thời phải cung cấp trải nghiệm đăng nhập 0-ma sát bằng thông tin tài khoản viết sẵn (pre-filled credentials) để người đánh giá kiểm thử tức thì chỉ với một cú click chuột."*
 - **3 Câu hỏi cốt lõi (How Might We):**
-  - **HMW-1 (Zero Friction for Reviewer):** Làm thế nào để người chấm bài vào ngay Dashboard với tư cách GenAI Fund Partner chỉ bằng 1 cú click mà không phải nhớ hay gõ bất kỳ ký tự nào?
+  - **HMW-1 (Zero Friction for Reviewer):** Làm thế nào để người chấm bài vào ngay Dashboard với tư cách X-Scout AI Partner chỉ bằng 1 cú click mà không phải nhớ hay gõ bất kỳ ký tự nào?
   - **HMW-2 (Bulletproof API Security & Anti-XSS):** Làm thế nào để bảo vệ token an toàn tuyệt đối trước các nguy cơ tấn công XSS mà vẫn tương thích hoàn hảo giữa Next.js và FastAPI?
   - **HMW-3 (Secret Hygiene):** Làm thế nào để các API key (Gemini, X Token) tuyệt đối không bao giờ rò rỉ ra trình duyệt phía client?
 
@@ -27,7 +27,7 @@
    - Lưu trữ JWT trong `httpOnly Cookie` (`session_token`), ngăn chặn 100% mã độc JavaScript phía trình duyệt đánh cắp token qua XSS.
    - Next.js Server Components (`cookies()`) đọc cookie trên server và chuyển tiếp sang FastAPI dưới dạng header `Authorization: Bearer <jwt>`.
 2. **Màn hình Đăng nhập Điền sẵn Thông tin (Pre-filled Credentials Login):**
-   - Ô Email và Password được điền sẵn tài khoản đối tác hạt giống (`partner@genaifund.ai` / `GenAIFund2026!`). Người dùng chỉ cần nhấn nút `[Đăng nhập]` để vào thẳng hệ thống.
+   - Ô Email và Password được điền sẵn tài khoản đối tác hạt giống (`partner@xscout.local` / `XScout2026!`). Người dùng chỉ cần nhấn nút `[Đăng nhập]` để vào thẳng hệ thống.
 3. **Cơ chế Token Session Thực dụng (7-Day Long-Lived Token):**
    - Cấu hình access token có thời hạn 7 ngày, giúp buổi kiểm thử và demo của ban giám khảo diễn ra mượt mà, không bao giờ bị gián đoạn session.
 4. **Chốt chặn Middleware FastAPI Dependency:**
@@ -78,7 +78,7 @@ graph TD
   - `full_name` (string): Tên hiển thị của đối tác quỹ.
   - `role` (enum: `partner` | `analyst`).
 - **Session & Token Payload (JWT Claims):**
-  - `sub`: User ID hoặc email định danh (`partner@genaifund.ai`).
+  - `sub`: User ID hoặc email định danh (`partner@xscout.local`).
   - `exp`: Timestamp hết hạn (7 ngày kể từ lúc cấp).
   - `role`: Quyền hạn (`partner`).
 - **Cookie Security Attributes:**
@@ -100,7 +100,7 @@ sequenceDiagram
     participant FastAPI as Backend FastAPI (Python)
     participant DB as SQLite (outreach.db)
 
-    User->>NextServer: 1. Truy cập /login (Form có sẵn partner@genaifund.ai)
+    User->>NextServer: 1. Truy cập /login (Form có sẵn partner@xscout.local)
     NextServer-->>User: Hiển thị giao diện đăng nhập
     User->>NextServer: 2. Bấm [ĐĂNG NHẬP (SIGN IN)]
     NextServer->>FastAPI: 3. POST /api/auth/login (email, password)
@@ -136,7 +136,7 @@ Giao diện đăng nhập chuẩn mực và tinh gọn, tài khoản và mật k
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │                                                                                  │
 │                        ┌───────────────────────────────┐                         │
-│                        │       [GenAI Fund Logo]       │                         │
+│                        │       [X-Scout AI Logo]       │                         │
 │                        │   AUTONOMOUS SCOUTING & CRM   │                         │
 │                        └───────────────────────────────┘                         │
 │                                                                                  │
@@ -146,12 +146,12 @@ Giao diện đăng nhập chuẩn mực và tinh gọn, tài khoản và mật k
 │         │                                                             │          │
 │         │  Email:                                                     │          │
 │         │  ┌───────────────────────────────────────────────────────┐  │          │
-│         │  │ partner@genaifund.ai                                  │  │          │
+│         │  │ partner@xscout.local                                  │  │          │
 │         │  └───────────────────────────────────────────────────────┘  │          │
 │         │                                                             │          │
 │         │  Mật khẩu:                                                  │          │
 │         │  ┌───────────────────────────────────────────────────────┐  │          │
-│         │  │ ••••••••••••••• (GenAIFund2026!)                      │  │          │
+│         │  │ ••••••••••••••• (XScout2026!)                      │  │          │
 │         │  └───────────────────────────────────────────────────────┘  │          │
 │         │                                                             │          │
 │         │  [X] Ghi nhớ đăng nhập                                      │          │
@@ -170,7 +170,7 @@ Khi đã đăng nhập thành công vào hệ thống, thanh Header hiển thị
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ [GenAI Fund Logo]                                          [👤 General Partner ▾]│
+│ [X-Scout AI Logo]                                          [👤 General Partner ▾]│
 │                                                            ┌───────────────────┐ │
 │                                                            │  🚪 Đăng xuất     │ │
 │                                                            └───────────────────┘ │
@@ -258,6 +258,6 @@ export async function POST(request: Request) {
 
 ## 8. Kịch bản Kiểm thử & Nghiệm thu (Acceptance Criteria)
 - [ ] **Test Unauthenticated Rejection:** Gọi `GET /api/candidates` mà không truyền Header `Authorization` $\rightarrow$ nhận mã `401 Unauthorized`.
-- [ ] **Test Pre-filled Login:** Mở màn hình Login, bấm nút *"ĐĂNG NHẬP (SIGN IN)"* (khi đã điền sẵn tài khoản `partner@genaifund.ai`) $\rightarrow$ đăng nhập thành công vào Review Workspace với token JWT hợp lệ trong HttpOnly cookie.
+- [ ] **Test Pre-filled Login:** Mở màn hình Login, bấm nút *"ĐĂNG NHẬP (SIGN IN)"* (khi đã điền sẵn tài khoản `partner@xscout.local`) $\rightarrow$ đăng nhập thành công vào Review Workspace với token JWT hợp lệ trong HttpOnly cookie.
 - [ ] **Test Wrong Password:** Thử đăng nhập với mật khẩu sai $\rightarrow$ nhận mã `401 Incorrect email or password`.
 - [ ] **Test Logout:** Bấm nút Đăng xuất $\rightarrow$ cookie `session_token` bị xóa, người dùng được chuyển hướng về `/login`.

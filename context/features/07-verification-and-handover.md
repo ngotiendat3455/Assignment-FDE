@@ -19,7 +19,7 @@
   > *"Hệ thống sau giai đoạn kiểm thử cô lập (Feature 08) cần được kiểm chứng thực tế với Live X & AI API Keys, có công cụ reset dữ liệu sạch chỉ giữ User đăng nhập, có Checklist QA thủ công chuẩn hóa, được đóng gói hoàn chỉnh bằng Docker/Docker Compose và có kiến trúc hạ tầng AWS đa môi trường sẵn sàng vận hành thực tế."*
 - **5 Câu hỏi cốt lõi (How Might We):**
   - **HMW-1 (Live AI & X Verification):** Làm sao test nhanh độ chính xác, chi phí và các chốt chặn an toàn (`P017` Injection, `P018` Sparse, Evidence Grounding, `ALLOWED_TEST_HANDLES`) khi cắm **Live LLM & Live X API Keys** mà không ảnh hưởng bộ regression offline?
-  - **HMW-2 (Clean User-Only Reset):** Làm sao đưa DB về trạng thái trắng hoàn toàn (`0 candidates`, `0 outreach_ledger`, `0 job_queue`) nhưng vẫn giữ nguyên tài khoản đăng nhập (`partner@genaifund.ai`) chỉ bằng một lệnh CLI an toàn?
+  - **HMW-2 (Clean User-Only Reset):** Làm sao đưa DB về trạng thái trắng hoàn toàn (`0 candidates`, `0 outreach_ledger`, `0 job_queue`) nhưng vẫn giữ nguyên tài khoản đăng nhập (`partner@xscout.local`) chỉ bằng một lệnh CLI an toàn?
   - **HMW-3 (Human-Grade Manual QA):** Làm sao hệ thống hóa toàn bộ các ca cần mắt người kiểm tra (UI polish, real key smoke, Docker container restart persistence) thành checklist ngắn gọn, không trùng lặp máy móc?
   - **HMW-4 (BFF-Safe Dockerization):** Làm sao đóng gói Next.js 15 (có Next.js BFF Route `/api/auth/login` + SSR Middleware) và FastAPI SQLite thành 2 Docker image gọn nhẹ, chạy mượt qua `docker compose up` mà không dính lỗi CORS hay cookie `HttpOnly` trên localhost/reverse proxy?
   - **HMW-5 (AWS IaC & Env Isolation):** Nên chọn **Terraform** hay **AWS SAM** cho kiến trúc Next.js BFF + FastAPI + Persistent DB, và phân chia `dev` / `staging` / `prod` thế nào để vừa tối ưu chi phí, vừa tuyệt đối an toàn với `LIVE_X`?
@@ -119,16 +119,16 @@ flowchart LR
      3. `DELETE FROM candidates`
      4. Reset `sqlite_sequence` (nếu dùng SQLite) cho 3 bảng trên để ID sạch sẽ bắt đầu lại từ 1.
    - **Bảo toàn & Đảm bảo bảng `users`:**
-     - **KHÔNG xóa** bảng `users` (giữ nguyên các user đã tạo hoặc gọi `ensure_default_partner_user(db)` để chắc chắn tồn tại `partner@genaifund.ai` / `GenAIFund2026!`).
+     - **KHÔNG xóa** bảng `users` (giữ nguyên các user đã tạo hoặc gọi `ensure_default_partner_user(db)` để chắc chắn tồn tại `partner@xscout.local` / `XScout2026!`).
      - Hỗ trợ cờ tùy chọn:
-       - `--with-analyst`: Tạo/giữ thêm `analyst@genaifund.ai` (role `analyst`) phục vụ test RBAC `/403`.
+       - `--with-analyst`: Tạo/giữ thêm `analyst@xscout.local` (role `analyst`) phục vụ test RBAC `/403`.
        - `--purge-extra-users`: Xóa các user phụ khác nếu muốn chỉ giữ đúng danh sách whitelist mặc định.
        - `--yes` (bắt buộc khi chạy non-interactive/CI; nếu không truyền thì hỏi xác nhận `[y/N]` và in rõ đường dẫn `DATABASE_URL` để tránh xóa nhầm DB prod).
    - **Output xác nhận sau khi reset:**
      ```text
      [CLEAN USER-ONLY RESET COMPLETE]
      • Database:        sqlite:///./outreach.db
-     • Users retained:  1 (partner@genaifund.ai [role=partner])
+     • Users retained:  1 (partner@xscout.local [role=partner])
      • Candidates:      0
      • OutreachLedger:  0
      • JobQueue:        0
@@ -141,7 +141,7 @@ Thực hiện kiểm thử thủ công theo trình tự từ A $\rightarrow$ F t
 #### Nhóm A: Clean Reset, Đăng nhập & Điều hướng UI
 - [ ] **MQ-A1 (Clean DB Check):** Chạy `python -m backend.reset_clean_users --yes` $\rightarrow$ Xác nhận `Users: 1`, `Candidates: 0`, `OutreachLedger: 0`, `JobQueue: 0`.
 - [ ] **MQ-A2 (Login Page Polish):** Mở `http://localhost:3000/login` $\rightarrow$ Xác nhận **không còn** pill `"Reviewer Ready • Pre-filled Partner Account"` và dòng footer bảo mật; nút submit hiển thị gọn `"Sign In"` (EN) / `"Đăng nhập"` (VI).
-- [ ] **MQ-A3 (Empty Workspace & Collapse KPI):** Đăng nhập bằng `partner@genaifund.ai` $\rightarrow$ Vào `/` (`Candidate Review`), xác nhận khối 4 thẻ KPI mặc định **đang thu gọn**, click nút `[Show Metrics]` / `[Hiện thống kê]` mở ra và thu gọn lại mượt mà; bảng hiển thị trạng thái trống sạch sẽ (`0` ứng viên).
+- [ ] **MQ-A3 (Empty Workspace & Collapse KPI):** Đăng nhập bằng `partner@xscout.local` $\rightarrow$ Vào `/` (`Candidate Review`), xác nhận khối 4 thẻ KPI mặc định **đang thu gọn**, click nút `[Show Metrics]` / `[Hiện thống kê]` mở ra và thu gọn lại mượt mà; bảng hiển thị trạng thái trống sạch sẽ (`0` ứng viên).
 - [ ] **MQ-A4 (RBAC `/403` & Session `/401`):** Đăng nhập thử bằng tài khoản `analyst` (nếu tạo với `--with-analyst`) và truy cập `/calibration` $\rightarrow$ Chuyển hướng sang `/403`. Xóa cookie `session_token` hoặc dùng token hết hạn $\rightarrow$ Xác nhận chuyển `/login` hoặc `/401`.
 
 #### Nhóm B: Ingestion 3 Hành trình & Live X Lookup
@@ -233,7 +233,7 @@ Thực hiện kiểm thử thủ công theo trình tự từ A $\rightarrow$ F t
 | Thành phần / Chính sách | `dev` (Development) | `staging` (Pre-Prod / Demo) | `prod` (Production) |
 | :--- | :--- | :--- | :--- |
 | **`RUNTIME_PROFILE` (`RuntimeGateway`)** | **`OFFLINE_MOCK`** *($0 deterministic rubric + internal simulator)* | **`HYBRID_AUTO`** *(Linh hoạt: có AI key gọi thật, X simulator hoặc `LIVE_X_DRY_RUN`; bắt buộc check `/api/system/runtime` trước cutover)* | **`LIVE_PRODUCTION`** *(Strict zero-fallback: lỗi key/OAuth → `AI_FAILED` / `503` ngay)* |
-| **Domain URL** | `https://dev.scout.genaifund.ai` | `https://staging.scout.genaifund.ai` | `https://scout.genaifund.ai` |
+| **Domain URL** | `https://dev.scout.xscout.local` | `https://staging.scout.xscout.local` | `https://scout.xscout.local` |
 | **Terraform Vars** | `environments/dev.tfvars` | `environments/staging.tfvars` | `environments/prod.tfvars` |
 | **ECS Fargate Sizing** | FE: `0.25 vCPU / 512MB`<br>BE: `0.25 vCPU / 512MB` + `x-simulator` *(Service Discovery `.local:8099`)* | FE: `0.25 vCPU / 512MB`<br>BE: `0.5 vCPU / 1GB` *(tuỳ chọn `x-simulator` hoặc Live X)* | FE: `0.5 vCPU / 1GB` (`2` tasks)<br>BE: `0.5–1 vCPU / 2GB` (`2` tasks, AutoScale) |
 | **Database** | SQLite WAL trên Amazon EFS | SQLite WAL trên Amazon EFS (Daily Backup) | **Amazon RDS PostgreSQL 16** (`db.t4g.small` Multi-AZ + Automated Snapshots) |
@@ -268,7 +268,7 @@ infra/
 2. **Double Safety on Live Keys:**
    - Không bao giờ commit `.env`, `.env.docker`, API key hay AWS credentials vào Git.
    - `LIVE_X` luôn đi qua kiểm tra `ALLOWED_TEST_HANDLES` ở Backend (`state_machine.py` & `dispatcher.py`) bất kể request UI gửi gì.
-3. **User-Only Reset Safety:** `reset_clean_users.py` chỉ được phép xóa dữ liệu nghiệp vụ (`candidates`, `outreach_ledger`, `job_queue`), tuyệt đối giữ nguyên khả năng đăng nhập cho `partner@genaifund.ai` và yêu cầu `--confirm`/`--yes` khi chạy tự động.
+3. **User-Only Reset Safety:** `reset_clean_users.py` chỉ được phép xóa dữ liệu nghiệp vụ (`candidates`, `outreach_ledger`, `job_queue`), tuyệt đối giữ nguyên khả năng đăng nhập cho `partner@xscout.local` và yêu cầu `--confirm`/`--yes` khi chạy tự động.
 4. **Same-Origin Cookie Continuity:** Khi chạy trong Docker Compose hoặc AWS ALB, luồng `/api/auth/login` (Next.js BFF) set `HttpOnly` cookie và mọi API call sau đó sang FastAPI phải đi qua cùng origin HTTPS/localhost (hoặc `CORS_ORIGINS` khớp chính xác) để không mất phiên đăng nhập.
 
 ---
@@ -291,7 +291,7 @@ infra/
 ---
 
 ## 8. Tiêu chí Nghiệm thu Tổng thể (Acceptance Criteria)
-- [x] Lệnh `python -m backend.reset_clean_users --yes` đưa DB về `0` candidates / `0` ledger / `0` jobs nhưng vẫn đăng nhập `/login` thành công bằng `partner@genaifund.ai`.
+- [x] Lệnh `python -m backend.reset_clean_users --yes` đưa DB về `0` candidates / `0` ledger / `0` jobs nhưng vẫn đăng nhập `/login` thành công bằng `partner@xscout.local`.
 - [ ] Khi cung cấp `GEMINI_API_KEY`/`OPENAI_API_KEY` và `X_BEARER_TOKEN` thật, script `verify_live_keys.py` vượt qua cả L1 (Live LLM + Tri-Guard), L2 (Live X Lookup), và giữ nguyên 100% chốt chặn L3 (`ALLOWED_TEST_HANDLES`). *(Chờ dán API key thật vào `backend/.env`)*
 - [ ] Toàn bộ Checklist Manual QA (Nhóm A $\rightarrow$ F) được thực thi và ký nhận (Sign-off).
 - [ ] `docker compose up --build -d` chạy ổn định cả FE & BE qua browser, dữ liệu bền vững sau `docker compose restart`. *(Đã verify `docker compose config`, chờ bật Docker Desktop daemon để chạy runtime)*

@@ -1,18 +1,18 @@
 # Kỹ sư Forward Deployed (FDE) – Hệ thống Tìm kiếm & Tiếp cận Nhân tài AI/Robotics trên X
-*(GenAI Fund – FDE Take-Home Assignment: Requirements & Specification)*
+*(X-Scout AI – FDE Take-Home Assignment: Requirements & Specification)*
 
 ---
 
 ## 📌 Trước khi bạn bắt đầu (Before you start)
 
-- **Mục tiêu cốt lõi:** Xây dựng một **WORKING PROTOTYPE (Nguyên mẫu hoạt động thực tế)** mà đội ngũ **GenAI Fund** có thể trực tiếp vận hành để tìm kiếm các nhà sáng lập (founders), kỹ sư (builders) và nhà nghiên cứu (researchers) trong lĩnh vực AI và Robotics trên mạng xã hội **X (Twitter)**, thực hiện gửi tin nhắn DM cá nhân hóa ấm áp từ tài khoản của quỹ, và bắt đầu những cuộc hội thoại thực chất.
-- **Bối cảnh GenAI Fund:** Chúng tôi xây dựng hệ sinh thái AI tại Đông Nam Á (Southeast Asia - SEA) và muốn tiếp cận đúng những cá nhân phù hợp ở quy mô lớn mà không làm mất đi sự chân thành, cá nhân hóa (*personal touch*).
+- **Mục tiêu cốt lõi:** Xây dựng một **WORKING PROTOTYPE (Nguyên mẫu hoạt động thực tế)** mà đội ngũ **X-Scout AI** có thể trực tiếp vận hành để tìm kiếm các nhà sáng lập (founders), kỹ sư (builders) và nhà nghiên cứu (researchers) trong lĩnh vực AI và Robotics trên mạng xã hội **X (Twitter)**, thực hiện gửi tin nhắn DM cá nhân hóa ấm áp từ tài khoản của quỹ, và bắt đầu những cuộc hội thoại thực chất.
+- **Bối cảnh X-Scout AI:** Chúng tôi xây dựng hệ sinh thái AI tại Đông Nam Á (Southeast Asia - SEA) và muốn tiếp cận đúng những cá nhân phù hợp ở quy mô lớn mà không làm mất đi sự chân thành, cá nhân hóa (*personal touch*).
 - **Công cụ thực tế, không phải bản vẽ:** Đây phải là một công cụ có thể sử dụng thực sự mà chúng tôi có thể tự chạy khi không có bạn ngồi cạnh — **không phải** bản mockup, slide thuyết trình hay bản demo chỉ để xem.
 - **Triết lý kỹ thuật:** Một phiên bản **hẹp nhưng tin cậy** (*a narrow, reliable version*) tốt hơn nhiều so với một hệ thống dàn trải nhưng dở dang. Sự bóng bẩy về giao diện không thể thay thế cho một công cụ hoạt động chuẩn xác.
 - **Thời hạn quan trọng (Deadlines):**
-  - **Xác nhận tham gia:** Phản hồi về `hr@genaifund.ai` trước **Thứ Sáu, 13/11/2026, 12:00 PM (GMT+7)**.
-  - **Hạn chót nộp bài:** Gửi bài hoàn chỉnh về `hr@genaifund.ai` trước **Thứ Ba, 17/11/2026, 12:00 PM (GMT+7)**.
-  - **Mọi thắc mắc:** Liên hệ `hr@genaifund.ai`.
+  - **Xác nhận tham gia:** Phản hồi về `hr@xscout.local` trước **Thứ Sáu, 13/11/2026, 12:00 PM (GMT+7)**.
+  - **Hạn chót nộp bài:** Gửi bài hoàn chỉnh về `hr@xscout.local` trước **Thứ Ba, 17/11/2026, 12:00 PM (GMT+7)**.
+  - **Mọi thắc mắc:** Liên hệ `hr@xscout.local`.
 
 ---
 
@@ -35,12 +35,12 @@
 
 ## 🎯 Yêu cầu xây dựng (What to build)
 
-Hệ thống phải hoạt động xuyên suốt từ đầu đến cuối (**End-to-End**). **Con người (Investment Team của GenAI Fund) luôn là người kiểm duyệt cuối cùng: Hệ thống tìm kiếm, chấm điểm và gợi ý bản nháp DM — Con người duyệt và quyết định gửi.**
+Hệ thống phải hoạt động xuyên suốt từ đầu đến cuối (**End-to-End**). **Con người (Investment Team của X-Scout AI) luôn là người kiểm duyệt cuối cùng: Hệ thống tìm kiếm, chấm điểm và gợi ý bản nháp DM — Con người duyệt và quyết định gửi.**
 
 Bạn cần xây dựng 4 phân hệ chính:
 
 ### 1. Phân hệ Khám phá & Thu thập Bằng chứng (Discovery & Evidence Ingestion)
-Người dùng (GenAI Fund) cung cấp một **phân khúc mục tiêu (target segment)** (từ khóa tìm kiếm, chủ đề) hoặc **danh sách tài khoản hạt giống (seed accounts / handles)**:
+Người dùng (X-Scout AI) cung cấp một **phân khúc mục tiêu (target segment)** (từ khóa tìm kiếm, chủ đề) hoặc **danh sách tài khoản hạt giống (seed accounts / handles)**:
 - Hệ thống thu thập hồ sơ ứng viên trên X (Bio, vị trí, liên kết Github/Website, bài ghim và các bài đăng/chia sẻ gần đây) thông qua X API hoặc nạp từ gói dữ liệu chuẩn (`genai-outreach-pack`).
 - Trích xuất **bằng chứng thực tế (real evidence)**: dự án đang xây dựng, repo mã nguồn mở, bài báo khoa học, sản phẩm vừa ra mắt hoặc quan điểm kỹ thuật cụ thể.
 
@@ -58,7 +58,7 @@ Sử dụng mô hình ngôn ngữ thực tế (LLM) để đánh giá từng h�
   - `needs_a_person` / `insufficient_evidence` (hồ sơ quá ít thông tin để cá nhân hóa thật hoặc có dấu hiệu bất thường, cần con người xem xét trực tiếp)
 
 ### 3. Bàn làm việc Kiểm duyệt & Theo dõi Chiến dịch (Outreach Review & Tracking Dashboard)
-Giao diện dành cho đội ngũ GenAI Fund vận hành hàng ngày:
+Giao diện dành cho đội ngũ X-Scout AI vận hành hàng ngày:
 - **Khám phá & Lọc ứng viên:** Xem danh sách ứng viên tìm được, sắp xếp theo mức độ phù hợp (Fit Score), lọc theo phân khúc (AI Models, Robotics, Infra, DevTools) và trạng thái.
 - **Kiểm duyệt & Phê duyệt (Review & Approve Queue):**
   - Xem thông tin hồ sơ, điểm số gợi ý, lời giải thích *"Why they fit"*, bằng chứng gốc và bản nháp DM.
@@ -97,22 +97,22 @@ Giao diện dành cho đội ngũ GenAI Fund vận hành hàng ngày:
 6. **Khả năng tải dữ liệu kiểm thử & Đối chiếu điểm chuẩn (Data Pack Ingestion & Calibration):**
    - Toàn bộ các hồ sơ ứng viên và lịch sử liên hệ trong gói dữ liệu `genai-outreach-pack` có thể được nạp vào hệ thống, chấm điểm bằng LLM thực tế, soạn thảo DM và đối chiếu độ lệch với điểm chuẩn của quỹ trong `fund_reference_scores.csv`.
 7. **Khả năng tự vận hành dưới 15 phút (Turnkey Runnability < 15 mins):**
-   - Đội ngũ GenAI Fund có thể tự cài đặt, cấu hình khóa API của riêng họ và chạy ứng dụng từ đầu đến cuối trên một máy tính mới hoàn toàn (*clean machine*) dựa theo hướng dẫn trong `README.md` trong vòng **dưới 15 phút**.
+   - Đội ngũ X-Scout AI có thể tự cài đặt, cấu hình khóa API của riêng họ và chạy ứng dụng từ đầu đến cuối trên một máy tính mới hoàn toàn (*clean machine*) dựa theo hướng dẫn trong `README.md` trong vòng **dưới 15 phút**.
 
 ---
 
 ## 📂 Gói dữ liệu chuẩn đi kèm (`genai-outreach-pack`)
 
-Để tránh sự mơ hồ về tiêu chí đánh giá ứng viên của GenAI Fund cũng như giúp kiểm thử toàn diện (bao gồm cả các trường hợp biên như Prompt Injection, hồ sơ rỗng, khóa DM, trùng lặp lịch sử) mà không phụ thuộc hoàn toàn vào hạn mức đắt đỏ của X Search API, dự án đi kèm gói dữ liệu chuẩn tại thư mục [`genai-outreach-pack/`](file:///d:/AssignmentFDE/genai-outreach-pack):
+Để tránh sự mơ hồ về tiêu chí đánh giá ứng viên của X-Scout AI cũng như giúp kiểm thử toàn diện (bao gồm cả các trường hợp biên như Prompt Injection, hồ sơ rỗng, khóa DM, trùng lặp lịch sử) mà không phụ thuộc hoàn toàn vào hạn mức đắt đỏ của X Search API, dự án đi kèm gói dữ liệu chuẩn tại thư mục [`genai-outreach-pack/`](file:///d:/AssignmentFDE/genai-outreach-pack):
 
 | Tệp / Thư mục | Nội dung chi tiết |
 | :--- | :--- |
 | [`README.md`](file:///d:/AssignmentFDE/genai-outreach-pack/README.md) | Giải thích cấu trúc gói dữ liệu, từ điển dữ liệu (*data dictionary*) và cách sử dụng kết hợp với X API thực tế. |
-| [`scoring_guide.md`](file:///d:/AssignmentFDE/genai-outreach-pack/scoring_guide.md) | Bộ tiêu chí chấm điểm độ phù hợp (**Fit Score từ 1 đến 4**, điểm đạt là **3 hoặc 4**) của GenAI Fund và quy tắc soạn thảo DM dựa trên bằng chứng. |
+| [`scoring_guide.md`](file:///d:/AssignmentFDE/genai-outreach-pack/scoring_guide.md) | Bộ tiêu chí chấm điểm độ phù hợp (**Fit Score từ 1 đến 4**, điểm đạt là **3 hoặc 4**) của X-Scout AI và quy tắc soạn thảo DM dựa trên bằng chứng. |
 | [`profiles/`](file:///d:/AssignmentFDE/genai-outreach-pack/profiles) | **20 hồ sơ ứng viên X (`.json`)** bao gồm Founders, Researchers, Builders tại Đông Nam Á, kèm các ca kiểm thử đặc biệt (Prompt Injection, Sparse Profile, Closed DM, Duplicate Contact). |
-| [`fund_reference_scores.csv`](file:///d:/AssignmentFDE/genai-outreach-pack/fund_reference_scores.csv) | Điểm chuẩn do Investment Partner của GenAI Fund chấm cho 12 hồ sơ trong `profiles/` để đối chiếu độ chính xác của AI Scorer. |
+| [`fund_reference_scores.csv`](file:///d:/AssignmentFDE/genai-outreach-pack/fund_reference_scores.csv) | Điểm chuẩn do Investment Partner của X-Scout AI chấm cho 12 hồ sơ trong `profiles/` để đối chiếu độ chính xác của AI Scorer. |
 | [`outreach_history_log.csv`](file:///d:/AssignmentFDE/genai-outreach-pack/outreach_history_log.csv) | Lịch sử các cuộc tiếp cận trước đây của quỹ (ai đã được gửi DM, ai đã trả lời `replied`, ai cần chú ý `needs_attention`), dùng để kiểm thử chống gửi trùng và theo dõi hội thoại. |
-| [`seed_segments.csv`](file:///d:/AssignmentFDE/genai-outreach-pack/seed_segments.csv) | Danh sách các phân khúc mục tiêu (*Target Segments*) và *Seed Accounts* mẫu của GenAI Fund tại Đông Nam Á. |
+| [`seed_segments.csv`](file:///d:/AssignmentFDE/genai-outreach-pack/seed_segments.csv) | Danh sách các phân khúc mục tiêu (*Target Segments*) và *Seed Accounts* mẫu của X-Scout AI tại Đông Nam Á. |
 
 > **Lưu ý quan trọng:** Bên cạnh khả năng nạp và xử lý trọn vẹn `genai-outreach-pack`, hệ thống của bạn **bắt buộc phải có luồng kết nối X API thực tế** (cho phép nhập X Handle / Query thực tế và gửi DM thực tế qua tài khoản X được cấu hình trong `.env`).
 
@@ -148,7 +148,7 @@ Giao diện dành cho đội ngũ GenAI Fund vận hành hàng ngày:
 
 ## 📦 Sản phẩm bàn giao (What to send us)
 
-Gửi về `hr@genaifund.ai` trước **12:00 PM (GMT+7), Thứ Ba ngày 17/11/2026** bao gồm **3 phần**:
+Gửi về `hr@xscout.local` trước **12:00 PM (GMT+7), Thứ Ba ngày 17/11/2026** bao gồm **3 phần**:
 
 ### 1. Nguyên mẫu hoạt động (Your Working Prototype)
 - Đường link bản dựng trực tuyến (*hosted link*) **HOẶC** mã nguồn đầy đủ kèm hướng dẫn cài đặt rõ ràng trong `README.md` có thể hoàn tất trong **dưới 15 phút**.

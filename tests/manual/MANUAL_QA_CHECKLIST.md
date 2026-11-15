@@ -31,7 +31,7 @@
 
 - [x] **MQ-A1 — Clean User-Only Reset (`backend/reset_clean_users.py`):**
   - **Command:** `python -m backend.reset_clean_users --yes` (add `--with-analyst` to include RBAC analyst user).
-  - **Expected:** Prints `Users retained: 1 (partner@genaifund.ai [role=partner])`, `Candidates: 0`, `OutreachLedger: 0`, `JobQueue: 0`.
+  - **Expected:** Prints `Users retained: 1 (partner@xscout.local [role=partner])`, `Candidates: 0`, `OutreachLedger: 0`, `JobQueue: 0`.
   - **Observed (2026-11-13):** Executed cleanly on `sqlite:///./outreach.db` — verified `Users retained: 1`, `Candidates: 0`, `OutreachLedger: 0`, `JobQueue: 0`.
 - [ ] **MQ-A2 — Login Page UI Polish (`/login`):**
   - **Steps:** Open `http://localhost:3000/login`.
@@ -40,13 +40,13 @@
     - Security note footer (`Zero XSS exposure`) is **removed**.
     - Heading & Submit CTA display cleanly as `"Sign In"` (EN) / `"Đăng nhập"` (VI).
 - [ ] **MQ-A3 — Clean Empty Workspace & Collapsible KPIs (`/`):**
-  - **Steps:** Sign in as `partner@genaifund.ai` -> land on `/` (`Candidate Review`).
+  - **Steps:** Sign in as `partner@xscout.local` -> land on `/` (`Candidate Review`).
   - **Expected:**
     - 4 KPI cards (`DM DISPATCHED`, `REPLIES RECEIVED`, `NEEDS ATTENTION`, `SAFETY BLOCKED`) are **collapsed by default**.
     - Clicking `[Show Metrics]` expands all 4 cards cleanly; clicking `[Hide Metrics]` collapses them again.
     - Candidate table shows empty state (`0` candidates) with no errors.
 - [ ] **MQ-A4 — RBAC `/403` & Session `/401`:**
-  - **Steps:** Run reset with `--with-analyst`, log in as `analyst@genaifund.ai` (`Analyst2026!`), visit `/calibration` -> redirects to `/403`. Clear `session_token` cookie -> redirects to `/login`.
+  - **Steps:** Run reset with `--with-analyst`, log in as `analyst@xscout.local` (`Analyst2026!`), visit `/calibration` -> redirects to `/403`. Clear `session_token` cookie -> redirects to `/login`.
 
 ---
 
