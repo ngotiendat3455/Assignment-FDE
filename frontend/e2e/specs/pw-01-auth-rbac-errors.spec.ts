@@ -21,11 +21,11 @@ test.describe("PW-01: Auth, Private Middleware & Error 500/403/404", () => {
     await traceStep(
       page,
       "STEP 2: Analyst Login & RBAC /403 Block",
-      "Login as analyst@genaifund.ai -> access / -> attempt /calibration -> switch to partner",
+      "Login as analyst@xscout.local -> access / -> attempt /calibration -> switch to partner",
       "Analyst allowed on /, blocked to /403 on /calibration; Partner allowed on /"
     );
     const loginPage = new LoginPage(page);
-    await loginPage.loginWithCredentials("analyst@genaifund.ai", "Analyst2026!");
+    await loginPage.loginWithCredentials("analyst@xscout.local", "Analyst2026!");
     await expect(page).toHaveURL("http://localhost:3100/");
 
     await page.goto("/calibration");

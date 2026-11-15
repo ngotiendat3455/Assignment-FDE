@@ -8,8 +8,8 @@ aws_region      = "ap-southeast-1"
 environment     = "staging"
 runtime_profile = "HYBRID_AUTO"
 
-domain_name         = "staging.scout.genaifund.ai"
-acm_certificate_arn = "" # Attach *.scout.genaifund.ai ACM cert ARN before Go-Live
+domain_name         = "staging.scout.xscout.local"
+acm_certificate_arn = "" # Attach *.scout.xscout.local ACM cert ARN before Go-Live
 
 # Flexible Pre-Prod: uses live Gemini if key exists in Secrets Manager, else $0 rubric;
 # X DM stays safe via SANDBOX default (enable LIVE_X dry-run only against whitelisted test handles)

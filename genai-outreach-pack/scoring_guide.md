@@ -1,6 +1,6 @@
-# GenAI Fund – Target Fit Scoring & Grounded DM Guide
+# X-Scout AI – Target Fit Scoring & Grounded DM Guide
 
-Every discovered X profile is evaluated for outreach by **GenAI Fund** (focused on building and backing the AI & Robotics ecosystem in Southeast Asia).
+Every discovered X profile is evaluated for outreach by **X-Scout AI** (focused on building and backing the AI & Robotics ecosystem in Southeast Asia).
 
 Each profile is scored from **1 to 4** against the rubric below.
 - **Pass mark for outreach is 3:** Profiles scored **3 or 4** qualify for personalised DM drafting and review.
@@ -11,7 +11,7 @@ Each profile is scored from **1 to 4** against the rubric below.
 
 ## Part 1: Target Domains (What We Care About)
 
-GenAI Fund looks for builders, founders, and researchers actively shipping in one or more of these six tracks:
+X-Scout AI looks for builders, founders, and researchers actively shipping in one or more of these six tracks:
 1. **AI Models (`ai_models`):** Foundation models, domain-specific LLMs, multimodal models, fine-tuning, quantization, SEA-language NLP/speech models.
 2. **AI Applications (`ai_applications`):** Vertical AI agents, enterprise AI workflows, production AI products with real users.
 3. **Developer Tools (`devtools`):** Agent frameworks, evaluation/observability tools, code-generation tooling, SDKs.
@@ -53,7 +53,7 @@ GenAI Fund looks for builders, founders, and researchers actively shipping in on
 
 ## Part 3: Grounded Personalisation Rules (DM Drafting)
 
-When a profile scores **3 or 4** (or is manually requested for drafting), the system drafts a warm introductory DM from GenAI Fund.
+When a profile scores **3 or 4** (or is manually requested for drafting), the system drafts a warm introductory DM from X-Scout AI.
 
 ### Mandatory Grounding Rules:
 1. **Cite Concrete Evidence Only:**
@@ -63,7 +63,7 @@ When a profile scores **3 or 4** (or is manually requested for drafting), the sy
    - Never claim *"We met at [event]"*, *"A mutual friend told me about you"*, or *"I've been following your work for years"* unless explicitly provided in reviewer notes.
    - Avoid hollow flattery (*"Your profile is truly inspiring!"*, *"Love your amazing journey!"*). Speak peer-to-peer.
 3. **Clear, Low-Friction Call to Action (CTA):**
-   - Introduce GenAI Fund briefly as an AI & Robotics ecosystem builder/investor in Southeast Asia.
+   - Introduce X-Scout AI briefly as an AI & Robotics ecosystem builder/investor in Southeast Asia.
    - End with a specific, low-pressure conversation starter related to their work (e.g., asking a technical question about their architecture/rollout, or offering to connect over a quick chat / upcoming SEA builder gathering).
 4. **Concise Length:**
    - Keep DMs between **250 and 600 characters** (2–3 short paragraphs). Nobody reads a wall of text in X DMs.

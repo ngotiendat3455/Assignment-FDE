@@ -45,7 +45,7 @@ def get_ledger(
 def get_calibration(db: Session = Depends(get_db)):
     """
     Retrieve the Partner Calibration Matrix comparing AI Scorer output against
-    GenAI Fund's reference benchmark dataset.
+    X-Scout AI's reference benchmark dataset.
     """
     return get_calibration_matrix(db=db)
 

@@ -63,7 +63,7 @@ def test_unauthenticated_rejection(anon_client):
 def test_prefilled_partner_login_and_session(anon_client):
     """
     Acceptance Criterion 2:
-    Logging in with pre-filled credentials (partner@genaifund.ai / GenAIFund2026!)
+    Logging in with pre-filled credentials (partner@xscout.local / XScout2026!)
     succeeds with a 7-day JWT token, sets the HttpOnly session_token cookie,
     and unlocks protected endpoints.
     """

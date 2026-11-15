@@ -13,9 +13,9 @@ from backend.app.core.config import settings
 from backend.app.core.database import get_db
 from backend.app.models.user import User
 
-DEFAULT_PARTNER_EMAIL = "partner@genaifund.ai"
-DEFAULT_PARTNER_PASSWORD = "GenAIFund2026!"
-DEFAULT_PARTNER_NAME = "GenAI Fund Investment Partner"
+DEFAULT_PARTNER_EMAIL = "partner@xscout.local"
+DEFAULT_PARTNER_PASSWORD = "XScout2026!"
+DEFAULT_PARTNER_NAME = "X-Scout AI Investment Partner"
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -79,7 +79,7 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
 
 
 def ensure_default_partner_user(db: Session) -> User:
-    """Ensure the pre-filled seed Partner account (partner@genaifund.ai) exists in SQLite."""
+    """Ensure the pre-filled seed Partner account (partner@xscout.local) exists in SQLite."""
     user = db.query(User).filter(User.email == DEFAULT_PARTNER_EMAIL).first()
     if not user:
         user = User(

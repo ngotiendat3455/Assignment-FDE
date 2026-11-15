@@ -42,7 +42,7 @@ def login_user(
 ) -> TokenResponse:
     """
     Authenticate user with email & password, return 7-day JWT and set HttpOnly 'session_token' cookie.
-    Automatically seeds the default Partner account (partner@genaifund.ai) on fresh databases.
+    Automatically seeds the default Partner account (partner@xscout.local) on fresh databases.
     """
     ensure_default_partner_user(db)
     email = payload.email.strip().lower()
@@ -72,7 +72,7 @@ def demo_partner_login(
     response: Response,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    """Zero-friction 1-Click Login as the seed GenAI Fund Investment Partner."""
+    """Zero-friction 1-Click Login as the seed X-Scout AI Investment Partner."""
     user = ensure_default_partner_user(db)
     token = create_access_token(
         data={"sub": user.email, "user_id": user.id, "role": user.role}

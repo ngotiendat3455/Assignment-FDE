@@ -285,7 +285,7 @@ def run_dispatch_guard_gate(
 
         send_resp = send_x_dm(
             handle=target,
-            message="[GenAI Fund Live Smoke Test] Verifying OAuth 1.0a X API v2 DM dispatch guard.",
+            message="[X-Scout AI Live Smoke Test] Verifying OAuth 1.0a X API v2 DM dispatch guard.",
         )
         result["real_dm_executed"] = True
         result["dm_event_id"] = send_resp.get("dm_event_id")
@@ -307,7 +307,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     print("=" * 72)
-    print("GENAI FUND – LIVE API KEY DIAGNOSTIC & TRI-GUARD VERIFICATION")
+    print("X-SCOUT AI – LIVE API KEY DIAGNOSTIC & TRI-GUARD VERIFICATION")
     print(f"• GEMINI_API_KEY : {_mask_key(settings.GEMINI_API_KEY)}")
     print(f"• OPENAI_API_KEY : {_mask_key(settings.OPENAI_API_KEY)}")
     print(f"• X_API_BASE_URL : {get_x_api_base()}")

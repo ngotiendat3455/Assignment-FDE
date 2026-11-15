@@ -8,7 +8,7 @@ aws_region      = "ap-southeast-1"
 environment     = "dev"
 runtime_profile = "OFFLINE_MOCK"
 
-domain_name         = "dev.scout.genaifund.ai"
+domain_name         = "dev.scout.xscout.local"
 acm_certificate_arn = "" # Provide ACM ARN for HTTPS; leave blank for HTTP :80 ALB bootstrap
 
 # Zero external LLM or X API calls; internal X Simulator handles lookup tests

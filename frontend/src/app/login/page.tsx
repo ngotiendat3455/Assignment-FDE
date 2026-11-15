@@ -22,8 +22,8 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   // Pre-filled credentials for zero-friction Hiring Committee evaluation
-  const [email, setEmail] = useState<string>("partner@genaifund.ai");
-  const [password, setPassword] = useState<string>("GenAIFund2026!");
+  const [email, setEmail] = useState<string>("partner@xscout.local");
+  const [password, setPassword] = useState<string>("XScout2026!");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);

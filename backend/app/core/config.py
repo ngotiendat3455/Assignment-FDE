@@ -13,7 +13,7 @@ if env_path.exists():
 
 
 class Settings:
-    PROJECT_NAME: str = "GenAI Fund – Autonomous Scouting & Outreach System"
+    PROJECT_NAME: str = "X-Scout AI – Autonomous Scouting & Outreach System"
     VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api"
 

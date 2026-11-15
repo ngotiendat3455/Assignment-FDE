@@ -60,8 +60,8 @@ def reset_e2e_database(preset: str = "CLEAN_EMPTY") -> None:
             role="partner",
         )
         analyst = User(
-            email="analyst@genaifund.ai",
-            full_name="GenAI Fund Scouting Analyst",
+            email="analyst@xscout.local",
+            full_name="X-Scout AI Scouting Analyst",
             password_hash=hash_password("Analyst2026!"),
             role="analyst",
         )

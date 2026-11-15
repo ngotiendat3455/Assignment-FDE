@@ -1,6 +1,6 @@
 {
   "nav": {
-    "brand_title": "GenAI Fund",
+    "brand_title": "X-Scout AI",
     "brand_subtitle": "Autonomous Scouting",
     "ingestion": "Candidate Ingestion",
     "workspace": "Candidate Review",
@@ -233,7 +233,7 @@
     "btn_sign_in": "Sign In",
     "btn_signing_in": "Authenticating...",
     "security_note": "Protected by Next.js BFF HttpOnly Cookie & FastAPI HS256 JWT (Zero XSS exposure)",
-    "toast_login_success": "Signed in as GenAI Fund Investment Partner!",
+    "toast_login_success": "Signed in as X-Scout AI Investment Partner!",
     "toast_login_error": "Invalid email or password. Please check your credentials.",
     "toast_logout": "Signed out safely."
   },
@@ -383,7 +383,7 @@
     "toast_marked_handled": "Resolved urgent attention flag for @{{handle}}!"
   },
   "calibration": {
-    "banner_title": "AI Scorer vs. GenAI Fund Reference Benchmark",
+    "banner_title": "AI Scorer vs. X-Scout AI Reference Benchmark",
     "banner_desc": "Automated verification of the Tri-Guard AI Evaluation Engine against the 20-profile SEA benchmark dataset (candidates_seed.csv & fund_reference_scores.csv).",
     "kpi_accuracy": "Alignment Accuracy",
     "kpi_accuracy_sub": "{{aligned}} / {{total}} unique profiles aligned",

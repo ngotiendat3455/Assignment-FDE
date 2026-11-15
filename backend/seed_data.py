@@ -22,7 +22,7 @@ from backend.app.services.queue_worker import process_pending_jobs
 
 def seed_database():
     print("=" * 70)
-    print("⚡ INITIALIZING GENAI FUND OUTREACH DATABASE")
+    print("⚡ INITIALIZING X-SCOUT AI OUTREACH DATABASE")
     print("=" * 70)
 
     # 1. Create tables
@@ -32,19 +32,19 @@ def seed_database():
 
     try:
         # 2. Seed Default Partner User
-        partner_email = "partner@genaifund.ai"
+        partner_email = "partner@xscout.local"
         existing_partner = db.query(User).filter(User.email == partner_email).first()
         if not existing_partner:
             print(f"--> Seeding default Partner user: {partner_email}...")
             partner_user = User(
                 email=partner_email,
-                full_name="GenAI Fund Investment Partner",
-                password_hash=hash_password("GenAIFund2026!"),
+                full_name="X-Scout AI Investment Partner",
+                password_hash=hash_password("XScout2026!"),
                 role="partner",
             )
             db.add(partner_user)
             db.commit()
-            print("    [OK] Partner user created (Password: GenAIFund2026!)")
+            print("    [OK] Partner user created (Password: XScout2026!)")
         else:
             print(f"    [INFO] Partner user already exists: {partner_email}")
 

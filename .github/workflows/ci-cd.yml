@@ -1,4 +1,4 @@
-name: GenAI Fund CI/CD & Multi-Env AWS Pipeline
+name: X-Scout AI CI/CD & Multi-Env AWS Pipeline
 
 on:
   push:

@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GenAI Fund – Autonomous Scouting & Outreach System",
+  title: "X-Scout AI – Autonomous Scouting & Outreach System",
   description: "AI-powered scout and personalized outreach tool for frontier tech builders in Southeast Asia.",
 };
 

@@ -849,7 +849,7 @@ export default function HitlReviewWorkspacePage() {
               <div className="bg-muted/40 rounded-xl p-4 border border-border space-y-2">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground">
-                    GenAI Fund Partner (Outreach)
+                    X-Scout AI Partner (Outreach)
                   </span>
                   <span>{drawerCandidate.sent_at || t("workspace.time_recent")}</span>
                 </div>

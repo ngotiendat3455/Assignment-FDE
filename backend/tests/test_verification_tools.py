@@ -68,7 +68,7 @@ def test_reset_clean_users_preserves_partner_and_login(isolated_db):
         role="partner",
     )
     extra = User(
-        email="temp_reviewer@genaifund.ai",
+        email="temp_reviewer@xscout.local",
         full_name="Temp",
         password_hash=hash_password("TempPass123!"),
         role="analyst",
@@ -245,7 +245,7 @@ def test_verify_live_keys_diagnostic_gates(monkeypatch):
             draft_dm=(
                 "Hi there, really admired your concrete robotics engineering notes in Southeast Asia "
                 "and how your team approached real-world warehouse deployment benchmarks. "
-                "We back early technical teams at GenAI Fund—would love a quick 15-min chat if open."
+                "We back early technical teams at X-Scout AI—would love a quick 15-min chat if open."
             ),
             insufficient_evidence=False,
         )

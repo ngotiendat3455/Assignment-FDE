@@ -1,6 +1,6 @@
 {
   "nav": {
-    "brand_title": "GenAI Fund",
+    "brand_title": "X-Scout AI",
     "brand_subtitle": "Autonomous Scouting",
     "ingestion": "Nạp ứng viên",
     "workspace": "Duyệt ứng viên",
@@ -233,7 +233,7 @@
     "btn_sign_in": "Đăng nhập",
     "btn_signing_in": "Đang xác thực...",
     "security_note": "Bảo vệ bởi Next.js BFF HttpOnly Cookie & FastAPI HS256 JWT (Chống XSS 100%)",
-    "toast_login_success": "Đăng nhập thành công với quyền GenAI Fund Investment Partner!",
+    "toast_login_success": "Đăng nhập thành công với quyền X-Scout AI Investment Partner!",
     "toast_login_error": "Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.",
     "toast_logout": "Đã đăng xuất an toàn."
   },
@@ -383,7 +383,7 @@
     "toast_marked_handled": "Đã hoàn tất xử lý và gỡ cờ khẩn cho @{{handle}}!"
   },
   "calibration": {
-    "banner_title": "Đối chuẩn Điểm AI so với Bộ Điểm Chuẩn GenAI Fund",
+    "banner_title": "Đối chuẩn Điểm AI so với Bộ Điểm Chuẩn X-Scout AI",
     "banner_desc": "Kiểm chứng tự động Bộ máy Chấm điểm AI Tri-Guard so với bộ dữ liệu chuẩn 20 hồ sơ Đông Nam Á (candidates_seed.csv & fund_reference_scores.csv).",
     "kpi_accuracy": "Độ chính xác Đối chuẩn",
     "kpi_accuracy_sub": "Khớp {{aligned}} / {{total}} hồ sơ gốc",

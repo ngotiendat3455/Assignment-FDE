@@ -193,7 +193,7 @@ def test_case2_live_production_forbids_silent_fallbacks(
             draft_dm=(
                 "Hi Minh, came across @minh_quant and your open-source AWQ-W4A8 speculative decoding "
                 "kernel for L40S GPUs. We back deep-tech AI infrastructure founders across Vietnam and SEA "
-                "at GenAI Fund—would love to connect for a quick peer chat this week if you're open!"
+                "at X-Scout AI—would love to connect for a quick peer chat this week if you're open!"
             ),
             insufficient_evidence=False,
         )

@@ -406,7 +406,7 @@ def sync_x_dm_replies(db: Session) -> Dict[str, Any]:
 def get_calibration_matrix(db: Session) -> Dict[str, Any]:
     """
     Build the Partner Calibration Matrix comparing the AI Evaluator's scores against
-    GenAI Fund's reference benchmark (candidates_seed.csv + fund_reference_scores.csv).
+    X-Scout AI's reference benchmark (candidates_seed.csv + fund_reference_scores.csv).
     """
     pack_dir = _get_pack_dir()
     seed_csv = pack_dir / "candidates_seed.csv"

@@ -1,5 +1,9 @@
 # ==============================================================================
-# PROD Environment — Mapped to RUNTIME_PROFILE = LIVE_PRODUCTION (Strict Zero Fallback)
+# PROD Environment — Identical infra footprint to DEV (EFS SQLite + Fargate Spot),
+# differing only in LIVE_PRODUCTION + real Gemini & X API v2 integration.
+# Populate real API keys in AWS Secrets Manager (`prod/genai-fde/app-secrets`):
+#   GEMINI_API_KEY, X_BEARER_TOKEN, X_API_KEY, X_API_SECRET,
+#   X_ACCESS_TOKEN, X_ACCESS_TOKEN_SECRET (+ optional OPENAI_API_KEY)
 # Deploy: terraform apply -var-file="environments/prod.tfvars"
 # ==============================================================================
 
@@ -8,17 +12,17 @@ aws_region      = "ap-southeast-1"
 environment     = "prod"
 runtime_profile = "LIVE_PRODUCTION"
 
-domain_name         = "scout.genaifund.ai"
-acm_certificate_arn = "" # REQUIRED for production HTTPS :443 (set real ACM ARN before prod apply)
+domain_name         = "scout.xscout.local"
+acm_certificate_arn = "" # Optional ACM ARN for HTTPS :443; leave blank for HTTP :80 ALB bootstrap
 
-# Strict Live Execution: requires real GEMINI/OPENAI_API_KEY + X_BEARER_TOKEN + OAuth 1.0a keys
-# in AWS Secrets Manager (`prod/genai-fde/app-secrets`); missing keys fail-fast (no mock/sim fallback).
+# Real Gemini LLM + Live X API v2 (no simulator, strict zero fallback)
 dispatch_mode        = "LIVE_X"
 live_x_dry_run       = false
 allowed_test_handles = "dat_ai_test"
+gemini_model         = "gemini-3.5-flash"
 enable_x_simulator   = false
 
-# Persistence: Single-task SQLite WAL backed by Amazon EFS (/app/data)
+# Persistence & Compute: Identical to DEV (Single-task SQLite WAL on EFS + Fargate Spot)
 use_rds                = false
 frontend_cpu           = 256
 frontend_memory        = 512

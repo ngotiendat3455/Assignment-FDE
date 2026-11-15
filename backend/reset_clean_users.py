@@ -36,7 +36,7 @@ from backend.app.models.ledger import OutreachLedger
 from backend.app.models.queue import JobQueue
 from backend.app.models.user import User
 
-DEFAULT_ANALYST_EMAIL = "analyst@genaifund.ai"
+DEFAULT_ANALYST_EMAIL = "analyst@xscout.local"
 DEFAULT_ANALYST_PASSWORD = "Analyst2026!"
 
 
@@ -45,7 +45,7 @@ def _ensure_analyst_user(db: Session) -> User:
     if not user:
         user = User(
             email=DEFAULT_ANALYST_EMAIL,
-            full_name="GenAI Fund Analyst",
+            full_name="X-Scout AI Analyst",
             password_hash=hash_password(DEFAULT_ANALYST_PASSWORD),
             role="analyst",
         )
@@ -137,7 +137,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument(
         "--with-analyst",
         action="store_true",
-        help="Also ensure analyst@genaifund.ai (role=analyst) exists for RBAC testing.",
+        help="Also ensure analyst@xscout.local (role=analyst) exists for RBAC testing.",
     )
     parser.add_argument(
         "--purge-extra-users",
