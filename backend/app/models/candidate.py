@@ -1,6 +1,6 @@
 from enum import Enum
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Index
 from backend.app.core.database import Base
 
 
@@ -18,6 +18,15 @@ class CandidateStatus(str, Enum):
 
 class Candidate(Base):
     __tablename__ = "candidates"
+    __table_args__ = (
+        Index(
+            "idx_candidates_review_queue",
+            "status",
+            "can_dm",
+            "fit_score",
+            "updated_at",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     x_user_id = Column(String(64), unique=True, index=True, nullable=True)

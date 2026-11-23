@@ -17,6 +17,7 @@ from backend.app.core.runtime_gateway import RuntimeGateway
 from backend.app.models.candidate import Candidate, CandidateStatus
 from backend.app.models.ledger import OutreachLedger, OutreachStatus
 from backend.app.models.queue import JobQueue, JobStatus
+from backend.app.services.rag_retriever import sync_candidate_chunks
 from backend.app.services.x_client import (
     extract_x_api_error_detail,
     get_x_api_base,
@@ -576,6 +577,8 @@ def ingest_candidate_batch(
                 existing_candidate.location = item.get("location") or existing_candidate.location
                 existing_candidate.can_dm = item.get("can_dm", existing_candidate.can_dm)
                 existing_candidate.segment = default_segment or item.get("segment") or existing_candidate.segment
+                db.commit()
+                sync_candidate_chunks(db, existing_candidate)
 
             report["details"].append({
                 "handle": h,
@@ -649,6 +652,7 @@ def ingest_candidate_batch(
     db.commit()
 
     for cand, was_contacted in new_candidates_to_create:
+        sync_candidate_chunks(db, cand)
         report["imported"] += 1
         report["details"].append({
             "handle": cand.handle,

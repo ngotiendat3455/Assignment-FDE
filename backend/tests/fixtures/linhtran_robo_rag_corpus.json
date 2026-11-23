@@ -1,0 +1,148 @@
+{
+  "handle": "linhtran_robo",
+  "profile_id": "P001",
+  "description": "Realistic 100-post test corpus for @linhtran_robo (2 Golden Technical Posts + 8 BM25 Keyword/Hiring Traps + 10 Vector Tech-News Traps + 80 Daily Lifestyle Posts) plus 1 Long-form Technical Markdown Paper.",
+  "golden_post_ids": ["185500101", "185500102"],
+  "golden_posts": [
+    {
+      "post_id": "185500101",
+      "created_at": "2026-11-06",
+      "source_type": "x_post",
+      "text": "Finally got our diffusion policy inference latency down from 64ms to 18ms on a single Jetson AGX Orin using TensorRT + INT8 calibration—without dropping grasp success rate on deformable polybags (still 93.4% across 1,200 picks)."
+    },
+    {
+      "post_id": "185500102",
+      "created_at": "2026-11-03",
+      "source_type": "x_post",
+      "text": "Week 2 of our live 3PL warehouse pilot in Tuas, Singapore. Biggest lesson: lighting glare off shrink-wrapped pallets breaks standard RGB depth estimation way more than sim predicted. Active stereo + tactile wrist feedback saved us."
+    }
+  ],
+  "hard_negative_bm25_traps": [
+    {
+      "post_id": "185500201",
+      "created_at": "2026-10-28",
+      "source_type": "x_post",
+      "text": "We are hiring a robotics software intern! If you want to learn ROS2, Jetson AGX Orin, and TensorRT in Singapore, apply now and send your CV to our HR team."
+    },
+    {
+      "post_id": "185500202",
+      "created_at": "2026-10-25",
+      "source_type": "x_post",
+      "text": "Congrats to NVIDIA on the new GTC keynote announcement today! Press release says Jetson and CUDA developer downloads reached an all-time high this year."
+    },
+    {
+      "post_id": "185500203",
+      "created_at": "2026-10-21",
+      "source_type": "x_post",
+      "text": "Read an article about how US universities teach INT8 quantization and ROS2 in undergraduate classes. Cool curriculum."
+    },
+    {
+      "post_id": "185500204",
+      "created_at": "2026-10-19",
+      "source_type": "x_post",
+      "text": "Hiring an office operations and HR coordinator in Ho Chi Minh City! Apply now if you love organizing team events for a robotics startup."
+    },
+    {
+      "post_id": "185500205",
+      "created_at": "2026-10-15",
+      "source_type": "x_post",
+      "text": "Watching the livestream keynote about consumer gaming GPUs and stock price rallies. Crazy market."
+    },
+    {
+      "post_id": "185500206",
+      "created_at": "2026-10-12",
+      "source_type": "x_post",
+      "text": "Anyone selling a second-hand monitor near Tuas or Jurong East? Send me a message."
+    },
+    {
+      "post_id": "185500207",
+      "created_at": "2026-10-10",
+      "source_type": "x_post",
+      "text": "Rumor has it that next year's consumer smart home robot vacuum will come with a mop attachment. Press release out tomorrow."
+    },
+    {
+      "post_id": "185500208",
+      "created_at": "2026-10-08",
+      "source_type": "x_post",
+      "text": "We are hiring a graphic design intern to help with our company swag and stickers! Send your portfolio."
+    }
+  ],
+  "hard_negative_vector_traps": [
+    {
+      "post_id": "185500301",
+      "created_at": "2026-10-05",
+      "source_type": "x_post",
+      "text": "Watched a sci-fi movie on Netflix last night about humanoid robots in space. Great visual effects and soundtrack!"
+    },
+    {
+      "post_id": "185500302",
+      "created_at": "2026-10-03",
+      "source_type": "x_post",
+      "text": "Listening to a podcast episode debating whether general AI will write poetry better than humans by 2035."
+    },
+    {
+      "post_id": "185500303",
+      "created_at": "2026-09-29",
+      "source_type": "x_post",
+      "text": "Read an article about warehouse real estate rental prices rising across Asia Pacific this quarter."
+    },
+    {
+      "post_id": "185500304",
+      "created_at": "2026-09-27",
+      "source_type": "x_post",
+      "text": "My nephew just built his first Lego Mindstorms toy car for his primary school science fair. So proud!"
+    },
+    {
+      "post_id": "185500305",
+      "created_at": "2026-09-25",
+      "source_type": "x_post",
+      "text": "Attended a general business networking breakfast webinar on corporate digital transformation trends."
+    },
+    {
+      "post_id": "185500306",
+      "created_at": "2026-09-22",
+      "source_type": "x_post",
+      "text": "New smartphone camera lighting filters look pretty neat for night street photography in Singapore."
+    },
+    {
+      "post_id": "185500307",
+      "created_at": "2026-09-20",
+      "source_type": "x_post",
+      "text": "Trying out a new mechanical keyboard with tactile switches for typing emails faster."
+    },
+    {
+      "post_id": "185500308",
+      "created_at": "2026-09-18",
+      "source_type": "x_post",
+      "text": "Unpacked a bunch of cardboard boxes after moving apartments this weekend. Moving house is exhausting."
+    },
+    {
+      "post_id": "185500309",
+      "created_at": "2026-09-15",
+      "source_type": "x_post",
+      "text": "Bought a new stereo speaker system for the living room to listen to jazz records on Sunday."
+    },
+    {
+      "post_id": "185500310",
+      "created_at": "2026-09-12",
+      "source_type": "x_post",
+      "text": "Great panel discussion on global supply chain shipping tariffs and container ship fuel regulations."
+    }
+  ],
+  "lifestyle_noise_templates": [
+    "Morning coffee at Tiong Bahru bakery before heading to the office. Best iced latte in town!",
+    "What an unbelievable Premier League football match last night! That last-minute goal was pure magic.",
+    "Heavy tropical rain and traffic jam in Ho Chi Minh City this afternoon. Remember to bring an umbrella!",
+    "Weekend vibes: 10km morning jogging around Marina Bay followed by a delicious bowl of pho.",
+    "Happy Lunar New Year / Tet holiday to all friends and family! Wishing everyone health and happiness.",
+    "Nothing beats a quiet Sunday afternoon reading a history book with a cup of Vietnamese drip coffee.",
+    "Flight delayed by two hours at Changi Airport, at least the terminal lounge has great laksa.",
+    "Saturday evening football match with college friends. My legs are definitely going to be sore tomorrow!"
+  ],
+  "long_technical_markdown_doc": {
+    "post_id": "ETH_KINEDEX_PAPER_2026",
+    "created_at": "2026-10-30",
+    "source_type": "technical_doc",
+    "text": "# Bimanual Diffusion Policy Optimization for High-Mix 3PL Warehouse Kitting\n\n## 1. Executive Summary & Edge Inference Architecture\nAt KineDex Robotics (Singapore & Ho Chi Minh City), we deploy bimanual manipulation cells for high-mix 3PL warehouse kitting. Standard PyTorch FP32 diffusion policy checkpoints required 64ms per denoising step on edge hardware, bottlenecking closed-loop visuomotor control at 15Hz.\n\n| Metric | Baseline FP32 | KineDex TensorRT INT8 | Target Hardware |\n| :--- | :--- | :--- | :--- |\n| Inference Latency | 64ms | 18ms | Jetson AGX Orin (64GB) |\n| Deformable Polybag Grasp Rate | 93.6% | 93.4% (1,200 picks) | Dual-Arm Cell |\n\n## 2. Active Stereo & Tactile Sensor Fusion under Specular Warehouse Glare\nDuring our live 3PL warehouse pilot in Tuas, Singapore, high-bay LED lighting glare reflecting off shrink-wrapped pallets degraded passive RGB-D depth estimation. By fusing active IR stereo point clouds with high-frequency tactile wrist feedback, our controller recovers contact normals within 4ms and prevents slip on deformable polybags without manual lighting calibration."
+  }
+}

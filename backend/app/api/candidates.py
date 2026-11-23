@@ -24,6 +24,13 @@ from backend.app.services.state_machine import (
 from backend.app.services.ai_evaluator import (
     AIEvaluationServiceError,
     DMGenerationBlockedError,
+    build_fortified_candidate_prompt,
+    verify_gate_2_grounding,
+)
+from backend.app.services.rag_retriever import (
+    DEFAULT_RUBRIC_RAG_QUERY,
+    explain_rag_pipeline_for_candidate,
+    search_and_rerank_candidate_chunks,
 )
 from backend.app.services.queue_worker import regenerate_candidate_dm_by_id
 from backend.app.services.x_client import XApiDispatchError, XApiRateLimitError
@@ -291,4 +298,38 @@ def mark_handled_endpoint(
         return mark_ledger_handled(db, candidate_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/{candidate_id}/rag-explain")
+def explain_candidate_rag_endpoint(
+    candidate_id: int,
+    query: str = Query(
+        DEFAULT_RUBRIC_RAG_QUERY,
+        description="VC scoring rubric query used by Hybrid Search (BM25 + Vector) and Cross-Encoder Reranker",
+    ),
+    top_k: int = Query(3, ge=1, le=10, description="Number of top reranked chunks to place on the A4 Prompt"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Module 03 (5-Station RAG & Verify Gate 2 Diagnostic Endpoint):
+    Inspect how the RAG Secretary splits a candidate's posts/docs into chunks (Station 1),
+    filters via SQL Composite Index (Station 2), runs Hybrid BM25 + Vector Search (Station 3),
+    reranks to Top-K chunks (Station 4), and verifies verbatim citation grounding (Station 5).
+    """
+    cand = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not cand:
+        raise HTTPException(status_code=404, detail=f"Candidate {candidate_id} not found.")
+
+    trace = explain_rag_pipeline_for_candidate(db=db, candidate=cand, query=query, top_k=top_k)
+    top_chunks = search_and_rerank_candidate_chunks(db=db, handle=cand.handle, query=query, top_k=top_k)
+    trace["station_5_verify_gate_2"] = {
+        "a4_prompt_preview": build_fortified_candidate_prompt(cand, retrieved_chunks=top_chunks),
+        "grounding_check": verify_gate_2_grounding(
+            snippet=cand.evidence_snippet or "",
+            candidate=cand,
+            retrieved_chunks=top_chunks,
+        ),
+    }
+    return trace
+
 

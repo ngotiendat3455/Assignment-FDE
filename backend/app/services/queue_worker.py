@@ -74,6 +74,7 @@ def evaluate_candidate_by_id(
         eval_result = evaluate_candidate_profile(
             candidate,
             simulate_failure=simulate_failure,
+            db=db,
         )
 
         candidate.is_match = eval_result.is_match

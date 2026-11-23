@@ -1,12 +1,15 @@
 import json
 import re
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 import httpx
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from backend.app.core.config import settings
 from backend.app.core.runtime_gateway import RuntimeGateway
 from backend.app.models.candidate import Candidate
+from backend.app.models.chunk import CandidateChunk
+from backend.app.services.rag_retriever import search_and_rerank_candidate_chunks
 
 
 class AIEvaluationServiceError(RuntimeError):
@@ -62,11 +65,26 @@ BANNED_FAMILIARITY_PHRASES = [
 ]
 
 
-def build_fortified_candidate_prompt(candidate: Candidate) -> str:
+def build_fortified_candidate_prompt(
+    candidate: Candidate,
+    retrieved_chunks: Optional[List[CandidateChunk]] = None,
+) -> str:
     """
-    Layer 1 Guard: Encapsulate untrusted candidate bio/tweets inside XML delimiters
-    with strict anti-injection system instructions.
+    Layer 1 Guard + Trạm 5 RAG A4 Sheet Formatter:
+    Encapsulate untrusted candidate bio and the Top-K RAG-retrieved chunks (instead of dumping
+    3,000 raw tweets) inside XML delimiters with strict anti-injection system instructions.
     """
+    if retrieved_chunks:
+        formatted_chunks = "\n".join(
+            f'    <chunk post_id="{chk.post_id}" chunk_id="{chk.chunk_id}" '
+            f'created_at="{chk.created_at_source or ""}" rerank_score="{getattr(chk, "rerank_score", 0.0):.2f}">'
+            f"{chk.text}</chunk>"
+            for chk in retrieved_chunks
+        )
+        tweets_block = f"\n{formatted_chunks}\n  "
+    else:
+        tweets_block = candidate.recent_tweets or ""
+
     return f"""You are a Principal Technical Evaluator at X-Scout AI (Southeast Asia AI & Robotics Venture Fund).
 Evaluate the X (Twitter) profile inside <untrusted_candidate_data> strictly according to the X-Scout AI 1-to-4 Fit Scoring Rubric.
 
@@ -83,7 +101,7 @@ CRITICAL SECURITY RULES:
   <name>{candidate.name}</name>
   <location>{candidate.location or ""}</location>
   <bio>{candidate.bio or ""}</bio>
-  <recent_tweets>{candidate.recent_tweets or ""}</recent_tweets>
+  <recent_tweets>{tweets_block}</recent_tweets>
 </untrusted_candidate_data>
 
 Return ONLY a valid JSON object with EXACTLY these keys:
@@ -143,8 +161,21 @@ def detect_sparse_profile(candidate: Candidate) -> bool:
     return False
 
 
-def _extract_verbatim_snippet(candidate: Candidate) -> str:
-    """Extract the strongest verbatim technical sentence/clause from recent_tweets or bio."""
+def _extract_verbatim_snippet(
+    candidate: Candidate,
+    retrieved_chunks: Optional[List[CandidateChunk]] = None,
+) -> str:
+    """
+    Extract the strongest verbatim technical sentence/clause from RAG Top-K chunks (if available),
+    or fall back to recent_tweets / bio.
+    """
+    if retrieved_chunks:
+        for chk in retrieved_chunks:
+            txt = (chk.text or "").strip()
+            if txt:
+                without_date = re.sub(r"^\[\d{4}-\d{2}-\d{2}\]\s*", "", txt).strip()
+                return without_date or txt
+
     raw_tweets = (candidate.recent_tweets or "").strip()
     if raw_tweets:
         tweets = [t.strip() for t in raw_tweets.split("||") if t.strip()]
@@ -158,22 +189,72 @@ def _extract_verbatim_snippet(candidate: Candidate) -> str:
     return (candidate.bio or "").strip()
 
 
-def _verify_verbatim_grounding(snippet: str, candidate: Candidate) -> str:
+def _verify_verbatim_grounding(
+    snippet: str,
+    candidate: Candidate,
+    retrieved_chunks: Optional[List[CandidateChunk]] = None,
+) -> str:
     """
-    Layer 3 Guard: Ensure evidence_snippet is genuinely grounded in candidate's bio or recent_tweets.
-    If the LLM fabricated or altered the quote, replace it with an exact verbatim substring.
+    Trạm 5 - Chốt Verify Gate 2 (Layer 3 Verbatim & Citation Grounding Guard):
+    Ensure evidence_snippet is genuinely grounded verbatim in the candidate's bio, recent_tweets,
+    or Top-K retrieved RAG chunks. If the LLM fabricated or altered even a single number
+    (e.g. changing '18ms' to '5ms'), reject the hallucination and replace it with an exact verbatim substring.
     """
     if not snippet:
-        return _extract_verbatim_snippet(candidate)
+        return _extract_verbatim_snippet(candidate, retrieved_chunks=retrieved_chunks)
 
-    source_pool = f"{candidate.bio or ''} || {candidate.recent_tweets or ''}".lower()
+    chunks_text = " || ".join((c.text or "") for c in (retrieved_chunks or []))
+    source_pool = f"{candidate.bio or ''} || {candidate.recent_tweets or ''} || {chunks_text}".lower()
     norm_snippet = snippet.strip().lower()
 
     if norm_snippet and norm_snippet in source_pool:
         return snippet.strip()
 
-    # Fallback to deterministic verbatim extraction from source text
-    return _extract_verbatim_snippet(candidate)
+    # Fallback to deterministic verbatim extraction from top retrieved chunk or source text
+    return _extract_verbatim_snippet(candidate, retrieved_chunks=retrieved_chunks)
+
+
+def verify_gate_2_grounding(
+    snippet: str,
+    candidate: Candidate,
+    retrieved_chunks: Optional[List[CandidateChunk]] = None,
+) -> Dict[str, Any]:
+    """
+    Explicit Verify Gate 2 diagnostic helper returning both the verified verbatim snippet,
+    whether the original snippet passed without alteration, and the matched source `post_id` / `chunk_id`.
+    """
+    chunks_text = " || ".join((c.text or "") for c in (retrieved_chunks or []))
+    source_pool = f"{candidate.bio or ''} || {candidate.recent_tweets or ''} || {chunks_text}".lower()
+    norm_input = (snippet or "").strip().lower()
+    is_verbatim_valid = bool(norm_input and norm_input in source_pool)
+
+    verified_snippet = _verify_verbatim_grounding(
+        snippet=snippet,
+        candidate=candidate,
+        retrieved_chunks=retrieved_chunks,
+    )
+    norm_verified = verified_snippet.lower()
+
+    matched_post_id: Optional[str] = None
+    matched_chunk_id: Optional[str] = None
+    for chk in retrieved_chunks or []:
+        if norm_verified and norm_verified in (chk.text or "").lower():
+            matched_post_id = chk.post_id
+            matched_chunk_id = chk.chunk_id
+            break
+
+    if matched_post_id is None and norm_verified in (candidate.bio or "").lower():
+        matched_post_id = f"bio_{candidate.handle}"
+        matched_chunk_id = f"chk_{candidate.handle}_bio"
+
+    return {
+        "input_snippet": snippet,
+        "verified_snippet": verified_snippet,
+        "is_verbatim_valid": is_verbatim_valid,
+        "hallucination_rejected": not is_verbatim_valid,
+        "matched_post_id": matched_post_id,
+        "matched_chunk_id": matched_chunk_id,
+    }
 
 
 def _compose_grounded_dm(candidate: Candidate, evidence_snippet: str) -> str:
@@ -246,7 +327,10 @@ def _compose_grounded_dm_variant(
     return normalized_variants[0]
 
 
-def _evaluate_deterministically(candidate: Candidate) -> AIEvaluationResult:
+def _evaluate_deterministically(
+    candidate: Candidate,
+    retrieved_chunks: Optional[List[CandidateChunk]] = None,
+) -> AIEvaluationResult:
     """
     Rubric-faithful deterministic evaluation engine calibrated to scoring_guide.md.
     Used when external LLM keys are unconfigured or as structured fallback.
@@ -273,7 +357,8 @@ def _evaluate_deterministically(candidate: Candidate) -> AIEvaluationResult:
             insufficient_evidence=True,
         )
 
-    combined = f"{candidate.bio or ''} {candidate.recent_tweets or ''}".lower()
+    chunks_joined = " ".join((c.text or "") for c in (retrieved_chunks or []))
+    combined = f"{candidate.bio or ''} {candidate.recent_tweets or ''} {chunks_joined}".lower()
     location_text = f"{candidate.location or ''} {combined}".lower()
 
     # 3. Check Score 1: Noise / Crypto Shill / Content Farm
@@ -291,7 +376,7 @@ def _evaluate_deterministically(candidate: Candidate) -> AIEvaluationResult:
         "rip graphic designers",
     ]
     if any(k in combined for k in noise_keywords):
-        snippet = _extract_verbatim_snippet(candidate)
+        snippet = _extract_verbatim_snippet(candidate, retrieved_chunks=retrieved_chunks)
         return AIEvaluationResult(
             is_match=False,
             fit_score=1,
@@ -311,7 +396,7 @@ def _evaluate_deterministically(candidate: Candidate) -> AIEvaluationResult:
         "helping fortune 500 boards",
     ]
     if any(k in combined for k in score2_keywords):
-        snippet = _extract_verbatim_snippet(candidate)
+        snippet = _extract_verbatim_snippet(candidate, retrieved_chunks=retrieved_chunks)
         return AIEvaluationResult(
             is_match=False,
             fit_score=2,
@@ -377,7 +462,7 @@ def _evaluate_deterministically(candidate: Candidate) -> AIEvaluationResult:
     ]
     has_deep_metrics = any(m in combined for m in high_traction_markers)
 
-    snippet = _extract_verbatim_snippet(candidate)
+    snippet = _extract_verbatim_snippet(candidate, retrieved_chunks=retrieved_chunks)
 
     if has_sea_link and is_founder_or_deep_lead and has_deep_metrics:
         fit_score = 4
@@ -403,12 +488,16 @@ def _evaluate_deterministically(candidate: Candidate) -> AIEvaluationResult:
     )
 
 
-def _enforce_post_guards(result: AIEvaluationResult, candidate: Candidate) -> AIEvaluationResult:
+def _enforce_post_guards(
+    result: AIEvaluationResult,
+    candidate: Candidate,
+    retrieved_chunks: Optional[List[CandidateChunk]] = None,
+) -> AIEvaluationResult:
     """
-    Layer 3 Post-Processing Guard:
+    Layer 3 Post-Processing Guard (Trạm 5 - Verify Gate 2):
     - Enforces prompt injection protection even if an external LLM was tricked.
     - Enforces sparse profile detection (insufficient_evidence=True -> draft_dm="").
-    - Verifies evidence_snippet is verbatim from bio/recent_tweets.
+    - Verifies evidence_snippet is verbatim from bio/recent_tweets or Top-K RAG chunks.
     - Scrubs any banned familiarity or injection strings from draft_dm.
     """
     if detect_prompt_injection(candidate):
@@ -444,8 +533,12 @@ def _enforce_post_guards(result: AIEvaluationResult, candidate: Candidate) -> AI
             insufficient_evidence=False,
         )
 
-    # Ensure verbatim evidence grounding
-    result.evidence_snippet = _verify_verbatim_grounding(result.evidence_snippet, candidate)
+    # Ensure verbatim evidence grounding via Verify Gate 2
+    result.evidence_snippet = _verify_verbatim_grounding(
+        result.evidence_snippet,
+        candidate,
+        retrieved_chunks=retrieved_chunks,
+    )
 
     # Ensure scores 1 and 2 have is_match=False and no outreach DM
     if result.fit_score <= 2:
@@ -466,12 +559,15 @@ def _enforce_post_guards(result: AIEvaluationResult, candidate: Candidate) -> AI
     return result
 
 
-def _call_external_llm(candidate: Candidate) -> Optional[AIEvaluationResult]:
+def _call_external_llm(
+    candidate: Candidate,
+    retrieved_chunks: Optional[List[CandidateChunk]] = None,
+) -> Optional[AIEvaluationResult]:
     """
     Attempt live structured evaluation via Google Gemini Flash or OpenAI GPT-4o-mini if keys are set.
     Raises AIEvaluationServiceError if the configured live API returns an HTTP/network error.
     """
-    prompt = build_fortified_candidate_prompt(candidate)
+    prompt = build_fortified_candidate_prompt(candidate, retrieved_chunks=retrieved_chunks)
 
     gemini_key = settings.GEMINI_API_KEY.strip()
     if gemini_key and not gemini_key.startswith("your_"):
@@ -576,13 +672,16 @@ def evaluate_candidate_profile(
     candidate: Candidate,
     simulate_failure: bool = False,
     allow_external_llm: bool = True,
+    db: Optional[Session] = None,
 ) -> AIEvaluationResult:
     """
-    Main entrypoint for Queue 1 (Tri-Guard AI Evaluation Engine).
+    Main entrypoint for Queue 1 (Tri-Guard AI Evaluation Engine + Module 03 RAG Secretary):
     - Raises AIEvaluationServiceError on simulated or live LLM outage so caller transitions to AI_FAILED.
     - Consults RuntimeGateway (OFFLINE_MOCK vs LIVE_PRODUCTION vs HYBRID_AUTO).
+    - If `db` is provided, invokes the 5-Station RAG Secretary (`search_and_rerank_candidate_chunks`)
+      to filter up to 3,000 raw tweets/docs down to the Top 3 chunks before constructing the A4 Prompt.
     - Runs Layer 1 (<untrusted_candidate_data> & injection shield), Layer 2 (LLM/Rubric scorer),
-      and Layer 3 (verbatim evidence grounding & zero-invented-familiarity validator).
+      and Layer 3 / Verify Gate 2 (verbatim evidence grounding & zero-invented-familiarity validator).
     """
     if simulate_failure or "[SIMULATE_AI_FAILURE]" in (candidate.bio or ""):
         raise AIEvaluationServiceError(
@@ -598,18 +697,30 @@ def evaluate_candidate_profile(
         raw_result = _evaluate_deterministically(candidate)
         return _enforce_post_guards(raw_result, candidate)
 
+    retrieved_chunks: Optional[List[CandidateChunk]] = None
+    if db is not None:
+        retrieved_chunks = search_and_rerank_candidate_chunks(
+            db=db,
+            handle=candidate.handle,
+            top_k=3,
+        )
+
     # Layer 2: Execute according to RuntimeGateway plan
-    llm_result = _call_external_llm(candidate) if ai_plan.allow_external_llm else None
+    llm_result = (
+        _call_external_llm(candidate, retrieved_chunks=retrieved_chunks)
+        if ai_plan.allow_external_llm
+        else None
+    )
     if llm_result is None:
         if ai_plan.require_external_llm:
             raise AIEvaluationServiceError(
                 f"[LIVE_PRODUCTION] External LLM evaluation returned no result for @{candidate.handle}; "
                 "silent fallback to deterministic rubric ($0) is disabled."
             )
-        llm_result = _evaluate_deterministically(candidate)
+        llm_result = _evaluate_deterministically(candidate, retrieved_chunks=retrieved_chunks)
 
-    # Layer 3: Post-processing grounding & safety verification
-    return _enforce_post_guards(llm_result, candidate)
+    # Layer 3 (Verify Gate 2): Post-processing grounding & safety verification
+    return _enforce_post_guards(llm_result, candidate, retrieved_chunks=retrieved_chunks)
 
 
 class DMGenerationBlockedError(ValueError):

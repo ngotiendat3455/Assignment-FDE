@@ -1,8 +1,8 @@
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
 
-  # Enforce single backend writer when running SQLite WAL on EFS (use_rds = false)
-  effective_backend_desired_count = var.use_rds ? var.backend_desired_count : 1
+  # Enforce single backend writer when running SQLite WAL on EFS (allow 0 for temporary pause)
+  effective_backend_desired_count = var.backend_desired_count == 0 ? 0 : (var.use_rds ? var.backend_desired_count : 1)
   effective_autoscaling           = var.use_rds && var.enable_autoscaling
 
   app_scheme = var.acm_certificate_arn != "" ? "https" : "http"
