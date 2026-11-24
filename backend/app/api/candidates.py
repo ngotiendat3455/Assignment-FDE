@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Any, List
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -21,10 +21,13 @@ from backend.app.services.state_machine import (
     SendBlockedError,
     StateTransitionError,
 )
+from backend.app.core.langfuse_tracing import get_last_candidate_trace
 from backend.app.services.ai_evaluator import (
     AIEvaluationServiceError,
     DMGenerationBlockedError,
     build_fortified_candidate_prompt,
+    evaluate_candidate_profile,
+    judge_dm_quality_with_llm,
     verify_gate_2_grounding,
 )
 from backend.app.services.rag_retriever import (
@@ -32,7 +35,10 @@ from backend.app.services.rag_retriever import (
     explain_rag_pipeline_for_candidate,
     search_and_rerank_candidate_chunks,
 )
-from backend.app.services.queue_worker import regenerate_candidate_dm_by_id
+from backend.app.services.queue_worker import (
+    process_pending_jobs,
+    regenerate_candidate_dm_by_id,
+)
 from backend.app.services.x_client import XApiDispatchError, XApiRateLimitError
 
 router = APIRouter(
@@ -201,11 +207,13 @@ def reject_candidate_endpoint(
 @router.post("/{candidate_id}/retry")
 def retry_candidate_ai_endpoint(
     candidate_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    """Retry AI evaluation for an AI_FAILED or INSUFFICIENT_EVIDENCE candidate."""
+    """Retry AI evaluation for an AI_FAILED or INSUFFICIENT_EVIDENCE candidate and trigger Queue 1 worker."""
     try:
         cand = retry_candidate_ai_evaluation(db, candidate_id)
+        background_tasks.add_task(process_pending_jobs, db, "AI_EVALUATE")
         return cand.to_dict()
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -322,6 +330,20 @@ def explain_candidate_rag_endpoint(
 
     trace = explain_rag_pipeline_for_candidate(db=db, candidate=cand, query=query, top_k=top_k)
     top_chunks = search_and_rerank_candidate_chunks(db=db, handle=cand.handle, query=query, top_k=top_k)
+
+    # Ensure a 4-Span Langfuse trace snapshot exists for this candidate
+    lf_trace = get_last_candidate_trace(cand.handle)
+    if lf_trace is None:
+        evaluate_candidate_profile(cand, allow_external_llm=False, db=db)
+        lf_trace = get_last_candidate_trace(cand.handle)
+
+    dm_to_judge = cand.edited_dm or cand.draft_dm or ""
+    judge_verdict = (
+        judge_dm_quality_with_llm(cand, dm_to_judge, retrieved_chunks=top_chunks, allow_external_llm=False)
+        if dm_to_judge
+        else None
+    )
+
     trace["station_5_verify_gate_2"] = {
         "a4_prompt_preview": build_fortified_candidate_prompt(cand, retrieved_chunks=top_chunks),
         "grounding_check": verify_gate_2_grounding(
@@ -329,6 +351,10 @@ def explain_candidate_rag_endpoint(
             candidate=cand,
             retrieved_chunks=top_chunks,
         ),
+    }
+    trace["verify_gate_4_observability"] = {
+        "langfuse_trace": lf_trace,
+        "llm_as_a_judge": judge_verdict,
     }
     return trace
 

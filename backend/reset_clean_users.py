@@ -32,6 +32,7 @@ from backend.app.core.security import (
     hash_password,
 )
 from backend.app.models.candidate import Candidate
+from backend.app.models.chunk import CandidateChunk
 from backend.app.models.ledger import OutreachLedger
 from backend.app.models.queue import JobQueue
 from backend.app.models.user import User
@@ -60,9 +61,10 @@ def reset_database_keep_users(
     with_analyst: bool = False,
     purge_extra_users: bool = False,
 ) -> Dict[str, Any]:
-    """Delete candidates, outreach_ledger, and job_queue while keeping user accounts."""
+    """Delete candidates, candidate_chunks, outreach_ledger, and job_queue while keeping user accounts."""
     deleted_jobs = db.query(JobQueue).delete(synchronize_session=False)
     deleted_ledger = db.query(OutreachLedger).delete(synchronize_session=False)
+    deleted_chunks = db.query(CandidateChunk).delete(synchronize_session=False)
     deleted_candidates = db.query(Candidate).delete(synchronize_session=False)
 
     # Reset SQLite autoincrement counters when applicable
@@ -72,7 +74,7 @@ def reset_database_keep_users(
             text("SELECT name FROM sqlite_master WHERE type='table' AND name='sqlite_sequence'")
         ).first()
         if has_seq:
-            for table_name in ("job_queue", "outreach_ledger", "candidates"):
+            for table_name in ("job_queue", "outreach_ledger", "candidate_chunks", "candidates"):
                 db.execute(text("DELETE FROM sqlite_sequence WHERE name = :t"), {"t": table_name})
 
     db.commit()
@@ -99,11 +101,13 @@ def reset_database_keep_users(
         "deleted": {
             "job_queue": deleted_jobs,
             "outreach_ledger": deleted_ledger,
+            "candidate_chunks": deleted_chunks,
             "candidates": deleted_candidates,
         },
         "remaining": {
             "users": len(retained_users),
             "candidates": db.query(Candidate).count(),
+            "candidate_chunks": db.query(CandidateChunk).count(),
             "outreach_ledger": db.query(OutreachLedger).count(),
             "job_queue": db.query(JobQueue).count(),
         },

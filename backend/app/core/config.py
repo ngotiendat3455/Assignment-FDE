@@ -77,9 +77,20 @@ class Settings:
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
+    # Embedding Models (Module 03 Dual-Mode Embedding Gateway: 10d local fallback <-> 768d/1536d live)
+    GEMINI_EMBEDDING_MODEL: str = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
+    OPENAI_EMBEDDING_MODEL: str = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+
+    # Langfuse SDK Observability (Module 05 Verify Gate 4 Distributed Tracing)
+    LANGFUSE_PUBLIC_KEY: str = os.getenv("LANGFUSE_PUBLIC_KEY", "")
+    LANGFUSE_SECRET_KEY: str = os.getenv("LANGFUSE_SECRET_KEY", "")
+    LANGFUSE_HOST: str = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+
     # X API v2 Base URL & Keys (override X_API_BASE_URL for $0 local dev simulator)
     X_API_BASE_URL: str = os.getenv("X_API_BASE_URL", "https://api.twitter.com/2")
     X_SIMULATOR_BASE_URL: str = os.getenv("X_SIMULATOR_BASE_URL", "http://127.0.0.1:8099/2")
+    X_TWEETS_MAX_RESULTS: int = max(5, min(500, int(os.getenv("X_TWEETS_MAX_RESULTS", "50"))))
+    X_TWEETS_EXCLUDE: str = os.getenv("X_TWEETS_EXCLUDE", "retweets,replies").strip()
     X_BEARER_TOKEN: str = os.getenv("X_BEARER_TOKEN", "")
     X_API_KEY: str = os.getenv("X_API_KEY", "")
     X_API_SECRET: str = os.getenv("X_API_SECRET", "")

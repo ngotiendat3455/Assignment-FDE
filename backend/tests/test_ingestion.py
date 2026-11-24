@@ -380,3 +380,37 @@ def test_ingestion_api_endpoints(db_session, monkeypatch):
     app.dependency_overrides.clear()
 
 
+def test_fetch_x_user_tweets_paginated_supports_rag_scale():
+    """Verify _fetch_x_user_tweets_paginated fetches >5 tweets across X API v2 pages via next_token."""
+    from unittest.mock import MagicMock
+    from backend.app.services.ingestion import _fetch_x_user_tweets_paginated
+
+    page1 = MagicMock(status_code=200)
+    page1.json.return_value = {
+        "data": [{"id": f"p1_{i}", "text": f"Tweet {i}"} for i in range(100)],
+        "meta": {"next_token": "tok_page_2"},
+    }
+    page2 = MagicMock(status_code=200)
+    page2.json.return_value = {
+        "data": [{"id": f"p2_{i}", "text": f"Tweet {100 + i}"} for i in range(25)],
+        "meta": {},
+    }
+    mock_client = MagicMock()
+    mock_client.get.side_effect = [page1, page2]
+
+    tweets = _fetch_x_user_tweets_paginated(
+        client=mock_client,
+        base_url="https://api.twitter.com/2",
+        uid="12345",
+        headers={"Authorization": "Bearer test"},
+        max_tweets=150,
+    )
+    assert len(tweets) == 125
+    assert mock_client.get.call_count == 2
+    assert mock_client.get.call_args_list[0].kwargs["params"]["max_results"] == 100
+    assert mock_client.get.call_args_list[0].kwargs["params"]["exclude"] == "retweets,replies"
+    assert mock_client.get.call_args_list[1].kwargs["params"]["max_results"] == 50
+    assert mock_client.get.call_args_list[1].kwargs["params"]["pagination_token"] == "tok_page_2"
+
+
+

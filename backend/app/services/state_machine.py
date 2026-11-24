@@ -327,8 +327,10 @@ def retry_candidate_ai_evaluation(
         db,
         candidate,
         CandidateStatus.QUEUED_FOR_AI,
-        error_message=None,
+        error_message="",
     )
+    updated.error_message = None
+    db.commit()
 
     job = JobQueue(
         job_type="AI_EVALUATE",

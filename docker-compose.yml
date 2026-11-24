@@ -42,8 +42,15 @@ services:
       GEMINI_FALLBACK_MODELS: ${GEMINI_FALLBACK_MODELS:-gemini-3.1-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}
       X_API_BASE_URL: ${X_API_BASE_URL:-https://api.twitter.com/2}
       X_SIMULATOR_BASE_URL: ${X_SIMULATOR_BASE_URL:-http://x-simulator:8099/2}
+      X_TWEETS_MAX_RESULTS: ${X_TWEETS_MAX_RESULTS:-50}
+      X_TWEETS_EXCLUDE: ${X_TWEETS_EXCLUDE:-retweets,replies}
       X_BEARER_TOKEN: ${X_BEARER_TOKEN:-}
       X_API_KEY: ${X_API_KEY:-}
       X_API_SECRET: ${X_API_SECRET:-}

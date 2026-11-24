@@ -431,7 +431,7 @@ def _batch_fetch_x_user_profiles(
                 "x_user_id": uid,
                 "name": (u.get("name") or uname).strip(),
                 "bio": (u.get("description") or f"Builder @{uname}").strip(),
-                "location": (u.get("location") or "Southeast Asia").strip(),
+                "location": (u.get("location") or "Global / Unspecified").strip(),
                 "followers_count": int(raw_followers) if isinstance(raw_followers, (int, float)) else None,
                 "can_dm": bool(u.get("can_dm", True)) if "can_dm" in u else None,
                 "recent_tweets": "",
@@ -452,11 +452,75 @@ def _batch_fetch_x_user_profiles(
     return enriched
 
 
+def _fetch_x_user_tweets_paginated(
+    client: httpx.Client,
+    base_url: str,
+    uid: str,
+    headers: Dict[str, str],
+    max_tweets: Optional[int] = None,
+) -> List[str]:
+    """
+    Fetch up to `max_tweets` recent public tweets for a user via X API v2 `/2/users/{uid}/tweets`.
+    Uses up to 100 tweets per page (X API v2 single-page max), applies `X_TWEETS_EXCLUDE`
+    (default `retweets,replies`) so RAG receives original authored technical posts instead of RT/reply noise,
+    and falls back without `exclude` only if the user has zero original posts.
+    """
+    target_total = max(5, min(500, int(max_tweets or getattr(settings, "X_TWEETS_MAX_RESULTS", 50))))
+    exclude_cfg = (getattr(settings, "X_TWEETS_EXCLUDE", "retweets,replies") or "").strip()
+
+    def _run_fetch(use_exclude: Optional[str]) -> List[str]:
+        collected: List[str] = []
+        next_token: Optional[str] = None
+        while len(collected) < target_total:
+            remaining = target_total - len(collected)
+            page_limit = max(5, min(100, remaining))
+            params: Dict[str, Any] = {
+                "max_results": page_limit,
+                "tweet.fields": "created_at,text",
+            }
+            if use_exclude:
+                params["exclude"] = use_exclude
+            if next_token:
+                params["pagination_token"] = next_token
+
+            t_resp = client.get(
+                f"{base_url}/users/{uid}/tweets",
+                params=params,
+                headers=headers,
+            )
+            if t_resp.status_code != 200:
+                if not collected:
+                    raise _map_x_lookup_http_error(t_resp, uid)
+                break
+
+            body = t_resp.json()
+            page_items = body.get("data") or []
+            if not page_items:
+                break
+
+            for t_obj in page_items:
+                text = (t_obj.get("text") or "").strip()
+                if text:
+                    collected.append(text)
+                if len(collected) >= target_total:
+                    break
+
+            next_token = (body.get("meta") or {}).get("next_token")
+            if not next_token:
+                break
+        return collected
+
+    result = _run_fetch(exclude_cfg or None)
+    if not result and exclude_cfg:
+        result = _run_fetch(None)
+    return result
+
+
 def _batch_fetch_x_profiles_and_tweets(handles: List[str]) -> Dict[str, Dict[str, Any]]:
     """
     Batch-verify and enrich up to MAX_CSV_X_VERIFY_BATCH handles against X API v2:
     1. Calls `GET /2/users/by?usernames=h1,h2,...` via `_batch_fetch_x_user_profiles`.
-    2. Fetches `GET /2/users/{uid}/tweets?max_results=5` with bounded concurrency (`max_workers=3`).
+    2. Fetches `GET /2/users/{uid}/tweets?max_results=<X_TWEETS_MAX_RESULTS>` with bounded concurrency (`max_workers=3`).
     """
     if not handles:
         return {}
@@ -470,23 +534,20 @@ def _batch_fetch_x_profiles_and_tweets(handles: List[str]) -> Dict[str, Dict[str
     enriched: Dict[str, Dict[str, Any]] = {}
 
     try:
-        with httpx.Client(timeout=10.0) as client:
+        with httpx.Client(timeout=12.0) as client:
             enriched = _batch_fetch_x_user_profiles(handles, client=client)
 
             def _fetch_user_tweets(uname_and_uid: tuple[str, str]) -> tuple[str, str]:
                 uname_key, uid_val = uname_and_uid
-                t_resp = client.get(
-                    f"{base_url}/users/{uid_val}/tweets",
-                    params={"max_results": 5, "tweet.fields": "created_at,text"},
-                    headers=headers,
-                )
-                if t_resp.status_code != 200:
+                try:
+                    tweets_arr = _fetch_x_user_tweets_paginated(
+                        client=client,
+                        base_url=base_url,
+                        uid=uid_val,
+                        headers=headers,
+                    )
+                except XApiLookupError:
                     return uname_key, "No recent public tweets found via X API v2."
-                tweets_arr = [
-                    (t_obj.get("text") or "").strip()
-                    for t_obj in (t_resp.json().get("data") or [])
-                    if (t_obj.get("text") or "").strip()
-                ]
                 return (
                     uname_key,
                     " || ".join(tweets_arr)
@@ -831,7 +892,11 @@ def _map_x_lookup_http_error(resp: httpx.Response, handle: str) -> XApiLookupErr
     return XApiLookupError(status, f"[X API {status}] {detail}")
 
 
-def lookup_x_handle(db: Session, raw_handle: str) -> Dict[str, Any]:
+def lookup_x_handle(
+    db: Session,
+    raw_handle: str,
+    max_tweets: Optional[int] = None,
+) -> Dict[str, Any]:
     """
     HTTP Handle Lookup for Tab 3 (Live Sourcing Journey).
     Calls configured X API v2 endpoint (`X_API_BASE_URL`, defaulting to
@@ -886,17 +951,13 @@ def lookup_x_handle(db: Session, raw_handle: str) -> Dict[str, Any]:
             uid = user_data.get("id")
             tweets_list: List[str] = []
             if uid:
-                t_resp = client.get(
-                    f"{base_url}/users/{uid}/tweets",
-                    params={"max_results": 5, "tweet.fields": "created_at,text"},
+                tweets_list = _fetch_x_user_tweets_paginated(
+                    client=client,
+                    base_url=base_url,
+                    uid=uid,
                     headers=headers,
+                    max_tweets=max_tweets,
                 )
-                if t_resp.status_code != 200:
-                    raise _map_x_lookup_http_error(t_resp, handle)
-                for t_obj in t_resp.json().get("data", []):
-                    text = (t_obj.get("text") or "").strip()
-                    if text:
-                        tweets_list.append(text)
     except httpx.RequestError as exc:
         raise XApiLookupError(
             503,
@@ -923,7 +984,7 @@ def lookup_x_handle(db: Session, raw_handle: str) -> Dict[str, Any]:
     return {
         "handle": handle,
         "name": user_data.get("name") or handle,
-        "location": user_data.get("location") or "Southeast Asia",
+        "location": user_data.get("location") or "Global / Unspecified",
         "bio": user_data.get("description") or "Builder on X",
         "recent_tweets": tweets_list,
         "raw_tweets_text": " || ".join(tweets_list),

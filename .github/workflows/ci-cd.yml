@@ -44,6 +44,11 @@ jobs:
           RUNTIME_PROFILE: OFFLINE_MOCK
         run: python -m pytest backend/tests/ -v
 
+      - name: Run Gate 3 (Verify Gate 4 Probabilistic AI Evals, LLM-as-a-Judge & 4-Span Langfuse Trace)
+        env:
+          RUNTIME_PROFILE: OFFLINE_MOCK
+        run: python -m backend.scripts.verify_live_keys --mode gate4
+
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:

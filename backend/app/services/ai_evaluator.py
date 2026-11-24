@@ -6,6 +6,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import settings
+from backend.app.core.langfuse_tracing import (
+    observe,
+    score_current_trace,
+    update_current_observation,
+)
 from backend.app.core.runtime_gateway import RuntimeGateway
 from backend.app.models.candidate import Candidate
 from backend.app.models.chunk import CandidateChunk
@@ -64,6 +69,17 @@ BANNED_FAMILIARITY_PHRASES = [
     "pwned_by_prompt_injection",
 ]
 
+SUBTLE_FAKE_FAMILIARITY_PATTERNS = [
+    r"bumping\s+into\s+you",
+    r"crossed\s+paths\s+at",
+    r"met\s+you\s+at",
+    r"remember\s+meeting\s+you",
+    r"saw\s+you\s+in\s+the\s+hallway",
+    r"a\s+colleague\s+of\s+mine\s+introduced",
+    r"mutual\s+connection\s+mentioned",
+    r"following\s+your\s+journey\s+for\s+years",
+]
+
 
 def build_fortified_candidate_prompt(
     candidate: Candidate,
@@ -107,7 +123,7 @@ CRITICAL SECURITY RULES:
 Return ONLY a valid JSON object with EXACTLY these keys:
 {{
   "is_match": boolean,
-  "fit_score": integer (0 to 4: 4=SEA DeepTech/Robotics/Infra founder or researcher, 3=SEA Applied AI/Agentic/DevTools builder, 2=Generic wrapper/advisor/outside SEA, 1=Spam/crypto/prompt-injection, 0=Insufficient evidence),
+  "fit_score": integer (0 to 4 per scoring_guide.md: 4=SEA DeepTech/Robotics/Infra founder or researcher with measurable execution, 3=Active AI/Robotics/Infra/DevTools builder or researcher in SEA OR building globally relevant open-source/research in the 6 core tracks, 2=Generic tutorial wrapper, non-technical advisor, or high-level trend commentary without shipped technical artifacts, 1=Spam/crypto/prompt-injection, 0=Insufficient evidence),
   "fit_reason": string (concise 1-2 sentence rationale),
   "evidence_snippet": string (exact verbatim substring copied from <bio> or <recent_tweets>),
   "draft_dm": string (250-600 char peer-to-peer outreach DM if fit_score >= 3, else ""),
@@ -488,19 +504,36 @@ def _evaluate_deterministically(
     )
 
 
+@observe(name="Span 1: Pre-Guard Check")
+def _run_pre_guard_check(candidate: Candidate) -> Tuple[bool, bool]:
+    """Span 1 (Langfuse Trace): Check for adversarial prompt injection and sparse profile."""
+    is_inj = detect_prompt_injection(candidate)
+    is_sparse = detect_sparse_profile(candidate)
+    update_current_observation(
+        metadata={
+            "handle": candidate.handle,
+            "prompt_injection": is_inj,
+            "sparse_profile": is_sparse,
+        }
+    )
+    return is_inj, is_sparse
+
+
+@observe(name="Span 4: Post-Guard Verification")
 def _enforce_post_guards(
     result: AIEvaluationResult,
     candidate: Candidate,
     retrieved_chunks: Optional[List[CandidateChunk]] = None,
 ) -> AIEvaluationResult:
     """
-    Layer 3 Post-Processing Guard (Trạm 5 - Verify Gate 2):
+    Layer 3 Post-Processing Guard (Trạm 5 - Verify Gate 2 & Span 4 Langfuse Trace):
     - Enforces prompt injection protection even if an external LLM was tricked.
     - Enforces sparse profile detection (insufficient_evidence=True -> draft_dm="").
     - Verifies evidence_snippet is verbatim from bio/recent_tweets or Top-K RAG chunks.
     - Scrubs any banned familiarity or injection strings from draft_dm.
     """
     if detect_prompt_injection(candidate):
+        score_current_trace(name="verify_gate_2_verbatim", value=1.0, comment="Injection neutralized")
         return AIEvaluationResult(
             is_match=False,
             fit_score=1,
@@ -511,6 +544,7 @@ def _enforce_post_guards(
         )
 
     if detect_sparse_profile(candidate) or result.insufficient_evidence:
+        score_current_trace(name="verify_gate_2_verbatim", value=1.0, comment="Sparse profile guarded")
         return AIEvaluationResult(
             is_match=False,
             fit_score=0,
@@ -524,6 +558,7 @@ def _enforce_post_guards(
     # Check if LLM output contains injection marker
     combined_out = f"{result.fit_reason} {result.draft_dm}".lower()
     if "pwned_by_prompt_injection" in combined_out:
+        score_current_trace(name="verify_gate_2_verbatim", value=0.0, comment="Injection leaked in output; blocked")
         return AIEvaluationResult(
             is_match=False,
             fit_score=1,
@@ -534,28 +569,53 @@ def _enforce_post_guards(
         )
 
     # Ensure verbatim evidence grounding via Verify Gate 2
-    result.evidence_snippet = _verify_verbatim_grounding(
-        result.evidence_snippet,
-        candidate,
+    gate2_report = verify_gate_2_grounding(
+        snippet=result.evidence_snippet,
+        candidate=candidate,
         retrieved_chunks=retrieved_chunks,
     )
+    result.evidence_snippet = gate2_report["verified_snippet"]
 
     # Ensure scores 1 and 2 have is_match=False and no outreach DM
     if result.fit_score <= 2:
         result.is_match = False
         result.draft_dm = ""
+        update_current_observation(
+            metadata={
+                "verbatim_valid": gate2_report["is_verbatim_valid"],
+                "matched_post_id": gate2_report["matched_post_id"],
+                "banned_phrases": 0,
+            }
+        )
+        score_current_trace(
+            name="verify_gate_2_verbatim",
+            value=1.0 if gate2_report["is_verbatim_valid"] else 0.0,
+            comment=f"Matched post_id={gate2_report['matched_post_id']}",
+        )
         return result
 
     # For scores 3 and 4, ensure is_match=True and grounded DM without invented familiarity
     result.is_match = True
     dm_lower = (result.draft_dm or "").lower()
-    if (
-        not result.draft_dm
-        or len(result.draft_dm) < 120
-        or any(phrase in dm_lower for phrase in BANNED_FAMILIARITY_PHRASES)
-    ):
+    has_banned = any(phrase in dm_lower for phrase in BANNED_FAMILIARITY_PHRASES) or any(
+        re.search(pat, dm_lower, re.IGNORECASE) for pat in SUBTLE_FAKE_FAMILIARITY_PATTERNS
+    )
+    if not result.draft_dm or len(result.draft_dm) < 120 or has_banned:
         result.draft_dm = _compose_grounded_dm(candidate, result.evidence_snippet)
 
+    update_current_observation(
+        metadata={
+            "verbatim_valid": gate2_report["is_verbatim_valid"],
+            "hallucination_rejected": gate2_report["hallucination_rejected"],
+            "matched_post_id": gate2_report["matched_post_id"],
+            "banned_phrases_caught": int(has_banned),
+        }
+    )
+    score_current_trace(
+        name="verify_gate_2_verbatim",
+        value=1.0 if gate2_report["is_verbatim_valid"] else 0.0,
+        comment=f"post_id={gate2_report['matched_post_id']}",
+    )
     return result
 
 
@@ -567,7 +627,8 @@ def _call_external_llm(
     Attempt live structured evaluation via Google Gemini Flash or OpenAI GPT-4o-mini if keys are set.
     Raises AIEvaluationServiceError if the configured live API returns an HTTP/network error.
     """
-    prompt = build_fortified_candidate_prompt(candidate, retrieved_chunks=retrieved_chunks)
+    active_chunks = retrieved_chunks if retrieved_chunks is not None else getattr(candidate, "_rag_chunks", None)
+    prompt = build_fortified_candidate_prompt(candidate, retrieved_chunks=active_chunks)
 
     gemini_key = settings.GEMINI_API_KEY.strip()
     if gemini_key and not gemini_key.startswith("your_"):
@@ -668,6 +729,48 @@ def _call_external_llm(
     return None
 
 
+@observe(name="Span 3: LLM Generation", as_type="generation")
+def _run_llm_generation_span(
+    candidate: Candidate,
+    allow_external_llm: bool,
+    require_external_llm: bool,
+    model_used: str,
+    retrieved_chunks: Optional[List[CandidateChunk]] = None,
+) -> AIEvaluationResult:
+    """Span 3 (Langfuse Generation Span): Execute live LLM or deterministic rubric and record tokens/cost."""
+    prompt_preview = build_fortified_candidate_prompt(candidate, retrieved_chunks=retrieved_chunks)
+    est_input_tokens = max(1, int(len(prompt_preview.split()) * 1.3))
+
+    setattr(candidate, "_rag_chunks", retrieved_chunks)
+    llm_result = _call_external_llm(candidate) if allow_external_llm else None
+    is_live_call = llm_result is not None
+    if llm_result is None:
+        if require_external_llm:
+            raise AIEvaluationServiceError(
+                f"[LIVE_PRODUCTION] External LLM evaluation returned no result for @{candidate.handle}; "
+                "silent fallback to deterministic rubric ($0) is disabled."
+            )
+        llm_result = _evaluate_deterministically(candidate, retrieved_chunks=retrieved_chunks)
+
+    out_text = llm_result.model_dump_json()
+    est_output_tokens = max(1, int(len(out_text.split()) * 1.35))
+    est_cost = round((est_input_tokens * 0.000000075) + (est_output_tokens * 0.0000003), 6) if is_live_call else 0.0
+
+    update_current_observation(
+        model=model_used,
+        usage={"input": est_input_tokens, "output": est_output_tokens, "total": est_input_tokens + est_output_tokens},
+        cost_usd=est_cost,
+        metadata={
+            "prompt_version": "v2.5-rag-fortified-xml",
+            "temperature": 0.1,
+            "fit_score": llm_result.fit_score,
+            "is_match": llm_result.is_match,
+        },
+    )
+    return llm_result
+
+
+@observe(name="Candidate Evaluation Pipeline")
 def evaluate_candidate_profile(
     candidate: Candidate,
     simulate_failure: bool = False,
@@ -675,14 +778,14 @@ def evaluate_candidate_profile(
     db: Optional[Session] = None,
 ) -> AIEvaluationResult:
     """
-    Main entrypoint for Queue 1 (Tri-Guard AI Evaluation Engine + Module 03 RAG Secretary):
-    - Raises AIEvaluationServiceError on simulated or live LLM outage so caller transitions to AI_FAILED.
-    - Consults RuntimeGateway (OFFLINE_MOCK vs LIVE_PRODUCTION vs HYBRID_AUTO).
-    - If `db` is provided, invokes the 5-Station RAG Secretary (`search_and_rerank_candidate_chunks`)
-      to filter up to 3,000 raw tweets/docs down to the Top 3 chunks before constructing the A4 Prompt.
-    - Runs Layer 1 (<untrusted_candidate_data> & injection shield), Layer 2 (LLM/Rubric scorer),
-      and Layer 3 / Verify Gate 2 (verbatim evidence grounding & zero-invented-familiarity validator).
+    Main entrypoint for Queue 1 (Tri-Guard AI Evaluation Engine + Module 03 RAG Secretary + Module 05 Langfuse Trace):
+    - Emits 4 Langfuse SDK `@observe` spans:
+      1. `Span 1: Pre-Guard Check`
+      2. `Span 2: Hybrid Retrieval & Rerank`
+      3. `Span 3: LLM Generation`
+      4. `Span 4: Post-Guard Verification`
     """
+    update_current_observation(metadata={"handle": candidate.handle})
     if simulate_failure or "[SIMULATE_AI_FAILURE]" in (candidate.bio or ""):
         raise AIEvaluationServiceError(
             f"LLM API connection failed while evaluating @{candidate.handle} (HTTP 503 Service Unavailable)."
@@ -692,11 +795,13 @@ def evaluate_candidate_profile(
     if ai_plan.strict_error:
         raise AIEvaluationServiceError(ai_plan.strict_error)
 
-    # Layer 1 fast-path: Prompt injection or sparse profile
-    if detect_prompt_injection(candidate) or detect_sparse_profile(candidate):
+    # Span 1: Pre-Guard Check
+    is_inj, is_sparse = _run_pre_guard_check(candidate)
+    if is_inj or is_sparse:
         raw_result = _evaluate_deterministically(candidate)
         return _enforce_post_guards(raw_result, candidate)
 
+    # Span 2: Hybrid Retrieval & Rerank (when DB session is available)
     retrieved_chunks: Optional[List[CandidateChunk]] = None
     if db is not None:
         retrieved_chunks = search_and_rerank_candidate_chunks(
@@ -705,22 +810,143 @@ def evaluate_candidate_profile(
             top_k=3,
         )
 
-    # Layer 2: Execute according to RuntimeGateway plan
-    llm_result = (
-        _call_external_llm(candidate, retrieved_chunks=retrieved_chunks)
-        if ai_plan.allow_external_llm
-        else None
+    # Span 3: LLM Generation
+    llm_result = _run_llm_generation_span(
+        candidate=candidate,
+        allow_external_llm=ai_plan.allow_external_llm,
+        require_external_llm=ai_plan.require_external_llm,
+        model_used=ai_plan.model_used,
+        retrieved_chunks=retrieved_chunks,
     )
-    if llm_result is None:
-        if ai_plan.require_external_llm:
-            raise AIEvaluationServiceError(
-                f"[LIVE_PRODUCTION] External LLM evaluation returned no result for @{candidate.handle}; "
-                "silent fallback to deterministic rubric ($0) is disabled."
-            )
-        llm_result = _evaluate_deterministically(candidate, retrieved_chunks=retrieved_chunks)
 
-    # Layer 3 (Verify Gate 2): Post-processing grounding & safety verification
+    # Span 4 (Verify Gate 2): Post-processing grounding & safety verification
     return _enforce_post_guards(llm_result, candidate, retrieved_chunks=retrieved_chunks)
+
+
+@observe(name="LLM-as-a-Judge DM Evaluation", as_type="generation")
+def judge_dm_quality_with_llm(
+    candidate: Candidate,
+    draft_dm: str,
+    retrieved_chunks: Optional[List[CandidateChunk]] = None,
+    allow_external_llm: bool = True,
+) -> Dict[str, Any]:
+    """
+    Module 05 Trạm 2 (LLM-as-a-Judge for Free-Form Outreach DM — Verify Gate 4):
+    Evaluates `draft_dm` against the candidate's authentic profile/chunks across 3 criteria:
+      1. `cites_real_evidence`: Mentions concrete technical facts from profile and zero fabricated metrics.
+      2. `no_fake_familiarity`: Free of invented familiarity (including subtle phrasings that bypass simple regex).
+      3. `peer_to_peer_cta`: Warm peer-to-peer engineering tone (180..600 chars) ending with an open question/invite.
+    """
+    dm_clean = (draft_dm or "").strip()
+    dm_lower = dm_clean.lower()
+    chunks_text = " || ".join((c.text or "") for c in (retrieved_chunks or []))
+    source_pool = f"{candidate.bio or ''} || {candidate.recent_tweets or ''} || {chunks_text}".lower()
+
+    # 1. Check fake familiarity (both explicit banned phrases and subtle semantic patterns)
+    has_fake_familiarity = any(p in dm_lower for p in BANNED_FAMILIARITY_PHRASES) or any(
+        re.search(pat, dm_lower, re.IGNORECASE) for pat in SUBTLE_FAKE_FAMILIARITY_PATTERNS
+    )
+    no_fake_familiarity = not has_fake_familiarity
+
+    # 2. Check metric faithfulness: any concrete benchmark number in DM (e.g. '18ms', '5ms', '93.4%')
+    # MUST exist in the candidate's authentic source_pool!
+    dm_metrics = re.findall(r"\b\d+(?:\.\d+)?\s*(?:ms|%|fps|gb/s|tok/s|nm)\b", dm_lower)
+    fabricated_metrics = [m for m in dm_metrics if m.replace(" ", "") not in source_pool.replace(" ", "")]
+
+    # Check if DM references at least one authentic technical keyword from source_pool
+    source_tech_tokens = [
+        tok
+        for tok in re.findall(r"[a-z0-9_+-]{4,}", source_pool)
+        if tok not in ("with", "from", "that", "this", "your", "have", "more", "than", "week", "still")
+    ]
+    cites_source_term = any(tok in dm_lower for tok in source_tech_tokens[:35]) if source_tech_tokens else False
+    cites_real_evidence = bool(dm_clean and cites_source_term and len(fabricated_metrics) == 0)
+
+    # 3. Check peer-to-peer length and open CTA
+    peer_to_peer_cta = bool(
+        180 <= len(dm_clean) <= 600
+        and ("?" in dm_clean or "call" in dm_lower or "chat" in dm_lower or "notes" in dm_lower)
+    )
+
+    ai_plan = RuntimeGateway.resolve_ai_plan(allow_external_override=allow_external_llm)
+    judge_engine = "SEMANTIC_RULE_JUDGE"
+    reason = "Verified by deterministic semantic & metric faithfulness judge."
+
+    # Optional Live LLM-as-a-Judge second opinion when external LLM is enabled
+    if ai_plan.allow_external_llm and dm_clean and not has_fake_familiarity and not fabricated_metrics:
+        judge_prompt = f"""You are an independent QA Judge (LLM-as-a-Judge).
+Compare <draft_dm> against <authentic_profile> for @{candidate.handle} and evaluate 3 boolean criteria:
+1. cites_real_evidence: Does <draft_dm> reference real technical work from <authentic_profile> without fabricating metrics?
+2. no_fake_familiarity: Is <draft_dm> 100% free of invented familiarity (e.g., claiming they met at an event or share mutual friends)?
+3. peer_to_peer_cta: Is the tone peer-to-peer and does it end with a low-friction invitation/question?
+
+<authentic_profile>
+Bio: {candidate.bio}
+Posts: {chunks_text or candidate.recent_tweets}
+</authentic_profile>
+
+<draft_dm>
+{dm_clean}
+</draft_dm>
+
+Return ONLY JSON: {{"cites_real_evidence": bool, "no_fake_familiarity": bool, "peer_to_peer_cta": bool, "reason": string}}"""
+        gem_key = (settings.GEMINI_API_KEY or "").strip()
+        if gem_key and not gem_key.startswith("your_"):
+            model_name = (settings.GEMINI_MODEL or "gemini-2.5-flash").strip()
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gem_key}"
+            try:
+                with httpx.Client(timeout=12.0) as client:
+                    resp = client.post(
+                        url,
+                        json={
+                            "contents": [{"parts": [{"text": judge_prompt}]}],
+                            "generationConfig": {"responseMimeType": "application/json", "temperature": 0.0},
+                        },
+                    )
+                    if resp.status_code == 200:
+                        raw = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                        parsed = json.loads(raw)
+                        cites_real_evidence = cites_real_evidence and bool(parsed.get("cites_real_evidence", True))
+                        no_fake_familiarity = no_fake_familiarity and bool(parsed.get("no_fake_familiarity", True))
+                        peer_to_peer_cta = peer_to_peer_cta and bool(parsed.get("peer_to_peer_cta", True))
+                        reason = str(parsed.get("reason") or reason)
+                        judge_engine = f"LIVE_GEMINI_JUDGE ({model_name})"
+            except Exception:
+                pass
+
+    if fabricated_metrics:
+        reason = f"FAIL Faithfulness: Fabricated metric(s) {fabricated_metrics} not found in candidate profile."
+    elif not no_fake_familiarity:
+        reason = "FAIL Anti-Familiarity: Invented personal familiarity or prior meeting detected in draft_dm."
+    elif not cites_real_evidence:
+        reason = "FAIL Grounding: draft_dm does not cite verifiable technical evidence from profile."
+    elif not peer_to_peer_cta:
+        reason = "FAIL Tone/CTA: draft_dm lacks peer-to-peer length (180-600 chars) or open call-to-action."
+
+    passed = bool(cites_real_evidence and no_fake_familiarity and peer_to_peer_cta)
+    score_val = 1.0 if passed else 0.0
+    score_current_trace(name="llm_judge_dm_pass", value=score_val, comment=reason)
+    update_current_observation(
+        model=judge_engine,
+        metadata={
+            "handle": candidate.handle,
+            "cites_real_evidence": cites_real_evidence,
+            "no_fake_familiarity": no_fake_familiarity,
+            "peer_to_peer_cta": peer_to_peer_cta,
+            "fabricated_metrics": fabricated_metrics,
+            "passed": passed,
+        },
+    )
+    return {
+        "handle": candidate.handle,
+        "cites_real_evidence": cites_real_evidence,
+        "no_fake_familiarity": no_fake_familiarity,
+        "peer_to_peer_cta": peer_to_peer_cta,
+        "fabricated_metrics": fabricated_metrics,
+        "passed": passed,
+        "judge_engine": judge_engine,
+        "reason": reason,
+    }
 
 
 class DMGenerationBlockedError(ValueError):

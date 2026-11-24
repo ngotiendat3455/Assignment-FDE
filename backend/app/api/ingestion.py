@@ -112,11 +112,17 @@ def upload_csv_batch(
 @router.get("/x-lookup", response_model=LiveXLookupResponse)
 def lookup_handle_on_x(
     handle: str = Query(..., description="X handle or profile URL"),
+    max_tweets: Optional[int] = Query(
+        default=None,
+        ge=5,
+        le=500,
+        description="Max recent tweets to fetch for RAG indexing (defaults to X_TWEETS_MAX_RESULTS=50)",
+    ),
     db: Session = Depends(get_db),
 ) -> LiveXLookupResponse:
     """Lookup X profile via configured X API v2 base URL (real X or local simulator)."""
     try:
-        result = lookup_x_handle(db, handle)
+        result = lookup_x_handle(db, handle, max_tweets=max_tweets)
         return LiveXLookupResponse(**result)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

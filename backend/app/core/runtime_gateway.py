@@ -106,6 +106,25 @@ class DMDispatchExecutionPlan:
         }
 
 
+@dataclass
+class EmbeddingExecutionPlan:
+    profile: str
+    embedding_engine: str  # "LOCAL_CONCEPT_10D" | "LIVE_GEMINI_EMBEDDING" | "LIVE_OPENAI_EMBEDDING"
+    model_used: str
+    dimensions: int
+    allow_external_embedding: bool
+    external_network_call: bool
+
+    def to_meta(self) -> Dict[str, Any]:
+        return {
+            "profile": self.profile,
+            "embedding_engine": self.embedding_engine,
+            "model_used": self.model_used,
+            "dimensions": self.dimensions,
+            "external_network_call": self.external_network_call,
+        }
+
+
 class RuntimeGateway:
     """Single point of control and introspection for AI & X API execution modes."""
 
@@ -395,10 +414,73 @@ class RuntimeGateway:
         )
 
     @classmethod
+    def resolve_embedding_plan(cls, allow_external_override: bool = True) -> EmbeddingExecutionPlan:
+        """
+        Module 03 & 05 Dual-Mode Embedding Gateway:
+        - OFFLINE_MOCK or no API keys -> LOCAL_CONCEPT_10D (`SEMANTIC_CONCEPT_AXES`, 10d, $0).
+        - GEMINI_API_KEY configured -> LIVE_GEMINI_EMBEDDING (`text-embedding-004`, 768d).
+        - OPENAI_API_KEY configured -> LIVE_OPENAI_EMBEDDING (`text-embedding-3-small`, 1536d).
+        """
+        profile = cls.get_active_profile()
+        has_gemini = _is_real_secret(settings.GEMINI_API_KEY)
+        has_openai = _is_real_secret(settings.OPENAI_API_KEY)
+        gem_emb_model = (getattr(settings, "GEMINI_EMBEDDING_MODEL", "gemini-embedding-001") or "gemini-embedding-001").strip()
+        oai_emb_model = (getattr(settings, "OPENAI_EMBEDDING_MODEL", "text-embedding-3-small") or "text-embedding-3-small").strip()
+
+        if profile == "OFFLINE_MOCK" or not allow_external_override:
+            return EmbeddingExecutionPlan(
+                profile=profile,
+                embedding_engine="LOCAL_CONCEPT_10D",
+                model_used="semantic-concept-axes-10d",
+                dimensions=10,
+                allow_external_embedding=False,
+                external_network_call=False,
+            )
+
+        if has_gemini:
+            return EmbeddingExecutionPlan(
+                profile=profile,
+                embedding_engine="LIVE_GEMINI_EMBEDDING",
+                model_used=gem_emb_model,
+                dimensions=768,
+                allow_external_embedding=True,
+                external_network_call=True,
+            )
+
+        if has_openai:
+            return EmbeddingExecutionPlan(
+                profile=profile,
+                embedding_engine="LIVE_OPENAI_EMBEDDING",
+                model_used=oai_emb_model,
+                dimensions=1536,
+                allow_external_embedding=True,
+                external_network_call=True,
+            )
+
+        return EmbeddingExecutionPlan(
+            profile=profile,
+            embedding_engine="LOCAL_CONCEPT_10D",
+            model_used="semantic-concept-axes-10d",
+            dimensions=10,
+            allow_external_embedding=False,
+            external_network_call=False,
+        )
+
+    @classmethod
+    def is_langfuse_enabled(cls) -> bool:
+        """Return True if Langfuse SDK credentials are set and profile is not locked to OFFLINE_MOCK."""
+        if cls.get_active_profile() == "OFFLINE_MOCK":
+            return False
+        return _is_real_secret(getattr(settings, "LANGFUSE_PUBLIC_KEY", "")) and _is_real_secret(
+            getattr(settings, "LANGFUSE_SECRET_KEY", "")
+        )
+
+    @classmethod
     def get_runtime_status_summary(cls) -> Dict[str, Any]:
         """Return a centralized snapshot of active profile, drivers, and live-readiness diagnostics."""
         profile = cls.get_active_profile()
         ai_plan = cls.resolve_ai_plan()
+        emb_plan = cls.resolve_embedding_plan()
         x_lookup_plan = cls.resolve_x_lookup_plan()
         dm_plan = cls.resolve_dm_dispatch_plan(settings.DISPATCH_MODE)
 
@@ -441,6 +523,12 @@ class RuntimeGateway:
             "live_production_readiness": {
                 "ready": len(missing_for_live) == 0,
                 "missing_requirements": missing_for_live,
+            },
+            "rag_embedding": emb_plan.to_meta(),
+            "observability": {
+                "sdk": "langfuse",
+                "enabled": cls.is_langfuse_enabled(),
+                "host": getattr(settings, "LANGFUSE_HOST", "https://cloud.langfuse.com"),
             },
         }
 

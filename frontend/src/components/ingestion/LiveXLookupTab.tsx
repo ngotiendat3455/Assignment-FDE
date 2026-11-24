@@ -278,9 +278,9 @@ export function LiveXLookupTab() {
 
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase">
-                {t("evidence.recent_tweets")}
+                {t("evidence.recent_tweets")} ({profile.recent_tweets.length})
               </p>
-              <div className="mt-1.5 space-y-2">
+              <div className="mt-1.5 max-h-72 space-y-2 overflow-y-auto pr-1">
                 {profile.recent_tweets.map((tweet, idx) => (
                   <div
                     key={idx}

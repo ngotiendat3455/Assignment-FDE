@@ -110,6 +110,7 @@ def test_reset_clean_users_preserves_partner_and_login(isolated_db):
     )
 
     assert summary["remaining"]["candidates"] == 0
+    assert summary["remaining"]["candidate_chunks"] == 0
     assert summary["remaining"]["outreach_ledger"] == 0
     assert summary["remaining"]["job_queue"] == 0
     assert summary["remaining"]["users"] == 2

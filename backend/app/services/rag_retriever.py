@@ -3,15 +3,19 @@ import math
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import httpx
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from backend.app.core.config import settings
+from backend.app.core.langfuse_tracing import observe, update_current_observation
+from backend.app.core.runtime_gateway import RuntimeGateway
 from backend.app.models.candidate import Candidate
 from backend.app.models.chunk import CandidateChunk
 
 DEFAULT_RUBRIC_RAG_QUERY = (
-    "embodied AI robotics hardware latency production benchmarks Jetson TensorRT "
-    "3PL warehouse sensor deployment in Southeast Asia"
+    "AI robotics hardware LLM inference kernels autonomous systems FSD engineering "
+    "production benchmarks architecture Jetson TensorRT GPU deployment"
 )
 
 # 16-dimensional Domain Concept Axes for deterministic Dense Semantic Vector Embeddings.
@@ -45,6 +49,13 @@ SEMANTIC_CONCEPT_AXES: List[Tuple[str, List[str]]] = [
             "rover",
             "rovers",
             "asv",
+            "autonomous",
+            "fsd",
+            "unsupervised",
+            "rocket",
+            "spacex",
+            "starlink",
+            "humanoid",
         ],
     ),
     (
@@ -91,9 +102,21 @@ SEMANTIC_CONCEPT_AXES: List[Tuple[str, List[str]]] = [
             "kernels",
             "edge",
             "gpu",
+            "gpus",
+            "nvidia",
             "inference",
             "latency",
             "throughput",
+            "ai",
+            "llm",
+            "grok",
+            "xai",
+            "agent",
+            "agents",
+            "model",
+            "models",
+            "engineering",
+            "bandwidth",
         ],
     ),
     (
@@ -274,10 +297,10 @@ def _tokenize_technical(text_str: str) -> List[str]:
     return re.findall(r"[a-z0-9]+(?:\.[0-9]+)?%?", lowered)
 
 
-def compute_semantic_embedding(text_str: str) -> List[float]:
+def compute_local_concept_embedding(text_str: str) -> List[float]:
     """
-    Trạm 3.2 (Dense Semantic Vector Embedding):
-    Projects text into a normalized multi-dimensional concept vector space.
+    Trạm 3.2 (Local Deterministic 10-Axis Concept Space Embedding — $0 Offline Fallback):
+    Projects text into the 10-dimensional `SEMANTIC_CONCEPT_AXES` space.
     Captures semantic similarity between field engineering descriptions
     (e.g. 'Active stereo + tactile wrist feedback in 3PL warehouse pilot')
     and investment rubric queries ('embodied AI robotics hardware sensor deployment').
@@ -311,6 +334,124 @@ def compute_semantic_embedding(text_str: str) -> List[float]:
     if norm <= 1e-9:
         return [0.0] * len(raw_vec)
     return [round(v / norm, 6) for v in raw_vec]
+
+
+def call_external_embedding_api(text_str: str) -> Optional[List[float]]:
+    """
+    Live Embedding API Caller (Google Gemini `gemini-embedding-001` 768d or OpenAI `text-embedding-3-small` 1536d).
+    Consulted when `RuntimeGateway.resolve_embedding_plan().allow_external_embedding` is True.
+    """
+    cleaned = (text_str or "").strip()
+    if not cleaned:
+        return None
+    batch = call_external_embedding_batch_api([cleaned])
+    return batch[0] if batch and batch[0] else None
+
+
+def call_external_embedding_batch_api(texts: List[str]) -> Optional[List[Optional[List[float]]]]:
+    """
+    Batch Live Embedding API Caller:
+    Uses Gemini `batchEmbedContents` (`gemini-embedding-001`, 768d) or OpenAI `/v1/embeddings`
+    so indexing 50-100 tweets takes 1 HTTP call instead of 50-100 sequential round-trips.
+    """
+    cleaned_list = [(t or "").strip()[:4000] for t in texts]
+    if not cleaned_list:
+        return []
+
+    gem_key = (settings.GEMINI_API_KEY or "").strip()
+    if gem_key and not gem_key.startswith("your_"):
+        configured = (getattr(settings, "GEMINI_EMBEDDING_MODEL", "gemini-embedding-001") or "gemini-embedding-001").strip()
+        candidate_models = [configured] + [
+            m for m in ("gemini-embedding-001", "text-embedding-004") if m != configured
+        ]
+        for model_name in candidate_models:
+            full_model = model_name if model_name.startswith("models/") else f"models/{model_name}"
+            try:
+                with httpx.Client(timeout=15.0) as client:
+                    if len(cleaned_list) == 1:
+                        url = f"https://generativelanguage.googleapis.com/v1beta/{full_model}:embedContent?key={gem_key}"
+                        payload: Dict[str, Any] = {
+                            "model": full_model,
+                            "content": {"parts": [{"text": cleaned_list[0] or "empty"}]},
+                        }
+                        if "gemini-embedding" in full_model:
+                            payload["outputDimensionality"] = 768
+                        resp = client.post(url, json=payload)
+                        if resp.status_code == 200:
+                            values = (resp.json().get("embedding") or {}).get("values")
+                            if isinstance(values, list) and len(values) > 0:
+                                return [[float(x) for x in values]]
+                    else:
+                        url = f"https://generativelanguage.googleapis.com/v1beta/{full_model}:batchEmbedContents?key={gem_key}"
+                        reqs = []
+                        for item_txt in cleaned_list:
+                            req_obj: Dict[str, Any] = {
+                                "model": full_model,
+                                "content": {"parts": [{"text": item_txt or "empty"}]},
+                            }
+                            if "gemini-embedding" in full_model:
+                                req_obj["outputDimensionality"] = 768
+                            reqs.append(req_obj)
+                        resp = client.post(url, json={"requests": reqs})
+                        if resp.status_code == 200:
+                            embs = resp.json().get("embeddings") or []
+                            if len(embs) == len(cleaned_list):
+                                return [
+                                    [float(x) for x in (e.get("values") or [])]
+                                    if isinstance(e.get("values"), list) and e.get("values")
+                                    else None
+                                    for e in embs
+                                ]
+                    if resp.status_code == 404:
+                        continue
+            except Exception:
+                pass
+
+    oai_key = (settings.OPENAI_API_KEY or "").strip()
+    if oai_key and not oai_key.startswith("your_"):
+        model_name = (settings.OPENAI_EMBEDDING_MODEL or "text-embedding-3-small").strip()
+        url = "https://api.openai.com/v1/embeddings"
+        headers = {"Authorization": f"Bearer {oai_key}", "Content-Type": "application/json"}
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                resp = client.post(
+                    url,
+                    headers=headers,
+                    json={"model": model_name, "input": [t or "empty" for t in cleaned_list]},
+                )
+                if resp.status_code == 200:
+                    data_arr = sorted(resp.json().get("data") or [], key=lambda d: d.get("index", 0))
+                    if len(data_arr) == len(cleaned_list):
+                        return [
+                            [float(x) for x in d["embedding"]]
+                            if isinstance(d.get("embedding"), list)
+                            else None
+                            for d in data_arr
+                        ]
+        except Exception:
+            pass
+
+    return None
+
+
+def compute_semantic_embedding(
+    text_str: str,
+    allow_external: Optional[bool] = None,
+) -> List[float]:
+    """
+    Trạm 3.2 (Dual-Mode Vector Embedding Gateway):
+    - In `OFFLINE_MOCK` or when `allow_external=False` / no keys: returns 10d `SEMANTIC_CONCEPT_AXES` ($0).
+    - In `HYBRID_AUTO` / `LIVE_PRODUCTION` with configured API key: calls Gemini (`768d`) or OpenAI (`1536d`),
+      falling back cleanly to `compute_local_concept_embedding` if offline.
+    """
+    emb_plan = RuntimeGateway.resolve_embedding_plan(
+        allow_external_override=(True if allow_external is None else allow_external)
+    )
+    if emb_plan.allow_external_embedding:
+        live_vec = call_external_embedding_api(text_str)
+        if live_vec:
+            return live_vec
+    return compute_local_concept_embedding(text_str)
 
 
 def _cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
@@ -431,55 +572,28 @@ def sync_candidate_chunks(
 
     created_or_updated: List[CandidateChunk] = []
 
-    def _upsert_chunk(
+    pending_specs: List[Tuple[str, str, str, str, str]] = []
+
+    def _enqueue_chunk(
         chunk_id: str,
         source_type: str,
         post_id: str,
         created_at_source: str,
         chunk_text: str,
-    ) -> CandidateChunk:
+    ) -> None:
         cleaned = clean_technical_text(chunk_text)
-        tokens = _tokenize_technical(cleaned)
-        emb = compute_semantic_embedding(cleaned)
-        emb_json = json.dumps(emb)
-
-        if chunk_id in existing_by_id:
-            chk = existing_by_id[chunk_id]
-            chk.candidate_id = candidate.id
-            chk.source_type = source_type
-            chk.post_id = post_id
-            chk.created_at_source = created_at_source
-            chk.text = cleaned
-            chk.token_count = len(tokens)
-            chk.embedding_json = emb_json
-            return chk
-
-        chk = CandidateChunk(
-            chunk_id=chunk_id,
-            candidate_id=candidate.id,
-            candidate_handle=handle,
-            source_type=source_type,
-            post_id=post_id,
-            created_at_source=created_at_source,
-            text=cleaned,
-            token_count=len(tokens),
-            embedding_json=emb_json,
-        )
-        db.add(chk)
-        existing_by_id[chunk_id] = chk
-        return chk
+        if cleaned:
+            pending_specs.append((chunk_id, source_type, post_id, created_at_source, cleaned))
 
     # 1. Bio chunk (if meaningful)
     bio_clean = clean_technical_text(candidate.bio or "")
     if bio_clean and bio_clean != "Historical contact imported from seed log":
-        created_or_updated.append(
-            _upsert_chunk(
-                chunk_id=f"chk_{handle}_bio",
-                source_type="bio",
-                post_id=f"bio_{handle}",
-                created_at_source="profile_bio",
-                chunk_text=bio_clean,
-            )
+        _enqueue_chunk(
+            chunk_id=f"chk_{handle}_bio",
+            source_type="bio",
+            post_id=f"bio_{handle}",
+            created_at_source="profile_bio",
+            chunk_text=bio_clean,
         )
 
     # 2. Posts / Tweets chunks
@@ -545,14 +659,12 @@ def sync_candidate_chunks(
         for sub_idx, sub_text in enumerate(sub_chunks):
             suffix = "" if len(sub_chunks) == 1 else f"_part{sub_idx + 1}"
             c_id = str(p_obj.get("chunk_id") or f"chk_{handle}_{p_id}{suffix}")
-            created_or_updated.append(
-                _upsert_chunk(
-                    chunk_id=c_id,
-                    source_type=s_type,
-                    post_id=p_id,
-                    created_at_source=c_date,
-                    chunk_text=sub_text,
-                )
+            _enqueue_chunk(
+                chunk_id=c_id,
+                source_type=s_type,
+                post_id=p_id,
+                created_at_source=c_date,
+                chunk_text=sub_text,
             )
 
     # 3. Optional extra long-form documents (PDF / Markdown papers)
@@ -568,15 +680,54 @@ def sync_candidate_chunks(
             )
             for sub_idx, sub_text in enumerate(sub_chunks):
                 c_id = f"chk_{handle}_{doc_id}_p{sub_idx + 1}"
-                created_or_updated.append(
-                    _upsert_chunk(
-                        chunk_id=c_id,
-                        source_type=s_type,
-                        post_id=doc_id,
-                        created_at_source=c_date,
-                        chunk_text=sub_text,
-                    )
+                _enqueue_chunk(
+                    chunk_id=c_id,
+                    source_type=s_type,
+                    post_id=doc_id,
+                    created_at_source=c_date,
+                    chunk_text=sub_text,
                 )
+
+    # 4. Compute embeddings (in 1 batch HTTP call if external embedding API is active)
+    emb_plan = RuntimeGateway.resolve_embedding_plan()
+    batch_vectors: Optional[List[Optional[List[float]]]] = None
+    if emb_plan.allow_external_embedding and pending_specs:
+        batch_vectors = call_external_embedding_batch_api([s[4] for s in pending_specs])
+
+    for idx, (chunk_id, source_type, post_id, created_at_source, cleaned) in enumerate(pending_specs):
+        tokens = _tokenize_technical(cleaned)
+        vec = (
+            batch_vectors[idx]
+            if batch_vectors and idx < len(batch_vectors) and batch_vectors[idx]
+            else compute_local_concept_embedding(cleaned)
+        )
+        emb_json = json.dumps(vec)
+
+        if chunk_id in existing_by_id:
+            chk = existing_by_id[chunk_id]
+            chk.candidate_id = candidate.id
+            chk.source_type = source_type
+            chk.post_id = post_id
+            chk.created_at_source = created_at_source
+            chk.text = cleaned
+            chk.token_count = len(tokens)
+            chk.embedding_json = emb_json
+            created_or_updated.append(chk)
+        else:
+            chk = CandidateChunk(
+                chunk_id=chunk_id,
+                candidate_id=candidate.id,
+                candidate_handle=handle,
+                source_type=source_type,
+                post_id=post_id,
+                created_at_source=created_at_source,
+                text=cleaned,
+                token_count=len(tokens),
+                embedding_json=emb_json,
+            )
+            db.add(chk)
+            existing_by_id[chunk_id] = chk
+            created_or_updated.append(chk)
 
     db.commit()
     return (
@@ -655,11 +806,8 @@ def compute_bm25_scores(
     if not chunks:
         return []
 
-    # Augment query with core hardware/technical keywords from the VC scoring rubric
-    expanded_query_tokens = _tokenize_technical(
-        f"{query} jetson agx orin tensorrt int8 diffusion policy latency 18ms 64ms 3pl warehouse stereo tactile"
-    )
-    query_terms = list(dict.fromkeys(expanded_query_tokens))
+    query_tokens = _tokenize_technical(query or DEFAULT_RUBRIC_RAG_QUERY)
+    query_terms = list(dict.fromkeys(query_tokens))
 
     doc_tokens_list: List[List[str]] = [_tokenize_technical(c.text) for c in chunks]
     n_docs = len(chunks)
@@ -699,32 +847,68 @@ def compute_bm25_scores(
 def compute_vector_scores(
     query: str,
     chunks: List[CandidateChunk],
+    allow_external: Optional[bool] = None,
 ) -> List[Tuple[CandidateChunk, float]]:
     """
-    Trạm 3.2 (Hunter 2 - Dense Semantic Vector Search):
+    Trạm 3.2 (Hunter 2 - Dense Semantic Vector Search with Dimension Alignment Guard):
     Excels at capturing semantic meaning even when exact keywords are absent
     (e.g. 'lighting glare off shrink-wrapped pallets... Active stereo + tactile wrist feedback saved us').
+    Automatically aligns vector dimensions if chunks were stored in 10d offline mode and query is 768d/1536d live (or vice versa).
     """
     if not chunks:
         return []
 
-    query_vec = compute_semantic_embedding(query)
-    scored: List[Tuple[CandidateChunk, float]] = []
+    query_vec = compute_semantic_embedding(query, allow_external=allow_external)
+    parsed_vecs: List[List[float]] = []
+    mismatched_indices: List[int] = []
 
-    for chunk in chunks:
+    for idx, chunk in enumerate(chunks):
         try:
             chunk_vec = (
                 json.loads(chunk.embedding_json)
                 if chunk.embedding_json
-                else compute_semantic_embedding(chunk.text)
+                else compute_local_concept_embedding(chunk.text)
             )
         except Exception:
-            chunk_vec = compute_semantic_embedding(chunk.text)
+            chunk_vec = compute_local_concept_embedding(chunk.text)
+        parsed_vecs.append(chunk_vec)
+        if len(chunk_vec) != len(query_vec):
+            mismatched_indices.append(idx)
 
+    # Dimension Alignment Guard: batch-realign mismatched chunks in 1 API call when live embedding is active
+    if mismatched_indices:
+        if len(query_vec) == len(SEMANTIC_CONCEPT_AXES):
+            for idx in mismatched_indices:
+                parsed_vecs[idx] = compute_local_concept_embedding(chunks[idx].text)
+        else:
+            emb_plan = RuntimeGateway.resolve_embedding_plan(
+                allow_external_override=(True if allow_external is None else allow_external)
+            )
+            batch_recomputed = (
+                call_external_embedding_batch_api([chunks[idx].text for idx in mismatched_indices])
+                if emb_plan.allow_external_embedding
+                else None
+            )
+            aligned_ok = bool(
+                batch_recomputed
+                and len(batch_recomputed) == len(mismatched_indices)
+                and all(v and len(v) == len(query_vec) for v in batch_recomputed)
+            )
+            if aligned_ok and batch_recomputed is not None:
+                for pos, idx in enumerate(mismatched_indices):
+                    parsed_vecs[idx] = batch_recomputed[pos]  # type: ignore[assignment]
+                    chunks[idx].embedding_json = json.dumps(parsed_vecs[idx])
+            else:
+                query_vec = compute_local_concept_embedding(query)
+                for idx in range(len(chunks)):
+                    if len(parsed_vecs[idx]) != len(query_vec):
+                        parsed_vecs[idx] = compute_local_concept_embedding(chunks[idx].text)
+
+    scored: List[Tuple[CandidateChunk, float]] = []
+    for chunk, chunk_vec in zip(chunks, parsed_vecs):
         sim = _cosine_similarity(query_vec, chunk_vec)
-        # Penalize pure lifestyle/sports noise axes (indices 7, 8)
         noise_penalty = 0.0
-        if len(chunk_vec) >= 10:
+        if len(chunk_vec) == len(SEMANTIC_CONCEPT_AXES) and len(chunk_vec) >= 10:
             noise_penalty = 0.35 * (chunk_vec[7] + chunk_vec[8]) + 0.20 * chunk_vec[9]
         adj_sim = max(0.0, sim - noise_penalty)
         chunk.vector_score = adj_sim
@@ -809,6 +993,16 @@ def cross_encoder_rerank(
                 "awq-w4a8",
                 "speculative decoding",
                 "ptx kernels",
+                "unsupervised fsd",
+                "autonomous",
+                "nvidia",
+                "starlink",
+                "spacex",
+                "grok",
+                "inference",
+                "engineering",
+                "robotics",
+                "open-sourced",
             )
         )
         metric_boost = (0.28 if has_latency_or_pct else 0.0) + (
@@ -827,11 +1021,17 @@ def cross_encoder_rerank(
                 "we built",
                 "our benchmark",
                 "building bimanual manipulation",
+                "unsupervised fsd",
+                "important for",
+                "we deployed",
+                "open-sourced our",
             )
         )
         ownership_boost = 0.22 if has_first_hand_ownership else 0.0
 
-        # 4. Hard-Negative & Noise Penalties (Hiring posts, news commentary, coffee/sports chatter)
+        # 4. Hard-Negative & Noise Penalties (Retweets, trivial 1-4 word replies, hiring posts, coffee/sports chatter)
+        is_retweet = text_low.startswith("rt @")
+        is_trivial_reply = len(text_low.split()) <= 5 and not has_latency_or_pct
         is_hard_negative_trap = any(
             trap in text_low
             for trap in (
@@ -863,6 +1063,10 @@ def cross_encoder_rerank(
         )
 
         penalty = 0.0
+        if is_retweet:
+            penalty += 0.22
+        if is_trivial_reply:
+            penalty += 0.30
         if is_hard_negative_trap:
             penalty += 0.55
         if is_lifestyle_chatter:
@@ -894,6 +1098,7 @@ def cross_encoder_rerank(
     return reranked[:top_k]
 
 
+@observe(name="Span 2: Hybrid Retrieval & Rerank")
 def search_and_rerank_candidate_chunks(
     db: Session,
     handle: str,
@@ -924,8 +1129,22 @@ def search_and_rerank_candidate_chunks(
     if not chunks:
         return []
 
+    emb_plan = RuntimeGateway.resolve_embedding_plan()
     top_hybrid = hybrid_search_chunks(query=query, chunks=chunks, top_k=hybrid_pool_size)
     top_reranked = cross_encoder_rerank(query=query, candidate_chunks=top_hybrid, top_k=top_k)
+
+    update_current_observation(
+        model=emb_plan.model_used,
+        cost_usd=0.000002 if emb_plan.external_network_call else 0.0,
+        metadata={
+            "handle": norm_handle,
+            "embedding_engine": emb_plan.embedding_engine,
+            "dimensions": emb_plan.dimensions,
+            "total_chunks_scanned": len(chunks),
+            "selected_post_ids": [c.post_id for c in top_reranked],
+            "top_rerank_scores": [c.rerank_score for c in top_reranked],
+        },
+    )
     return top_reranked
 
 

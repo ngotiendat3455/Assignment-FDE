@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.core.config import settings
 from backend.app.core.database import SessionLocal
+from backend.app.core.langfuse_tracing import flush_langfuse
 from backend.app.core.runtime_gateway import RuntimeGateway
 from backend.app.models.candidate import Candidate, CandidateStatus
 from backend.app.models.queue import JobQueue, JobStatus
@@ -99,6 +100,7 @@ def evaluate_candidate_by_id(
 
         db.commit()
         db.refresh(candidate)
+        flush_langfuse()
         return {
             "candidate_id": candidate.id,
             "handle": candidate.handle,
@@ -117,6 +119,7 @@ def evaluate_candidate_by_id(
             j.last_error = str(exc)
         db.commit()
         db.refresh(candidate)
+        flush_langfuse()
         return {
             "candidate_id": candidate.id,
             "handle": candidate.handle,
